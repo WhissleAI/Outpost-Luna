@@ -38,7 +38,7 @@ const storagesFor = (erase) => (erase ? STORAGES : STORAGES.filter((s) => s !== 
 function plan(level, userData, platform = process.platform, { erase = false } = {}) {
   if (!LEVELS.includes(level)) throw new Error(`reset level: ${level}`);
   const P = platform === "win32" ? path.win32 : path.posix;
-  const start = [P.join(userData, "cache", "tts"), P.join(userData, "cache", "turnlog"), P.join(userData, "cache", "learning")];
+  const start = [P.join(userData, "cache", "tts"), P.join(userData, "cache", "turnlog"), P.join(userData, "cache", "learning"), P.join(userData, "cache", "brain")];   // brain: the weekly counts + care flags (backend app/brain_counts.py)
   const all = [P.join(userData, "cache"), P.join(userData, "hf"), ...downloadedAssetDirs(userData, platform)];
   const del = level === "all" ? all : start;
   for (const d of del) {

@@ -194,7 +194,7 @@ Use this checklist for any new or redesigned lesson. `backend/tests/test_copy.py
 | **Lesson** | One Flight School unit | module, level, mission |
 | **Patch** | What a lesson earns, the cloth mission patch | badge, trophy, medal, star |
 | **Check ride** | The final solo test, 2 days at Shackleton Rim | final exam, boss level |
-| **Cadet** / **Commander** | The kid, before and after qualifying | player, user, astronaut |
+| **Cadet** / **Commander** | The kid, before and after qualifying (the Moon course only: another course names no learner, so a line without a spoken call sign is "Here we go.", never "Here we go, cadet."; its words come from the course manifest `labels`, e.g. "Field School") | player, user, astronaut |
 | **Call sign** | The kid's radio name | nickname, username |
 | **CAPCOM** | The kid's mentor and radio voice (capsule communicator) | AI, assistant, bot, coach |
 | **Houston** | Mission Control on Earth, which answers after the radio delay | NASA (as a speaker), base |

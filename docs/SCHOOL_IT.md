@@ -102,14 +102,25 @@ macOS `~/Library/Application Support/Outpost Luna/`, Windows `%APPDATA%\Outpost 
 | Mission autosave (`cache/saves/`): the orders given, not recordings | always, so a mission resumes |
 | Settings, cadet call signs, lesson progress and patches | always (the app's local storage) |
 | What the app learned about how a cadet says names (small JSON, no audio) | always; Settings → For grown-ups shows and clears it |
-| The voice-guide turn log: what it heard, as text, no audio, no names | on by default; a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it |
-| Playtest audio clips | only during a playtest a grown-up starts, with permission (Settings → For grown-ups → Voice log and playtest), exported as one zip to a place they choose |
+| The voice-guide turn log: what it heard, as text, no audio, no names | on by default, 30 days (then deleted; `docs/SECURITY.md` "Retention"); a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it |
+| Playtest audio clips | only during a playtest a grown-up starts, with permission (Settings → For grown-ups → Voice log and playtest), exported as one zip to a place they choose; deleted after 30 days |
 | Saved NASA videos, logs (scrubbed, capped at 75 MB), local counters | always; logs never hold words or audio |
+| Weekly talk and safety counts per cadet (`cache/brain/counts.json`): numbers by kind and channel, never words | always, 12 weeks; Reset and "Clear this cadet's safety counts" erase them (`docs/BRAIN.md` §9, `docs/DPIA.md`) |
+| Care notes (`cache/brain/care.json`): kind and day only | until a grown-up marks them seen, 30 days at most |
+| The teacher PIN, as a salted hash (the app's local storage) | only if a grown-up sets one (Settings → For grown-ups → Teacher PIN) |
 
 **Audio and camera are never sent, and audio is saved only in a playtest a grown-up starts.** The mic is turned into
 words in memory on this computer; the camera
 (only if gestures are turned on in Settings) is read frame by frame and never stored. A diagnostics file is made only
 when a grown-up saves one, to a place they choose; nothing is uploaded.
+
+## Teacher PIN
+
+In a classroom, set a teacher PIN (Settings → For grown-ups → Teacher PIN, 4 to 8 digits). After the 3-second hold the
+app asks for it before For grown-ups opens: progress, the class summary, safety counts and notes, reset and the school
+network switch. Five wrong tries wait 30 seconds. **Forgotten PIN:** quit the app and delete the user's data folder
+(below); the cadets' progress goes with it, so print the class summary first if you can. A school's safeguarding lead,
+not the app, owns the follow-up of a safety note.
 
 ## Uninstall cleanly
 

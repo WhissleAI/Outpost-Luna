@@ -81,6 +81,47 @@ kid's words); `POST /api/learn/reset` and `/api/learn/forget` need
 the token and the page's `X-Outpost-Reset: 1` header. What is stored, and where: `docs/ON_DEVICE_LEARNING.md` (one small
 JSON per cadet and one per computer, 0600, no audio, no transcripts).
 
+## Retention: what we keep about a child, for how long, and how it is destroyed
+
+This is the app's written data-retention policy. It covers everything Outpost Luna keeps on the computer about a child
+(per cadet profile). Nothing in it is sent to Whissle or anyone else; there are no accounts and no server copy. The
+per-item list for schools is `docs/SCHOOL_IT.md` "What stays on the computer".
+
+**Policy.**
+
+1. **Keep only what a feature needs, only on this computer.** Words a child said are kept only in the redacted turn
+   log (below), never in the Brain's counts, the care notes, logs, metrics or the diagnostics file.
+2. **Every behaviour and safety record expires on a clock, not only a size cap.**
+   - The turn log keeps 30 days (`backend/app/turnlog.py` `RETAIN_DAYS`) on top of its 5 MB cap: lines older than that
+     are dropped once a day on the next write or read, and Playtest clips older than that are deleted.
+   - The weekly talk and safety counts keep 12 weeks (`backend/app/brain_counts.py` `KEEP_WEEKS`).
+   - A care note stays until a grown-up marks it seen, 30 days at most (`backend/app/care_flags.py`).
+   - The Brain's practice days keep 60 (`frontend/src/brain_store.js` `MAX_DAYS`).
+3. **A grown-up can destroy it all at once, at any time.** Settings → For grown-ups → Reset Outpost Luna
+   (`docs/RESET.md`: "Start over" deletes the turn log, Playtest audio, on-device learning, the Brain's counts and care
+   notes, and the spoken-line cache; "Reset everything" also deletes the downloads). The desktop shell deletes the
+   folders after stopping the engine (`desktop/main/reset.js`). "Delete what's saved" (Voice log and playtest) deletes
+   the turn log alone. Uninstalling and deleting the user folder (`docs/SCHOOL_IT.md` "Uninstall cleanly") removes
+   everything.
+4. **Destruction is deletion of the file**, not a flag. There is no backup, cloud copy or recycle step inside the app.
+   (An OS-level backup a family or school runs, such as Time Machine or a disk image, is outside the app.)
+5. **Exports are a grown-up's explicit act.** A Playtest export (turn log and audio) is a zip a grown-up saves where
+   they choose. A diagnostics file never holds words or audio.
+6. **Retention never feeds a judgement about the child.** Expiry only deletes. Nothing kept is an emotion reading
+   (`docs/BRAIN.md`, D6) or used for grading (D8).
+
+**Security program for this data.** The data never leaves the device: loopback-only servers, the `LocalGuard`
+Host / Origin / token checks above, and no accounts. The files that hold a child's data are in the per-user folder;
+the learning and Brain files are mode 0600 on macOS (Windows: the user's own `%APPDATA%` ACLs). Every API that returns
+per-child counts needs the per-launch token (`diag.authorized`). Words are redacted before they are written, and
+private turns are stored as `<private>`. Who reviews this program, how often, and the vendor list (none receive child
+data today) are for the owner and counsel to fill in.
+
+**Open for legal review.**
+- Whether the turn log should stay on by default (`frontend/src/prefs.js` `improve: true`) for school installs.
+- Lesson progress and practice counts (not the dated behaviour records) are kept until a grown-up erases them, like a
+  gradebook. Whether a school needs an automatic end-of-year destruction date for these.
+
 ## Check for updates
 
 The one request the app makes to the internet on its own behalf after setup, and only when asked (Settings → App

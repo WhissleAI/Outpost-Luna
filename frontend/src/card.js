@@ -98,7 +98,7 @@ export function createCard() {
     const p = e.photo;
     if (p && p.src) {
       img.src = p.src; img.alt = p.alt || e.title || ""; img.title = p.caption || ""; img.hidden = false; img.onerror = () => { img.hidden = true; };
-      if (p.credit) { meta.append(el("span", "photo-credit", "Photo: " + p.credit)); meta.hidden = false; }
+      if (p.credit) { meta.append(el("span", "photo-credit", (p.creditLabel || "Photo") + ": " + p.credit)); meta.hidden = false; }
     }
     (e.sources || []).filter(x => x && x.url).forEach(x => {
       const l = el("a", "chip-src", x.title || new URL(x.url).hostname); l.href = x.url; l.target = "_blank"; l.rel = "noopener"; sources.append(l);

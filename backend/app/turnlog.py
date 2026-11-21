@@ -22,7 +22,8 @@ Never: audio in the text log, the session id, the kid's call sign or any name, t
 times are seconds since the session's first logged turn). Nothing leaves the device: a developer imports a log only
 when the family hands it over (`make director-import LOG=...`).
 
-Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on import):
+Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on import; each carries the `day`, so the
+grown-ups' counts can honour their day window, app/brain.py):
     repeat          the kid said (nearly) the same words again within REPEAT_S  -> what we did (or didn't) was wrong
     negate          "no" / "stop" / "back" / "not that" right after (NEG_S)    -> the action was wrong
     retap           the kid tapped the same thing twice within RETAP_S, right after a turn
@@ -34,6 +35,9 @@ Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on i
     confirm_yes     ... answered "yes" (a positive signal)
 
 Storage: <dir>/turns.jsonl, rotated to turns.1.jsonl at CAP_BYTES / 2, so the folder never holds more than ~CAP_BYTES.
+Retention (docs/SECURITY.md "Retention"): on top of the size cap, lines older than RETAIN_DAYS (30) are dropped once a
+day on the next write or read, and Playtest clips older than that are deleted; "Delete what's saved" and Reset delete it
+all at once.
 <dir> = $TURNLOG_DIR, else <cache_dir>/turnlog (the desktop app's per-user data folder), else <data_dir>/turnlog.
 """
 from __future__ import annotations
@@ -57,6 +61,7 @@ RETAP_S = 6.0
 UNDO_S = 20.0                  # v2: an order reversed this soon after it ran
 AFTER_TURN_S = 15.0            # a tap / lesson result this soon after a turn is about that turn
 REPEAT_SHARE = 0.6
+RETAIN_DAYS = 30               # docs/SECURITY.md "Retention": the turn log keeps 30 days, whatever its size
 
 NEG = re.compile(r"^(?:no|nope|no no|stop|stop it|stop that|back|go back|cancel|cancel that|not that|not that one|"
                  r"wrong|that s wrong|that s not it|no wait|wait no|never mind|nevermind|undo|i didn t say that|"
@@ -249,10 +254,12 @@ def log_dir() -> Path:
 class Store:
     """Append-only JSONL with one rotation (turns.jsonl -> turns.1.jsonl). Thread-safe; failures never reach the kid."""
 
-    def __init__(self, d: Path | None = None, cap: int = CAP_BYTES):
+    def __init__(self, d: Path | None = None, cap: int = CAP_BYTES, retain_days: int = RETAIN_DAYS):
         self.dir = d
         self.cap = cap
+        self.retain_days = retain_days
         self.lock = threading.Lock()
+        self._pruned: str | None = None    # the day prune() last ran
 
     @property
     def path(self) -> Path:
@@ -260,6 +267,7 @@ class Store:
 
     def append(self, obj: dict) -> bool:
         line = json.dumps(obj, separators=(",", ":"), default=str) + "\n"
+        self.prune()
         try:
             with self.lock:
                 p = self.path
@@ -272,6 +280,51 @@ class Store:
         except OSError:
             return False
 
+    def prune(self, today: str | None = None, force: bool = False) -> int:
+        """Time-based retention: drop lines whose `day` is RETAIN_DAYS or more days old (a line with no day, from an older
+        app, goes once its file is that old), and Playtest clips older than that. Runs at most once a day unless forced.
+        Never raises (failures never reach the kid). Returns the lines + clips removed."""
+        today = today or _dt.date.today().isoformat()
+        if self._pruned == today and not force:
+            return 0
+        try:
+            cut = (_dt.date.fromisoformat(today) - _dt.timedelta(days=self.retain_days - 1)).isoformat()
+        except ValueError:
+            return 0
+        n = 0
+        with self.lock:
+            self._pruned = today
+            for f in self.files():
+                try:
+                    old_file = _dt.date.fromtimestamp(f.stat().st_mtime).isoformat() < cut
+                    keep, drop = [], 0
+                    with open(f, encoding="utf-8") as fh:
+                        for ln in fh:
+                            m = _DAY_RE.search(ln)
+                            if (m and m.group(1) < cut) or (not m and old_file):
+                                drop += 1
+                            else:
+                                keep.append(ln)
+                    if drop:
+                        if keep:
+                            tmp = f.with_name(f.name + ".tmp")
+                            with open(tmp, "w", encoding="utf-8") as fh:
+                                fh.writelines(keep)
+                            os.replace(tmp, f)
+                        else:
+                            f.unlink(missing_ok=True)
+                        n += drop
+                except OSError:
+                    continue
+            for c in self.clips():
+                try:
+                    if _dt.date.fromtimestamp(c.stat().st_mtime).isoformat() < cut:
+                        c.unlink(missing_ok=True)
+                        n += 1
+                except OSError:
+                    continue
+        return n
+
     def files(self) -> list[Path]:
         p = self.path
         return [x for x in (p.with_name("turns.1.jsonl"), p) if x.exists()]
@@ -282,6 +335,7 @@ class Store:
         return sorted(d.glob("*.wav")) if d.is_dir() else []
 
     def stats(self) -> dict:
+        self.prune()
         fs = self.files()
         n = 0
         for f in fs:
@@ -289,7 +343,8 @@ class Store:
                 n += sum(1 for line in fh if '"k":"turn"' in line)
         cl = self.clips()
         return {"dir": str(self.path.parent), "bytes": sum(f.stat().st_size for f in fs), "turns": n,
-                "cap_bytes": self.cap, "clips": len(cl), "clip_bytes": sum(f.stat().st_size for f in cl)}
+                "cap_bytes": self.cap, "clips": len(cl), "clip_bytes": sum(f.stat().st_size for f in cl),
+                "retain_days": self.retain_days}
 
     def clear(self) -> int:
         """Settings "Delete what's saved": the text log and any playtest audio."""
@@ -302,6 +357,7 @@ class Store:
 
 
 STORE = Store()
+_DAY_RE = re.compile(r'"day":"(\d{4}-\d{2}-\d{2})"')
 
 
 def _overlap(a: list[str], b: list[str]) -> float:
@@ -354,6 +410,7 @@ class SessionLog:
         return {
             "k": "turn", "v": VERSION, "s": self.sid, "id": f"{self.sid}-{self.n}", "t": self._t(),
             "day": _dt.date.today().isoformat(),
+            "profile": (getattr(self.sess, "prefs", None) or {}).get("profile"),   # [D3] whose turn (an id, never a name)
             "text": redact(text, self._names()), "nw": len(ws), "src": source,
             "arc": {"dd": _r(arc.get("device_directed")), "cc": _r(arc.get("command_complete")),
                     "act": list(arc.get("act") or [])[:4]},
@@ -447,7 +504,7 @@ class SessionLog:
 
     def _signal(self, prev: dict, sig: str, dt: float, **k):
         self.store.append({"k": "signal", "v": VERSION, "s": self.sid, "ref": prev["id"], "sig": sig,
-                           "dt": round(dt, 2), **{a: b for a, b in k.items() if b is not None}})
+                           "day": _dt.date.today().isoformat(), "dt": round(dt, 2), **{a: b for a, b in k.items() if b is not None}})
 
 
 def _room(sess) -> dict | None:

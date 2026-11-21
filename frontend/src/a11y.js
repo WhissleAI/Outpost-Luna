@@ -5,9 +5,11 @@ import { TOUR, MOON_BASE } from "./story.js";
 import { isAvailable, openVideo, offlineLine } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
+import { roleName } from "./courses.js";   // [courses] the transcript names the course's guide (Field Director)
 import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./reset.js";   // Settings → Reset (docs/RESET.md)
+import { askHtml as pinAskHtml, checkPin, pinSet, COPY as PIN } from "./teacher_pin.js";   // [D7] the teacher PIN after the hold
 
 /** [0.4.1] Settings → For grown-ups: one section, behind the 3-second hold, for everything that erases or saves files.
  *  Kids' settings (voice, speed, theme, captions…) stay open. Extra sections with `grownup: true` (Videos, Help &
@@ -16,7 +18,7 @@ export const GROWNUPS = {
   title: "For grown-ups",
   gate: "Progress, courses, class lessons, reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["See progress", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
+  inside: ["See progress", "Class summary", "Teacher PIN", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
@@ -24,7 +26,13 @@ export const GROWNUPS = {
   // School network (network_ui.js, docs/SCHOOL_IT.md): voice opens it; only a grown-up's hold and tap change it
   sayNetLocked: "Here's School network, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
   sayNetOpen: "Here's School network. A grown-up can switch it.",
+  // [D4] care flags waiting for a grown-up (GET /api/safety/flags): a count on the gate, the details behind the hold
+  notes: n => `${n} safety note${n === 1 ? "" : "s"} in Progress`,
 };
+/** [D4] How many care flags wait for a grown-up (0 when the backend can't say). */
+export async function safetyNotes(fetchFn = typeof fetch === "function" ? fetch : null) {
+  try { const r = fetchFn ? await fetchFn("/api/safety/flags") : null; const b = r && r.ok ? await r.json() : null; return b && Array.isArray(b.flags) ? b.flags.length : 0; } catch (e) { return 0; }
+}
 /** Settings → Listening: the turn log switch (prefs.improve, on by default since 0.4.3; docs/DIRECTOR_LOOP.md §1). */
 export const IMPROVE = {
   label: "Help improve the voice guide",
@@ -32,10 +40,12 @@ export const IMPROVE = {
   clear: "Delete what's saved",
 };
 /** The grown-ups section's HTML (pure; tests/settings_gate.test.js). parts: [{id, title, html}] drawn when open. */
-export function grownupsHtml({ open = false, parts = [], esc = x => String(x) } = {}) {
+export function grownupsHtml({ open = false, parts = [], esc = x => String(x), pin = false, pinMsg = "" } = {}) {
+  if (!open && pin) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">${pinAskHtml(pinMsg)}</div>`;   // [D7] the PIN step
   if (!open) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">
       <p class="set-help">${esc(GROWNUPS.gate)}</p>
       <ul class="gu-list">${GROWNUPS.inside.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="gu-notes" data-gu-notes role="status" hidden></p>
       ${holdButtonHtml(GROWNUPS.hold, "data-gu-open")}</div>`;
   return parts.map(p => `<section class="gu-part" data-gu="${esc(p.id)}" aria-label="${esc(p.title)}"><h4>${esc(p.title)}</h4>${p.html}</section>`).join("");
 }
@@ -87,7 +97,10 @@ export const CONFUSED_RE = /^(what|what what|huh|hmm what|eh|what do you mean|wh
 
 /** A typed or spoken a11y command → {cmd, arg} or null. Kept narrow so lesson answers aren't swallowed. */
 export function parseCommand(text) {
-  const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  // [courses playtest] "um, I don't know" / "hmm so what do I do" climb the hint ladder like the bare words (the session
+  // router strips the same fillers: backend/app/turn_router.py nav_intent); a filler alone stays nothing
+  const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/^(?:(?:um+|uh+|uhm|erm?|hmm+|mm+|so|okay|ok)\s+)+(?=\S)/, "");
   if (!t) return null;
   if (/^(where am i|what screen is this|what s on (the )?screen|describe (the )?screen)$/.test(t)) return { cmd: "where" };
   if (/^(what can i do|what can i say|help me|options|what are my options)$/.test(t)) return { cmd: "options" };
@@ -184,6 +197,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     ["cadets", "Cadets"], ["help", "Help"], ["grownups", GROWNUPS.title]];   // the grown-ups section (Reset and the rest): always last (docs/RESET.md)
   // guOpen: the grown-up held the gate (until Settings closes)
   let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0, guOpen = false;
+  let guPin = false, pinMsg = "";   // [D7] the hold fired and a teacher PIN is set: the PIN step shows until it is right
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -223,6 +237,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of ${O.patchTotal || 9} patches`}</small></span>
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
+        ${O.crew ? `<label class="a11y-sw"><input type="checkbox" data-crew-sw ${O.crew.state.on ? "checked" : ""} ${PA.listProfiles().length < 2 ? "disabled" : ""}><span><b>Crew rotation</b><small>${PA.listProfiles().length < 2 ? "Add a second cadet to take turns." : "Cadets on this computer take turns. Tap a name to pass the turn. Hold Space or the mic to talk."}</small></span></label>` : ""}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"], ["engineer", "Engineer · real units"]])}
         <p class="set-help rs-link">Reset the app or erase progress? <button type="button" class="btn-link" data-sec-go="grownups">${escH(GROWNUPS.title)}</button></p>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
@@ -252,7 +267,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const parts = resetView ? [{ id: "reset", title: "Reset", html: confirmHtml(resetView) }]
       : [...guExtras.filter(x => x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })), { id: "reset", title: "Reset", html: zoneHtml() }, ...guExtras.filter(x => !x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })),   // `first`: Progress opens the section
         ...(PA ? [{ id: "patches", title: GROWNUPS.patches, html: `${holdButtonHtml(GROWNUPS.patches, "data-prof-reset")}<small class="rs-note">${escH(GROWNUPS.patchesNote)}</small>` }] : [])];
-    body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH });
+    body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH, pin: guPin, pinMsg });
     const shown = order.filter(([id]) => body[id] && !guExtras.some(x => x.id === id));
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
@@ -267,8 +282,20 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const undo = [];
     if (section === "grownups") {
       const gate = panel.querySelector("[data-gu-open]");
+      // [D4] the safety notes waiting for a grown-up: a count on the gate (never what they are, until the hold)
+      if (gate) safetyNotes().then(n => { const el = panel.querySelector("[data-gu-notes]"); if (el && n) { el.textContent = GROWNUPS.notes(n); el.hidden = false; } });
       // the grown-up gate: the shared 3-second hold (a click or a tap does nothing); open until Settings closes
-      if (gate) { const h = bindHold(gate, { onFire: () => { guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
+      if (gate) { const h = bindHold(gate, { onFire: () => {
+        if (pinSet()) { guPin = true; pinMsg = ""; renderPanel(); const p = panel.querySelector("[data-gu-pin]"); if (p) p.focus({ preventScroll: true }); return; }   // [D7]
+        guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
+      // [D7] the teacher PIN: right -> For grown-ups opens (until Settings closes); wrong -> say so (5 wrong: wait 30 s)
+      const pf = panel.querySelector("[data-gu-pin-form]");
+      if (pf) pf.onsubmit = async e => {
+        e.preventDefault();
+        const r = await checkPin(pf.querySelector("[data-gu-pin]").value);
+        if (r.ok) { guPin = false; pinMsg = ""; guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); return; }
+        pinMsg = r.wait ? PIN.wait(r.wait) : PIN.wrong; renderPanel(); const p = panel.querySelector("[data-gu-pin]"); if (p) p.focus({ preventScroll: true });
+      };
       // "Reset my patches": its own 3-second hold too
       const pr = panel.querySelector("[data-prof-reset]");
       if (pr && PA) { const h = bindHold(pr, { onFire: () => PA.resetProgress() }); undo.push(() => h.destroy()); }
@@ -319,7 +346,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* the calibration steps aside */ }
       renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
       { const f = panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector(".set-nav button, input"); if (f) f.focus(); }
-    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
+    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; guPin = false; pinMsg = ""; resetView = null; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
   // [robustness] Settings is modal: while it is up, gestures / keys / the controller move and press inside it, and screen
@@ -336,7 +363,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     return !IN_SETTINGS.has(ev.name);
   }, { priority: 90 });
   // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
-  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
+  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; guPin = false; pinMsg = ""; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // [courses] the switcher's "Get more courses": For grown-ups (behind the hold), where Course storage lives
   addEventListener("outpost:course-storage", () => { section = "grownups"; resetView = null; if (panel.hidden) open(true); else renderPanel(); { const b = panel.querySelector('[data-crs-act="get"]') || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } });
@@ -374,6 +401,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   });
   panel.addEventListener("change", e => {
     const t = e.target;
+    if ("crewSw" in t.dataset && O.crew) { O.crew.set(t.checked); renderPanel(); const again = panel.querySelector("[data-crew-sw]"); if (again) again.focus(); return; }   // [D3] crew rotation
     if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); if (t.dataset.pb === "improve") { renderPanel(); const again = panel.querySelector(`[data-pb="improve"]`); if (again) again.focus(); } return; }   // a boolean pref
     if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
@@ -421,7 +449,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // ---- transcript ----
   function fillTranscript() {
     const ol = panel.querySelector("#a11yTranscript"); if (!ol) return;
-    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
+    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? roleName("capcom", "CAPCOM") : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
   }
   window.addEventListener("outpost:transcript", () => { if (!panel.hidden) fillTranscript(); });
 

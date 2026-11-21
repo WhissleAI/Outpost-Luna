@@ -19,6 +19,10 @@ export const COURSE_DONE = {
   progress: (n, total) => `${n} of ${total} lessons done.${total - n === 1 ? " One to go." : total - n > 1 ? ` ${total - n} to go.` : " That's every lesson."}`,
   title: (n, patches) => `All ${n} ${patches.toLowerCase()} earned`,
   sub: "Tap any pin to replay its lesson.",
+  // [arch QA] every lesson done: a next step, never a dead end
+  next: "Show a grown-up: Settings → For grown-ups → Progress.",
+  library: "Explore the Library",
+  brain: "My Brain",
 };
 
 /** Honest sourcing line (About, Debrief). Never claim that everything comes from NASA (docs/COPY.md, Accuracy). */
@@ -373,6 +377,8 @@ export const SCHOOL = {
   progressLine: (n, of, next) => `${n} of ${of} lessons done. Next: ${next}.`,
   /** [novice playtest 9] the map's count: core lessons ("Lesson 3 of 6"), never the patch total */
   lessonsCount: (n, of) => `${n} of ${of} lessons`,
+  /** [arch QA] one count pin for lessons that share a place (zoomed out): its label for screen readers */
+  clusterPin: n => `${n} lessons here. Tap to zoom in.`,
   /** [audit2] "What do I do?" on the map names the button the card really shows. */
   mapHelp: (cta, title, ride) => (ride ? `Tap ${cta}. One solo shift, then you take command.` : `Tap ${cta} to begin ${title}.`),
 };
@@ -401,8 +407,8 @@ export const LESSON_STORY = {
 
 /** CAPCOM's lines that use the call sign (the spoken form is passed in, so a typed name is never read aloud). */
 export const CAPCOM = {
-  lessonHello: (cs, beat) => `${beat} Here we go, ${cs}.`,
-  patch: (cs, name) => `Patch earned: ${name}. Nice work, ${cs}.`,
+  lessonHello: (cs, beat) => `${beat} Here we go${cs ? `, ${cs}` : ""}.`.trim(),   // [arch QA] no name: "Here we go."
+  patch: (cs, name) => `Patch earned: ${name}. Nice work${cs ? `, ${cs}` : ""}.`,
   qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
   missionBrief: (cs, rank = "Commander") => `Pick a site, ${rank} ${cs}. Keep the crew safe for ten days.`,
   missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
@@ -548,6 +554,8 @@ export const DEBRIEF = {
   storyTitle: "What happened",
   numbersTitle: "What the numbers say",   // cause -> effect in real numbers, with sources (docs/PHYSICS.md)
   tryTitle: "Try next",
+  reviewTitle: "Quick review",          // [D5] a mission concept due for spaced review (brain.js dueReview)
+  review: "Review it in Flight School",
   start: (site, days) => `You ran ${site} for ${days} day${days === 1 ? "" : "s"}.`,
   stormSafe: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew stayed safe.`,
   stormHurt: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew took a big dose.`,

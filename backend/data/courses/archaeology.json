@@ -223,5 +223,88 @@
  "rings": [
   "courses/archaeology/rings/itrdb_co652.json"
  ],
- "media": "courses/archaeology/media"
+ "media": "courses/archaeology/media",
+ "big_ideas": {
+  "what_is": {
+   "star": "Evidence",
+   "idea": "Archaeology reads the past from what people left, and anyone can check the evidence.",
+   "codes": [
+    "CO SS History 1.1",
+    "C3 D1"
+   ]
+  },
+  "survey": {
+   "star": "From above",
+   "idea": "Look before you dig: lidar, satellites and walking the land in even lines.",
+   "codes": [
+    "CO SS Geography 3.1",
+    "AP Human Geography Unit 1"
+   ]
+  },
+  "layers": {
+   "star": "Layers",
+   "idea": "Deeper layers are older, and whatever cuts a layer came after it.",
+   "codes": [
+    "CO SS History 1.1",
+    "NGSS HS-ESS1-6 (methods analogy)"
+   ]
+  },
+  "dating": {
+   "star": "Time",
+   "idea": "Tree rings give an exact year; radiocarbon gives a range.",
+   "codes": [
+    "CO SS Geography 4.2",
+    "NGSS HS-ESS1-6 (methods analogy)"
+   ]
+  },
+  "stuff": {
+   "star": "Context",
+   "idea": "Where a thing is found matters as much as the thing.",
+   "codes": [
+    "CO SS History 1.1"
+   ]
+  },
+  "law": {
+   "star": "Stewardship",
+   "idea": "Laws protect sites and say who must be asked first.",
+   "codes": [
+    "CO SS Civics 6.1",
+    "CO SS Civics 7.2"
+   ]
+  },
+  "voices": {
+   "star": "Voices",
+   "idea": "Descendant communities tell their own histories; listen and consult first.",
+   "codes": [
+    "CO SS Geography 4.3",
+    "CO SS Civics 7.2",
+    "HB19-1192"
+   ]
+  },
+  "mesa_verde": {
+   "star": "Many causes",
+   "idea": "Drought, people and choices together: build a case from several kinds of evidence.",
+   "codes": [
+    "CO SS Geography 4.2",
+    "CO SS History 2.2"
+   ]
+  },
+  "capstone": {
+   "star": "Field season",
+   "idea": "Permits, a look from above, a small dig, dates and a report shared with the tribes.",
+   "codes": [
+    "C3 D1",
+    "C3 D3",
+    "C3 D4"
+   ]
+  },
+  "chimney_rock": {
+   "star": "Sky watchers",
+   "idea": "The Moon's 18.6-year cycle, seen from Chimney Rock, said carefully.",
+   "codes": [
+    "CO SS History 1.1",
+    "NGSS MS-ESS1-1 (hook)"
+   ]
+  }
+ }
 }

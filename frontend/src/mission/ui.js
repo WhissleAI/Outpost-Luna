@@ -1384,6 +1384,13 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if ($("mNewSite")) $("mNewSite").onclick = () => leaveMission(() => { if (unsub) unsub(); state = null; picker(); });
     if ($("mNums")) $("mNums").onclick = () => { const g = $("mxGrown"); if (g) g.open = true; const n = $("mxNums"); if (n) { n.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); n.focus({ preventScroll: true }); } };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else hub(); };
+    // [D5] a mission concept due for spaced review (brain.js dueReview): offered under "Try next", never required
+    if (!paused && window.__outpost && window.__outpost.dueReview) window.__outpost.dueReview({ mission: true }).then(rv => {
+      const tryEl = debriefEl.querySelector(".mx-story .mx-try");
+      if (!rv || !tryEl || debriefEl.querySelector(".mx-review")) return;
+      tryEl.insertAdjacentHTML("afterend", `<p class="mx-try mx-review"><b>${esc(DEBRIEF.reviewTitle)}</b> ${esc(rv.label)}. <button type="button" class="mx-link" id="mReview">${esc(DEBRIEF.review)}</button></p>`);
+      $("mReview").onclick = () => { if (window.__outpost.review) window.__outpost.review(rv.lesson, rv.step); };
+    }).catch(() => {});
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
     // [qa] no "Nice flying" on a failed mission

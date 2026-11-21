@@ -1,6 +1,7 @@
 // Caption bar: every spoken line (guide, CAPCOM, story, Houston, and the crew audio) as text, with the word being
 // spoken highlighted in sync with playback (docs/ACCESSIBILITY.md).
 import { maskProfanity } from "./profanity.js";
+import { roleName } from "./courses.js";
 //
 // Timing sources, best first:
 //   1. Server word timings: /api/tts returns X-TTS-Words ("startMs-endMs,…" per display word) for the OS voice
@@ -61,7 +62,8 @@ export function wordAtChar(words, charIndex) {
   return words.length - 1;
 }
 
-const WHO = { guide: "Guide", capcom: "CAPCOM", story: "Hardware", houston: "Houston", crew: "Artemis II crew" };
+// [courses] another course names its own voices (course.json roles: "Field Director", "The Lab"; courses.js roleName)
+const WHO = { guide: "Guide", get capcom() { return roleName("capcom", "CAPCOM"); }, story: "Hardware", get houston() { return roleName("houston", "Houston"); }, crew: "Artemis II crew" };
 
 // ---------- DOM ----------
 

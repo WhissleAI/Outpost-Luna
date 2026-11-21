@@ -31,7 +31,7 @@ beforeEach(() => {
   els = {}; const me = cur = { starts: 0 };
   E.setEngine({ ear: "ok", backend: "ok" });
   createVoice({
-    onTurn: async () => {}, onBargeIn() {}, onKidDone() {}, onEmotion() {},
+    onTurn: async () => {}, onBargeIn() {}, onKidDone() {},
     createListener: on => { ear = on; return { start: async () => { me.starts++; return true; }, stop() {}, send() {} }; },
   });
 });

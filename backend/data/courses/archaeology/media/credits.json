@@ -276,5 +276,63 @@
   "width": 2048,
   "height": 1427,
   "accessed": "2026-11-20"
+ },
+ {
+  "file": "s2_mesa_verde_true.jpg",
+  "licence": "Free, full and open (Copernicus Sentinel data legal notice, Regulation (EU) 1159/2013)",
+  "source_url": "https://registry.opendata.aws/sentinel-2-l2a-cogs/",
+  "licence_url": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
+  "scene": "S2A_12SYG_20240617_0_L2A",
+  "bounds": {
+   "west": -108.62,
+   "south": 37.12,
+   "east": -108.32,
+   "north": 37.36
+  },
+  "title": "Mesa Verde, Sentinel-2 true colour (2024-06-17)",
+  "credit": "Contains modified Copernicus Sentinel data 2024 (ESA)",
+  "alt": "Satellite view of the Mesa Verde tableland in summer: dark green pinyon-juniper forest, paler burned areas, and canyons running south.",
+  "width": 1600,
+  "height": 1280,
+  "bytes": 643386,
+  "sha256": "ff2ef052be6877d720590c2ce5156a8659e7f35006f98b13dbc24c0c0d18e51b",
+  "licence_class": "by",
+  "licence_evidence": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"
+ },
+ {
+  "file": "s2_mesa_verde_nir.jpg",
+  "licence": "Free, full and open (Copernicus Sentinel data legal notice, Regulation (EU) 1159/2013)",
+  "source_url": "https://registry.opendata.aws/sentinel-2-l2a-cogs/",
+  "licence_url": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
+  "scene": "S2A_12SYG_20240617_0_L2A",
+  "bounds": {
+   "west": -108.62,
+   "south": 37.12,
+   "east": -108.32,
+   "north": 37.36
+  },
+  "title": "Mesa Verde, Sentinel-2 near-infrared false colour (2024-06-17)",
+  "credit": "Contains modified Copernicus Sentinel data 2024 (ESA)",
+  "alt": "The same view of Mesa Verde in false colour: living plants bright red, burned and bare ground grey-green.",
+  "width": 1600,
+  "height": 1280,
+  "bytes": 666685,
+  "sha256": "75abd36eb401bc5e197aec05a2a642268c38e13e9b34e5a1d7d223e1ca58e0f0",
+  "licence_class": "by",
+  "licence_evidence": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice"
+ },
+ {
+  "file": "co652_chart.png",
+  "title": "Mancos River + Mesa Verde Douglas-fir ring-width chronology (ITRDB CO652), years with 5+ trees",
+  "credit": "Data: Stahle et al. (2015), NOAA NCEI World Data Service for Paleoclimatology (ITRDB CO652); chart by Outpost Luna",
+  "licence": "Open data from NOAA NCEI, cited as the study asks",
+  "source_url": "https://www.ncei.noaa.gov/access/paleo-search/study/19080",
+  "alt": "Line chart of tree-ring width at Mesa Verde from about 900 to 2000 CE, with a shaded band at 1276 to 1299 where the rings are narrow.",
+  "width": 1200,
+  "height": 540,
+  "bytes": 115837,
+  "sha256": "e27b37c36bec338e15f22c66d773aa4d25c8790eb88c300f61c74cec01b7a99e",
+  "licence_class": "by",
+  "licence_evidence": "https://www.ncei.noaa.gov/access/paleo-search/study/19080"
  }
 ]

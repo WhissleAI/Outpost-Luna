@@ -3,7 +3,7 @@ several typed decisions out.
 
     inputs ──► Session.belief ──► policy ──► decisions (id, priority, after) ──► every socket of the session
 
-Inputs:  hello / ui / typed / playback (WS /ws/session), words / turn / arc / emotion (posted by /ws/listen), mission
+Inputs:  hello / ui / typed / playback (WS /ws/session), words / turn / arc (posted by /ws/listen), mission
          events + state deltas (polled from the sim registry once a second; the sim has no hooks), lesson events.
 Outputs: say, play, fly, highlight, card, hud, alert, ask_confirm, lesson, floor, cancel.
 
@@ -24,7 +24,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import barge as barge_
-from . import director, hesitation, models_client, steering, turnlog
+from . import brain_counts, care_flags, director, hesitation, models_client, steering, turnlog
 from . import safety as safety_
 from . import turn_router as router_
 from .director_model import runtime as dmodel
@@ -32,7 +32,7 @@ from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUD
 from .gazetteer import norm
 from .knowledge.answer import did_you_mean
 from .learn.habits import CUT_EOT, CUT_GAP_S
-from .mission import capcom, nlu as mission_nlu, readback as readback_
+from .mission import nlu as mission_nlu, readback as readback_
 from .readout import summarize
 
 router = APIRouter()
@@ -50,7 +50,6 @@ REF_LOAD = {"dose": "shields", "life_support": "life support", "power": None}  #
 PRONOUN = re.compile(r"\b(it|that|this one|that one)\b", re.I)
 NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shields?|greenhouse|science|rover|comms?|"
                    r"radio|heaters?)\b", re.I)
-ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
 # Story beats CAPCOM speaks from the session (docs/GAMEPLAY.md). The others ride on a sim event that already has a line
 # (forecast = storm_warning, crisis = solar_storm, recovery = storm_end, earthrise = comm_open), or the client says them
 # (arrival: the cabin hello).
@@ -67,6 +66,9 @@ LISTEN = ("handsfree", "ptt")
 # loud room raises the dd gates one level above the kid's filter; room_listen hold / type ignores open-mic turns (as
 # listen="ptt" does) until the room is calm again. Space and typed turns always count.
 ROOM_STATES = ("calm", "busy", "loud")
+# [D6] docs/BRAIN.md §6: the app never infers or uses a kid's feelings. A stream of that kind is dropped on arrival
+# (tests/test_no_emotion.py guards the source for it).   D6
+NO_AFFECT = frozenset({"emotion", "affect", "sentiment"})   # D6
 ROOM_LISTEN = ("open", "hold", "type")
 # libarc ABI 2 read-outs on the ear's final words (model_server/app/arc_ear.py abi2_view): kept on k["ear"] under their
 # own keys. The round-7 `conf` / `alts` stay null / [] (the shipped Director weights were trained with them empty).
@@ -203,7 +205,7 @@ class Session:
         self.belief: dict = {
             "mode": "mission", "role": None, "mission_id": None, "state": None, "lesson": None,
             "floor": "none", "kid": {"open": False, "words": "", "start": None, "end": None, "command_complete": None,
-                                     "device_directed": None, "emotion": None, "safety": None},
+                                     "device_directed": None, "safety": None},
             "last_place": None, "playing": None, "referent": None,
         }
         self.pending: dict[str, dict] = {}     # unplayed say/play decisions by id
@@ -226,7 +228,9 @@ class Session:
         self.flags: list[dict] = []
         # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
         self.prefs: dict = dict(PREF_DEFAULTS)
-        # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
+        # Settings "Help improve the voice guide" (prefs.improve): text-only turn log on this device. The client turns it
+        # on by default since 0.4.3 (an explicit off stays off); PREF_DEFAULTS keeps it off for a client that never
+        # sends prefs (tools, the generator).
         self.tlog = turnlog.SessionLog(self)
         self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
         self._dm_out: dict | None = None       # the learned Director's outputs at the current turn end (turn log v2)
@@ -344,6 +348,8 @@ class Session:
     # ---- streams in --------------------------------------------------------------------------------------------------
     async def handle(self, m: dict):
         t = m.get("t") or m.get("type")      # the Settings UI sends {type: "prefs"}; everything else uses `t`
+        if t in NO_AFFECT:   # [D6] no affect input of any kind: dropped before the Director or the belief sees it
+            return
         if t == "prefs":
             await self.on_prefs(m)
             return
@@ -361,7 +367,7 @@ class Session:
             await self.on_playback(m)
         elif t == "lesson":
             await self.on_lesson(m)
-        elif t in ("words", "turn", "arc", "emotion"):
+        elif t in ("words", "turn", "arc"):
             await self.on_listen(m)
 
     async def on_hello(self, m: dict):
@@ -448,7 +454,7 @@ class Session:
             await self.emit([decision("lesson", P_NARRATION, **lesson)])
 
     async def on_listen(self, m: dict):
-        """Posted by /ws/listen (server-side relay): Flux words + turns, Arc metadata, emotion."""
+        """Posted by /ws/listen (server-side relay): Flux words + turns, Arc metadata."""
         k, t = self.belief["kid"], m.get("t")
         ptt = self.ptt_only()
         if t == "words":
@@ -485,8 +491,6 @@ class Session:
                 k["act"] = m["act"] if isinstance(m["act"], list) else [m["act"]]
             if isinstance(m.get("safety"), list):   # [P0] Arc Tagger's safety tags for this turn (safety.py)
                 k["safety"] = m["safety"]
-        elif t == "emotion" and m.get("label"):
-            k["emotion"] = m["label"]
         elif t == "echo_delay":    # this computer's speaker -> mic delay for one line (numbers only; app/learn/echo.py)
             with contextlib.suppress(Exception):
                 self.learning.on_echo_delay(m)
@@ -726,10 +730,18 @@ class Session:
             tags = await safety_.tagger_read(text, safety_.command_context(self.screen_name()))
         sf = safety_.classify(text, tags)
         ctx_r.unsafe = sf["mask"]
+        chan = self._channel(source, ctx_r)
+        if sf["mask"]:   # [D1] a filtered turn: counted by kind and channel, never the word (app/brain_counts.py)
+            prof = sf["words"] or any(t.startswith("safety.profanity") for t in sf["tags"])
+            self._count_safety("profanity" if prof else "mask", chan)
         if sf["care"]:
             self.flags.append({"kind": "care", "tags": [t for t in sf["tags"] if t.startswith(safety_.CARE_TAGS)],
-                               "screen": self.screen_name(), "ts": self.clock()})   # never the words themselves
+                               "screen": self.screen_name(), "ts": self.clock(),
+                               "profile": self.prefs.get("profile")})   # never the words themselves
             del self.flags[:-50]
+            self._count_safety("care", chan)
+            if self.prefs.get("profile"):   # [D4] kept until a grown-up marks it seen, 30 days at most (app/care_flags.py)
+                care_flags.add(self.prefs["profile"], care_flags.kind_of(sf["tags"]))
             k["open"] = False
             await self._note({"outcome": "care", "reason": "safety"}, text, safety=True)
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
@@ -737,6 +749,8 @@ class Session:
         rt = router_.route(text, ctx_r, act=k.get("act"))
         if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear"), self.playback_threshold()):
             rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)
+        if self.prefs.get("profile") and rt.get("reason") != "echo":   # [D2] talk counts without the turn log
+            brain_counts.record_turn(self.prefs["profile"], source, rt.get("outcome"), self.prefs.get("room"))
         with contextlib.suppress(Exception):           # on-device learning: leak labels, pace, cut-offs (app/learn)
             self.learning.on_routed(text, source, rt, k.get("ear") if source in OPEN_MIC else None,
                                     rt.get("reason") == "echo" or ear_playback(k.get("ear"), self.playback_threshold()))
@@ -745,7 +759,7 @@ class Session:
             with contextlib.suppress(Exception):
                 ear = (k.get("ear") or {}) if source in OPEN_MIC or source == "ptt" else {}
                 ents = self.memory.note_turn(ear.get("names"), ear.get("spoken") or text, self.screen_name())
-        # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
+        # the turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
         # guard path), so a false PII flag costs only the text in the log, never the turn on screen
         self._dm_out, self._tl_text = None, text
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
@@ -763,6 +777,17 @@ class Session:
             if self._tl is not None:
                 self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=bool(self._tl.pop("_guard", False)))
             self._tl = None
+
+    def _channel(self, source: str, ctx_r) -> str:
+        """[D1] typed / ptt / directed / room: only typed and push-to-talk are put on a cadet (app/brain_counts.py)."""
+        dd = self.belief["kid"].get("device_directed") if source in OPEN_MIC else None
+        return brain_counts.channel(source, dd, getattr(ctx_r, "dd_strong", router_.DD_STRONG))
+
+    def _count_safety(self, kind: str, chan: str):
+        """[D1] One safety count for the cadet playing (or on turn, crew rotation). Only for a client session (it sends
+        its profile): tools and the generator never write counts."""
+        if self.prefs.get("profile"):
+            brain_counts.record_safety(self.prefs["profile"], kind, chan)
 
     def _log_dir(self, **d):
         """The turn log's `director` (what the rules, the model and the runtime decided) and, v2, `seen`: what the
@@ -955,13 +980,10 @@ class Session:
             await self.emit(pre + ([decision("say", P_ANSWER, text=rb["line"], voice="capcom", situation="readback")]
                                    if rb["line"] else []))
             return
-        emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         ctx["level"] = self.level          # Settings: cadet | commander (passed through; docs/VOICES.md)
         if b["last_place"]:
             ctx["last_place"] = b["last_place"]
-        if emotion:
-            ctx["emotion"] = emotion
         if b["mission_id"] and b["mode"] == "mission":
             ctx["mission"] = {"id": b["mission_id"], "role": b["role"], "level": self.level}
         if k.get("device_directed") is not None and source == "listen":
@@ -1004,6 +1026,8 @@ class Session:
                     self.learning.on_offer(r, k.get("ear"), self._echoish(text, source))
         if self.dm is not None:
             self.dm.turn_result(r)
+        if r.get("action") == "guard":   # [D1] the privacy guard kept a name or an address private: counted, never the words
+            self._count_safety("pii", self._channel(source, ctx_r))
         if self._tl is not None:
             from .director_model import features as _fx
             ma, mp = self.dm.model_act(out) if (self.dm is not None and out is not None) else (None, None)
@@ -1050,13 +1074,6 @@ class Session:
             for d in ds:
                 if d["t"] == "card":
                     d["resolved"] = resolved
-        # Urgency: upset during an alarm → shorter, calmer lines.
-        if (emotion or "").lower() in ALARM_EMOTIONS and self._alarm():
-            for d in ds:
-                if d["t"] == "say":
-                    d["text"] = "Okay, we've got this. " + capcom.short(d["text"])
-                    d["style"] = steering.style_for(d.get("voice") or "capcom", d["text"], emotion=emotion,
-                                                    situation=(d.get("style") or {}).get("situation") or "storm_alert")
         if rb and rb.get("line"):   # "Good readback." after CAPCOM's own line (its own say: the 20-word budget holds)
             first = next((d for d in ds if d["t"] == "say"), None)
             ds.append(decision("say", P_ANSWER, after=first["id"] if first else None, text=rb["line"], voice="capcom",
@@ -1151,13 +1168,9 @@ class Session:
             out += self.proactive(e)
         return out
 
-    def _emotion(self) -> str | None:
-        return self.belief["kid"].get("emotion") or None
-
     def proactive(self, e: dict) -> list[dict]:
         """One sim event → decisions. Text mirrors the sim's own line; CAPCOM speaks short."""
         kind, s = e.get("kind"), self.belief["state"] or {}
-        calm = (self.belief["kid"].get("emotion") or "").lower() in ALARM_EMOTIONS
         src = (e.get("source") or {}).get("title") if isinstance(e.get("source"), dict) else None
         if kind in ("solar_storm", "storm_warning"):
             st = self._storm_of(e)
@@ -1174,11 +1187,9 @@ class Session:
                 # [polish 4] the sim's own words (gameplay.py, the Now card): "Crew into the shelter", "Shields to 40"
                 line = ("Storm coming. Crew into the shelter, or shields to 40?" if warning else
                         "Storm's here! Crew into the shelter.")
-            if calm:
-                line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
             say = decision("say", pri, text=line, voice="capcom", proactive=True,
-                           situation="storm_warning" if warning else "storm_alert", emotion=self._emotion())
+                           situation="storm_warning" if warning else "storm_alert")
             near_miss = kind == "solar_storm" and e.get("sep") is False
             # [polish 3] a near miss is news, not a decision: no shelter / shields offer (the cabin made it a takeover
             # and a player who followed it sat in the shelter for nothing, with science off)
@@ -1193,26 +1204,25 @@ class Session:
         if kind == "beat" and e.get("beat") in SPOKEN_BEATS:
             # a story beat (gameplay.py) with no sim event line of its own: CAPCOM says it once, under the floor rules
             return [decision("say", P_NARRATION, text=e.get("text") or "", voice="capcom", proactive=True,
-                             situation="all_clear" if e.get("beat") in ("ice_return", "complete") else None,
-                             emotion=self._emotion())]
+                             situation="all_clear" if e.get("beat") in ("ice_return", "complete") else None)]
         if kind == "shelter_limit":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Crew out of the shelter."),
                     decision("say", P_NARRATION, text="A day in the shelter is the limit. Crew out to rest.",
-                             voice="capcom", proactive=True, situation="all_clear", emotion=self._emotion())]
+                             voice="capcom", proactive=True, situation="all_clear")]
         if kind == "comm_open":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Comm window open."),
                     decision("say", P_NARRATION, text="Comm window open. Houston can hear us.", voice="capcom",
-                             proactive=True, situation="comm_open", emotion=self._emotion())]
+                             proactive=True, situation="comm_open")]
         if kind == "storm_end":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "The storm is over.", source=src),
                     decision("say", P_NARRATION, text="Storm's over. All clear, Commander.", voice="capcom",
-                             proactive=True, situation="all_clear", emotion=self._emotion())]
+                             proactive=True, situation="all_clear")]
         if kind == "dose_alert":
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Radiation is high.", source=src)]
         if kind in ("low_power",) or (kind == "sunset" and ((s.get("resources") or {}).get("power_pct") or 100) < 35):
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Battery is low."),
                     decision("say", P_NARRATION, text="Dark, and the battery's low. Night mode?",
-                             voice="capcom", proactive=True, situation="night_low_power", emotion=self._emotion()),
+                             voice="capcom", proactive=True, situation="night_low_power"),
                     decision("card", P_NUDGE, title="Coach", nudge=True,
                              body="Night mode saves power. Keep heaters and life support on.",
                              actions=[{"label": "Night mode on", "send": {"t": "typed", "text": "night mode on"}}])]
@@ -1220,7 +1230,7 @@ class Session:
             return [decision("alert", P_CRITICAL if kind == "failure" else P_NARRATION,
                              level="critical" if kind == "failure" else "info", text=e.get("text") or kind),
                     decision("say", P_CRITICAL if kind == "failure" else P_NARRATION, text=e.get("text") or "",
-                             voice="capcom", proactive=True, situation=kind, emotion=self._emotion())]
+                             voice="capcom", proactive=True, situation=kind)]
         return []
 
     def _storm_of(self, e: dict):
@@ -1291,7 +1301,7 @@ class Session:
             evs = await self._new_events(spoken=True)
             text = r.get("say") or ""
             say = decision("say", P_NARRATION, text=text, voice="capcom", situation=steering.situation_for(
-                {"action": "status", "state": r["state"]}), emotion=self._emotion()) if text else None
+                {"action": "status", "state": r["state"]})) if text else None
             card = decision("card", P_NARRATION, title="CAPCOM", body=text, chips=[])
             out += [card] + ([say] if say else [])
             out += self._storm_lookahead()
@@ -1328,7 +1338,7 @@ def get(sid: str | None, create: bool = True) -> Session | None:
 
 
 async def post(sid: str | None, m: dict):
-    """/ws/listen → session: words / turn / arc / emotion (fails open: listen never breaks on a session error)."""
+    """/ws/listen → session: words / turn / arc (fails open: listen never breaks on a session error)."""
     s = get(sid, create=True) if sid else None
     if s is None:
         return

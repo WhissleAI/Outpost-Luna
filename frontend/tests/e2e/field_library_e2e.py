@@ -8,8 +8,11 @@ On the Archaeology course (played from source with OUTPOST_DEV_COURSE=archaeolog
   3. A picture opens a card with the real photo (loaded) and its credit; a place marker opens its card.
   4. Watch: a course video opens the app's video player on /api/video/<id>/file.
   5. The site tour starts with the course's own title.
+  6. Open data beyond NASA (docs/OPEN_DATA.md): ESA's Sentinel-2 near-infrared view opens with the Copernicus notice;
+     the Climate record shelf (NOAA tree rings) shows its chart.
 With --moon-base (a second run against a backend WITHOUT the flag): the Moon's Library is unchanged (no panel, no
-markers, its Apollo chips, its Hardware switch).
+markers, its Apollo chips, its Hardware switch), plus its Maps button: the USGS age and height maps swap onto the globe
+with their legend and credit, and the photo comes back when the cadet leaves the Library.
 
 Screenshots at 1440x900 and 1280x720 into --out.
 
@@ -77,7 +80,7 @@ def arch(b, base, out, vw, vh):
     pg.click("#libraryBtn"); pg.wait_for_timeout(2500)
     check(pg.locator(".flib").is_visible(), f"[{tag}] Library: the Field Library panel")
     tabs = pg.locator(".flib-tabs [data-shelf]").all_inner_texts()
-    check(len(tabs) == 5 and "Watch" in tabs, f"[{tag}] ... with its shelves {tabs}")
+    check(len(tabs) == 7 and "Watch" in tabs and "Sentinel-2" in tabs and "Climate record" in tabs, f"[{tag}] ... with its shelves {tabs}")
     check(g["m"] >= 8, f"[{tag}] places and NASA views named on the globe ({g['m']})")
     vis = pg.evaluate("[...document.querySelectorAll('.cmark')].filter(e => !e.classList.contains('is-hidden') && e.getBoundingClientRect().width > 0).length")
     check(vis >= 5, f"[{tag}] ... in view ({vis})")
@@ -91,6 +94,22 @@ def arch(b, base, out, vw, vh):
     check("Public domain" in pg.locator("#card").inner_text(), f"[{tag}] ... and its credit")
     pg.wait_for_timeout(1200)
     pg.screenshot(path=f"{out}/field_library-photo-{tag}.png")
+
+    # [open data] ESA's Sentinel-2 in near-infrared, with the Copernicus notice the EU licence asks for
+    pg.click('[data-shelf="sentinel"]'); pg.wait_for_timeout(400)
+    pg.click('[data-item="s2_nir"]')
+    check(until(pg, f"() => ({IMG_OK})('#cardImg') && /s2_mesa_verde_nir/.test(document.getElementById('cardImg').src)"),
+          f"[{tag}] Sentinel-2 near-infrared opens with its picture")
+    check("Contains modified Copernicus Sentinel data 2024" in pg.locator("#card").inner_text(), f"[{tag}] ... and the Copernicus notice")
+    pg.wait_for_timeout(800)
+    pg.screenshot(path=f"{out}/field_library-sentinel-{tag}.png")
+    pg.click('[data-shelf="climate"]'); pg.wait_for_timeout(400)
+    pg.click('[data-item="rings_chart"]')
+    check(until(pg, f"() => ({IMG_OK})('#cardImg') && /co652_chart/.test(document.getElementById('cardImg').src)"),
+          f"[{tag}] Climate record: NOAA's tree-ring chart opens")
+    check("NOAA" in pg.locator("#card").inner_text() and "Chart: " in pg.locator("#card").inner_text(), f"[{tag}] ... a chart, credited to NOAA NCEI")
+    pg.wait_for_timeout(800)
+    pg.screenshot(path=f"{out}/field_library-climate-{tag}.png")
 
     pg.evaluate("document.querySelector('.cmark[data-id=\"place:hovenweep\"]').click()")
     check(until(pg, "() => /Hovenweep/.test(document.getElementById('cardTitle').textContent)"), f"[{tag}] a place marker opens its card")
@@ -128,6 +147,26 @@ def moon(b, base, out):
     check("Where did Apollo 11 land?" in chips, f"[moon] its Apollo chips {chips}")
     check(pg.locator("#hwBtn").is_visible() and pg.locator("#nearBtn").inner_text() == "Near side", "[moon] its Hardware switch and Near side")
     pg.screenshot(path=f"{out}/field_library-moon-library-1440x900.png")
+    # [open data] Maps: the USGS age and height maps (docs/OPEN_DATA.md)
+    check(until(pg, "() => !!document.getElementById('mapsBtn')"), "[moon] a Maps button in the Library")
+    pg.click("#mapsBtn")
+    check(pg.locator(".mlayers").is_visible(), "[moon] ... opens the Maps panel")
+    tabs = pg.locator(".ml-tabs [data-layer]").all_inner_texts()
+    check(tabs == ["Photo", "Age", "Height"], f"[moon] ... Photo, Age, Height {tabs}")
+    pg.click('.ml-tabs [data-layer="age"]')
+    check(until(pg, "() => /moon_age\\.jpg$/.test(window.__outpost.globe.baseMap || '')"), "[moon] Age: the USGS geologic map is on the globe")
+    txt = pg.locator(".mlayers").inner_text()
+    check(pg.locator(".ml-legend li").count() == 5 and "Copernican" in txt and "CC0" in txt and "USGS" in txt,
+          "[moon] ... with its five periods and the USGS CC0 credit")
+    pg.wait_for_timeout(1500)
+    pg.screenshot(path=f"{out}/field_library-moon-age-1440x900.png")
+    pg.click('.ml-tabs [data-layer="height"]')
+    check(until(pg, "() => /moon_height\\.jpg$/.test(window.__outpost.globe.baseMap || '')") and "Public domain" in pg.locator(".mlayers").inner_text(),
+          "[moon] Height: the LOLA colour relief, public domain")
+    pg.wait_for_timeout(1500)
+    pg.screenshot(path=f"{out}/field_library-moon-height-1440x900.png")
+    pg.click("#modeAcademy") if pg.locator("#modeAcademy").count() else pg.evaluate("document.body.dataset.mode = 'academy'")
+    check(until(pg, "() => !window.__outpost.globe.baseMap && document.body.dataset.mode !== 'cadet'"), "[moon] leaving the Library brings the photo back")
     check(not errs, f"[moon] no page errors {errs[:2]}")
     ctx.close()
 

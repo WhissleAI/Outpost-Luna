@@ -16,7 +16,7 @@ its events into the session server-side.
 | `playback` | client | `{kind:"guide"\|"crew", state:"start"\|"end"\|"interrupted", id?, t?}` | So the Director knows who holds the floor |
 | `typed` | client | `{text}` | Typed questions; same path as speech |
 | `prefs` (or `type:"prefs"`) | client | `{voice?, voice_all?, rate?, expressiveness?, filter?, level?}` | Settings, after `hello` on every connect (partial updates fine); acked with `{t:"prefs", applied}`. Never persisted server-side. See `VOICES.md` |
-| (server-side) `words` / `turn` / `arc` / `emotion` | `/ws/listen` relay | as today | Flux words + turns, Arc metadata |
+| (server-side) `words` / `turn` / `arc` | `/ws/listen` relay | as today | Flux words + turns, Arc metadata. An affect stream is never relayed and is dropped on arrival (D6, `docs/BRAIN.md` §6a) |
 | (server-side) `telemetry` / `event` | mission sim | as `MISSION_CONTRACT.md` | Proactive: storms, comm windows, alarms |
 
 ## 2. Decisions out (server → client, same socket)
@@ -106,7 +106,7 @@ Nothing above was changed; these were only added (details: `docs/VOICE_STEERING.
   `{voice, tts_voice, tag, controls:{rate?, loud?, f0_med?, f0_iqr?, f0_end?, pause?, …}, perform:{genre, strength},
   situation?, emph?:[words], markup?:true}`. The client passes it unchanged to `GET /api/tts?…&style=<json>` (plus
   `i`, `n`, `next`: the sentence's place) or `POST /api/tts {text, voice, style, i, n, next}`. A client-written line may
-  send only `{situation}` or `{emotion}`; the server resolves it. The server re-checks the tag (never anger, contempt,
+  send only `{situation}`; the server resolves it. The server re-checks the tag (never anger, contempt,
   disgust, sarcasm, panic or disappointment) and clamps the controls.
 - **Sim events**: `storm_end` → `alert:info` + `say` (all clear); `low_power` → also a calm `say`.
 - **`/api/tts`** replies carry `X-TTS-Engine: os|deepgram`, `X-TTS-Voice` (the OS voice used), `X-TTS-Style`,

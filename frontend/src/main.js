@@ -21,7 +21,7 @@ import { installMissionLearning } from "./mission_learning.js";   // Moon Base o
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP, rideReady, SCHOOL, TRANSITION } from "./story.js";
-import { courseState, courseLabel, syncCourse } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
+import { courseState, courseLabel, syncCourse, roleName } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
 import { installCourseSwitch } from "./course_switch.js";
 import "./course_switch.css";
 import { moreCourses } from "./course_store_ui.js";   // Settings → For grown-ups → Course storage: download / remove / switch (docs/COURSES.md §4.2)
@@ -48,13 +48,18 @@ import "./field_library.css";   // [courses] a non-Moon course's Library
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow, openVideo } from "./media/video.js";
 import { installFieldLibrary } from "./field_library.js";   // [courses] a non-Moon course's Library: real NASA views, sites, videos
+import { installMapLayers } from "./map_layers.js";   // [open data] the Library's Maps: whole-globe layers (the Moon's USGS age + height maps)
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./progress.css";
+import "./crew.css";   // [D3] crew rotation's bar
+import { installCrew } from "./crew.js";   // [D3] crew rotation: cadets take turns on one computer (docs/BRAIN.md §9)
 import "./brain.css";
 import { installBrain, COPY as BRAIN_COPY } from "./brain.js";   // [brain] My Brain (docs/BRAIN.md)
 import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
+import "./class_summary.js";    // [D7] Settings → For grown-ups → Class summary (every cadet on this computer; counts only)
+import "./teacher_pin.js";      // [D7] Settings → For grown-ups → Teacher PIN (a real gate after the hold)
 import "./class_editor.css";
 import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
@@ -93,6 +98,8 @@ const clearQuestion = t => { const q = String(t || "").toLowerCase().replace(/[^
 /** First two sentences: a tour stop's short story. */
 /** Router intents a running / paused flow owns: they never pause it (main.js heard). */
 const FLOW_NAV = ["next", "prev", "back", "accept_offer", "resume", "pause", "repeat", "start"];
+/** [arch QA] an estimated place's note: the Moon's crew-estimated spots; an Earth course shows parks at park level */
+const estNote = () => (courseState.active === "moon" || !courseState.active ? "Location estimated from the crew's own directions." : "Shown at park level, never a site's exact spot.");
 const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0, 2).join(" ").trim();
 
 async function boot() {
@@ -120,7 +127,8 @@ async function boot() {
     TRANSITION.firstMap.say = "Each pin is a lesson. Earn the patches.";
     if (courseState.info.missions !== "outpost") $("modeMission").hidden = true;   // no outpost mission in this course (a season engine is P4)
   }
-  if (courseState.active !== "moon") { $("loading").textContent = `Loading ${courseState.info.title}…`; $("stage").setAttribute("aria-label", (courseState.info.globe && courseState.info.globe.name) || courseState.info.title); }
+  if (courseState.active !== "moon") { $("loading").textContent = `Loading ${courseState.info.title}…`; $("stage").setAttribute("aria-label", (courseState.info.globe && courseState.info.globe.name) || courseState.info.title);
+    $("q").setAttribute("aria-label", "Type your answer"); }   // [courses playtest] not "Type to CAPCOM" in another course
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
   const sample = courseState.active === "moon" && !places.some(p => p.kind === "artifact");   // Moon hardware samples: the Moon course only
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
@@ -128,7 +136,7 @@ async function boot() {
   const placeById = id => byId[id] || null;
   (window.__outpost = window.__outpost || {}).placeById = placeById;   // [learning-v3] globe step directives
 
-  const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
+  const turn = { lastPlace: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const tour = { id: 0, active: false, paused: false, held: false, why: "", stops: [], i: -1, timer: null, token: 0, heldT: 0 };
   // [flows] while the Library tour is paused, any other card (an answer, a tapped place) offers the way back to it
@@ -157,6 +165,8 @@ async function boot() {
     mapUrl: (courseState.info.globe || {}).map || "",
   });
   if (fieldLib) window.__outpost.fieldLib = fieldLib;
+  // [open data] the Library's Maps button (docs/OPEN_DATA.md): a course's whole-globe layers, the photo back on leaving
+  installMapLayers({ globe, hudRow: $("tourBtn").parentElement, host: $("stage"), say: t => guideSay(t), bodyName });
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
@@ -165,7 +175,6 @@ async function boot() {
     onTurn: (text, o = {}) => ask(text, "voice", o),
     onBargeIn: o => onBarge(o),
     onKidDone: () => onKidDone(),
-    onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
     screen: () => screenFrame(),          // the pending offer / open step: their reply is never an echo of the tail
   });
@@ -204,6 +213,8 @@ async function boot() {
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
   // [brain] My Brain: the top bar's button, the map's call-sign chip, B, voice (docs/BRAIN.md)
   const brain = installBrain({ setMode: m => setMode(m), editCallSign: () => academyUI.editCallSign() });
+  // [D5] a concept's quick review (My Brain, the mission debrief): Flight School, at the step that practises it
+  (window.__outpost = window.__outpost || {}).review = (lessonId, step) => { setMode("academy"); setTimeout(() => academyUI.review && academyUI.review(lessonId, step), 350); };
   // [class] Settings → Class lessons → Preview: the course again (the preview joined it), then the lesson, as a cadet sees it
   addEventListener("outpost:class-open", e => {
     const id = e.detail && e.detail.id; if (!id) return;
@@ -238,6 +249,9 @@ async function boot() {
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
   addEventListener("outpost:room", () => sendPrefs());   // the automatic room state (room.js): the server's dd gates follow it
+  // [D3] crew rotation: a tap passes the turn; the session gets the cadet on turn (prefs.wire `profile`) at once
+  installCrew({ prefsApi: prefs, say: t => guideSay(t, { voice: CAPCOM_VOICE, priority: 2 }) });
+  addEventListener("outpost:crew", () => sendPrefs());
   // the turn log (prefs.improve, or a grown-up's Playtest session): the Academy's grade of a step, so the server can mark
   // a step that passed or went to hint (the server ignores it when the log is off)
   addEventListener("outpost:lesson-result", e => { if (useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
@@ -249,7 +263,7 @@ async function boot() {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined), repeat, source, ...(priority != null ? { priority } : {}) });
+    const ok = await speak(text, { ...(v || {}), style: style || undefined, repeat, source, ...(priority != null ? { priority } : {}) });
     voice.show("idle");
     return ok;
   }
@@ -257,7 +271,6 @@ async function boot() {
   const context = () => {
     const c = {};
     if (turn.lastPlace) c.last_place = turn.lastPlace;
-    if (turn.emotion) c.emotion = turn.emotion;
     const p = player.playing; if (p) c.playing = p;
     const m = missionUI.active && missionUI.context(); if (m) c.mission = m;
     return c;
@@ -285,6 +298,7 @@ async function boot() {
       if (!heard && a11y && await a11y.handleText(text)) { $("q").value = ""; return; }   // typed a11y commands stay local
       $("q").value = ""; pushScreen(true);
       // [P0] a spoken turn waits for the router's `heard` decision (voice.decided): no words, no "Thinking" before it
+      if (!heard && !opts.ptt) turn.typedAt = performance.now();   // [courses playtest] a typed non-answer: the step again (heard below)
       session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed", heard ? { dd: opts.dd ?? null, safety: opts.safety || null } : null);
       if (!heard) { voice.clearWords(); voice.show("idle"); }
       return "session";
@@ -303,7 +317,7 @@ async function boot() {
     const used = () => { if (heard) logKid(); voice.clearWords(); voice.show("idle"); };
     if (a11y && await a11y.handleText(text)) { used(); return; }   // [a11y] "where am I?", "faster", "press next"
     if (missionUI.active && await missionUI.handleText(text)) { used(); return; }
-    if (academyUI.active && await academyUI.handleText(text)) { used(); return; }   // Academy
+    if (academyUI.active && await academyUI.handleText(text, { typed: !heard, sure: !heard || !!opts.ptt })) { used(); return; }   // Academy (typed / Space: a real try)
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -326,7 +340,7 @@ async function boot() {
     if (missionUI.active) {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
       if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
-      card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
+      card.show({ title: roleName("capcom", "CAPCOM"), asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
       await guideSay(r.say, { voice: CAPCOM_VOICE, style: sayStyle(r) }); return;   // audio floor: CAPCOM voice
     }
     await act(r, text, my);
@@ -343,7 +357,7 @@ async function boot() {
     if (f) { if (f.id !== turn.lastPlace) chime(); globe.showFeature(f); if (r.view) globe.flyTo(r.view.lat, r.view.lon); turn.lastPlace = f.id; }
     const token = card.show({
       title: f ? f.name : "Guide", place: !!f, asked, say: r.source === "none" ? `${say} ${TRY}` : say, arc, claims: r.claims,
-      note: f && f.est ? "Location estimated from the crew's own directions." : "",
+      note: f && f.est ? estNote() : "",
     });
     if (r.action !== "play") offerCrew(token, f, moment);
     if (player.active) player.stop(true);
@@ -563,7 +577,7 @@ async function boot() {
       globe.showFeature(f); turn.lastPlace = f.id;
       if (fieldLib && fieldLib.lib) { fieldLib.openPlace(f); scheduleNudge(); return; }   // [courses] its real photo + sources
       const token = card.show({ title: f.name, place: true, say: f.fact, arc: readoutLine({ source: "tap", action: "fly" }),
-        note: f.est ? "Location estimated from the crew's own directions." : "" });
+        note: f.est ? estNote() : "" });
       offerCrew(token, f, null);
       guideSay(f.fact);
     } else {
@@ -621,7 +635,16 @@ async function boot() {
       // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
       // a quiet exact answer comes back as one chip (crewpick.js); anything else heard clears an old one
       if (d.reason === "crew_talk" && d.pick) crewPick.show(d.pick); else crewPick.hide();
-      if (d.outcome === "ignore") { if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined); releaseHold(600); return; }
+      if (d.outcome === "ignore") {
+        // [courses playtest] a typed turn that isn't an answer ("dinosaurs" on a two-choice guess): the step again, simply
+        // (academy explain), not a 1-second "Didn't catch that" a kid who typed carefully reads as being ignored
+        const typed = turn.typedAt && performance.now() - turn.typedAt < 8000;
+        const O = window.__outpost || {};
+        if (typed && d.reason === "not_an_answer" && academyUI.active && typeof O.typedNudge === "function") {
+          turn.typedAt = 0; const line = O.typedNudge(); if (line) guideSay(line, { voice: CAPCOM_VOICE });
+        } else if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined);
+        releaseHold(600); return;
+      }
       // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
       // all; the offline word list catches what the tagger misses (profanity.js)
       const shownText = d.safety ? "" : maskProfanity(d.text);
@@ -641,8 +664,8 @@ async function boot() {
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
       if (videoOpen()) return;   // [media]
       const r = d.r || {}, my = ++turn.seq;
-      if (missionUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
-      if (academyUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      if (missionUI.active) { card.show({ title: roleName("capcom", "CAPCOM"), asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      if (academyUI.active) { card.show({ title: roleName("capcom", "CAPCOM"), asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
       act(r, d.asked, my);
     },
   };
@@ -715,7 +738,8 @@ async function boot() {
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
     if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }
     if (intent === "answer") {
-      if (academyUI.active) await academyUI.answerText(text);
+      // [arch QA] the router decided it is this step's answer (a real try): a wrong word is a miss with a hint
+      if (academyUI.active) await academyUI.answerText(text, { sure: true });
       return;
     }
     if (intent === "brain") { if (brain) { const was = brain.isOpen; brain.toggle(); if (!was && text) guideSay(BRAIN_COPY.say, { voice: CAPCOM_VOICE }); } return; }   // [brain] B, voice "my brain"

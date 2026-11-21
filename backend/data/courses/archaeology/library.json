@@ -1,9 +1,9 @@
 {
- "_note": "The Field Library (Archaeology's Library screen, docs/COURSES.md 'Course library'): real NASA views of Earth blended with real Mesa Verde sites, lidar and NASA videos. Every image is a file in media/ with its credit in media/credits.json; every video an id in videos.json; every place a gazetteer id; every source a sources.json id. backend/app/course_library.py checks all of it and serves it at GET /api/course/library.",
+ "_note": "The Field Library (Archaeology's Library screen, docs/COURSES.md 'Course library'): real NASA and ESA views of Earth and NOAA's tree-ring record, blended with real Mesa Verde sites, lidar and NASA videos. Every image is a file in media/ with its credit in media/credits.json; every video an id in videos.json; every place a gazetteer id; every source a sources.json id. backend/app/course_library.py checks all of it and serves it at GET /api/course/library.",
  "format": "outpost-luna-library",
  "version": 1,
  "title": "Field Library",
- "intro": "Real NASA views of Earth, and the real sites of Mesa Verde. Tap one.",
+ "intro": "Real views of Earth from NASA and ESA, and the real sites of Mesa Verde. Tap one.",
  "home": {
   "lat": 37.0,
   "lon": -108.6,
@@ -53,6 +53,7 @@
  ],
  "featured": [
   "mv_landsat",
+  "s2_nir",
   "iss_san_juan",
   "cliff_palace",
   "v_lidar"
@@ -121,6 +122,31 @@
      "title": "Blue Marble",
      "caption": "The whole Earth in August 2004, stitched from NASA satellite pictures. It is this globe's map.",
      "source": "nasa_media"
+    }
+   ]
+  },
+  {
+   "id": "sentinel",
+   "title": "Sentinel-2",
+   "by": "ESA (Copernicus)",
+   "items": [
+    {
+     "id": "s2_true",
+     "kind": "image",
+     "file": "s2_mesa_verde_true.jpg",
+     "place": "mesa_verde",
+     "title": "Mesa Verde from Sentinel-2",
+     "caption": "Europe's Sentinel-2 satellite, June 2024. Canyons run south from the high north rim.",
+     "source": "copernicus_licence"
+    },
+    {
+     "id": "s2_nir",
+     "kind": "image",
+     "file": "s2_mesa_verde_nir.jpg",
+     "place": "mesa_verde",
+     "title": "Mesa Verde in near-infrared",
+     "caption": "The same view in light our eyes can't see. Living plants glow red. Five big fires from 1996 to 2003 burned more than half the park.",
+     "source": "mv_fire_history"
     }
    ]
   },
@@ -216,6 +242,23 @@
      "title": "Lidar, high sun",
      "caption": "The same ground under a high sun. The sites almost vanish.",
      "source": "lidar_how"
+    }
+   ]
+  },
+  {
+   "id": "climate",
+   "title": "Climate record",
+   "by": "NOAA",
+   "items": [
+    {
+     "id": "rings_chart",
+     "kind": "image",
+     "file": "co652_chart.png",
+     "place": "mesa_verde",
+     "title": "Over 1,200 years of tree rings",
+     "caption": "Narrow rings mean dry years. The orange band is the Great Drought, 1276 to 1299, one reason among several that people moved away.",
+     "source": "great_drought",
+     "label": "Chart"
     }
    ]
   },

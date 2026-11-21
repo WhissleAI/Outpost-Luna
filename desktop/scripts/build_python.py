@@ -342,6 +342,8 @@ def data_ignore(d, names) -> set[str]:
     clips (only lines.json ships), and data/video/local: tools/video_catalog.py's work folder (the NASA pack_files and
     the video pack's `pack` copies, gitignored; they reach users in the video pack, never inside the app: 174 MB)."""
     out = set(DATA_BASE_IGNORE(d, names))
+    if Path(d).name == "moon" and Path(d).parent.name == "courses":
+        out.discard("media")   # the Moon's open-data map layers (docs/OPEN_DATA.md: USGS age + height maps, 4.5 MB) ship in the app
     if Path(d).name == "voice_pack":
         out |= {n for n in names if n != "lines.json"}
     if Path(d).name == "video" and Path(d).parent.name == "data":

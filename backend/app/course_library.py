@@ -25,9 +25,13 @@ the course's sources.json, the checked quotes). `overlays` drape a media picture
 "Real views" ribbon shows, `home` where the Library's camera starts, `moon` the context Moon in Earth's sky (its line,
 a place and an item to go to; no `moon`, no Moon in the sky).
 
+`layers` (docs/OPEN_DATA.md) are whole-globe maps the Library can show in place of the body's own: each a media picture
+(equirectangular, -180..180, 2:1) with a title, a line to say, a legend ([{color: "#rrggbb", label, note?}]) and a
+`source`. The Moon has layers and no shelves (its Library is built from code); a library needs shelves or layers.
+
 Routes
-  GET /api/course/library   the active course's library, every item resolved (url, credit, video, place), or
-                            {"course": id, "shelves": []} for a course without one (the Moon)
+  GET /api/course/library   the active course's library, every item resolved (url, credit, video, place, layers), or
+                            {"course": id, "shelves": []} for a course without one. The Moon's has layers only.
 """
 from __future__ import annotations
 
@@ -198,9 +202,34 @@ def validate(lib, files: dict) -> list[str]:
             out.append(f"{at}: {f}'s credit needs credit, licence, an https source_url and alt")
         elif licence_problem(cred[f]):
             out.append(f"{at}: {f}: {licence_problem(cred[f])}")
+    layers = lib.get("layers")
+    if layers is not None and (not isinstance(layers, list) or not layers):
+        out.append("layers: a non-empty list")
+    lseen = set()
+    for k, ly in enumerate(layers if isinstance(layers, list) else []):
+        at = f"layers[{k}]"
+        if not isinstance(ly, dict) or not ID.match(str(ly.get("id", ""))) or ly["id"] in lseen or ly["id"] == "photo":
+            out.append(f"{at}: needs a unique lower_snake_case id (not 'photo', the body's own map)")
+            continue
+        lseen.add(ly["id"])
+        if not ly.get("title") or not ly.get("say"):
+            out.append(f"{at}: needs a title and a line to say")
+        need_file(at, ly.get("file"))
+        cr = cred.get(ly.get("file")) or {}
+        if cr.get("width") and cr.get("height") and cr["width"] != 2 * cr["height"]:
+            out.append(f"{at}: a whole-globe map is twice as wide as it is tall (equirectangular)")
+        leg = ly.get("legend")
+        if not isinstance(leg, list) or not leg or not all(
+                isinstance(x, dict) and HEX.match(str(x.get("color", ""))) and x.get("label") for x in leg):
+            out.append(f"{at}: legend is a list of {{color: '#rrggbb', label, note?}}")
+        if ly.get("source") not in sources:
+            out.append(f"{at}: source {ly.get('source')!r} is not in sources.json")
+    has_layers = isinstance(layers, list) and bool(layers)
     shelves = lib.get("shelves")
-    if not isinstance(shelves, list) or not shelves:
-        return out + ["library: shelves must be a non-empty list"]
+    if shelves is None and has_layers:
+        shelves = []
+    if not isinstance(shelves, list) or (not shelves and not has_layers):
+        return out + ["library: shelves must be a non-empty list (or give layers)"]
     for si, sh in enumerate(shelves):
         if not isinstance(sh, dict) or not ID.match(str(sh.get("id", ""))) or not sh.get("title"):
             out.append(f"shelves[{si}]: needs an id and a title")
@@ -251,6 +280,8 @@ def validate(lib, files: dict) -> list[str]:
                 out.append(f"{at}: video {it.get('video')!r} is not in the course's videos.json")
             if kind == "place" and it.get("place") not in places:
                 out.append(f"{at}: place {it.get('place')!r} is not in the gazetteer")
+            if "label" in it and not (isinstance(it["label"], str) and 0 < len(it["label"]) <= 20):
+                out.append(f"{at}: label is a short word for what the picture is (a chart), at most 20 characters")
             if kind != "video" and not it.get("title"):
                 out.append(f"{at}: needs a title")
             if "place" in it and it["place"] not in places:
@@ -304,7 +335,7 @@ def resolve(lib: dict, files: dict, course_id: str) -> dict:
         return {k: c.get(k) for k in ("credit", "licence", "source_url", "alt", "title")}
 
     def item(it):
-        o = {k: it[k] for k in ("id", "kind", "title", "caption", "place", "lat", "lon", "summary", "bands", "x_label",
+        o = {k: it[k] for k in ("id", "kind", "title", "caption", "label", "place", "lat", "lon", "summary", "bands", "x_label",
                                 "y_label", "chart_type", "note", "bounds", "legend", "opacity") if k in it}
         if it.get("file"):
             o |= {"url": url(it["file"]), **{f"image_{k}": v for k, v in credit(it["file"]).items()}}
@@ -321,13 +352,22 @@ def resolve(lib: dict, files: dict, course_id: str) -> dict:
         if s:
             o["source"] = {"title": s.get("title"), "url": s.get("url")}
         return o
+    def layer(ly):
+        o = {"url": url(ly["file"]), **{("map_title" if k == "title" else k): v for k, v in credit(ly["file"]).items()}}
+        o |= {k: ly[k] for k in ("id", "title", "say", "legend") if k in ly}   # the layer's short title, not the file's
+        s = sources.get(ly.get("source"))
+        if s:
+            o["source"] = {"title": s.get("title"), "url": s.get("url")}
+        return o
+
     return {
         "course": course_id, "title": lib.get("title") or "Library", "intro": lib.get("intro") or "",
         "home": lib.get("home"), "tour": lib.get("tour"), "chips": lib.get("chips") or [],
         "featured": lib.get("featured") or [], "moon": lib.get("moon"),
         "overlays": [{**o, "url": url(o["file"]), **credit(o["file"])} for o in lib.get("overlays") or []],
         "shelves": [{"id": sh["id"], "title": sh["title"], "by": sh.get("by") or "",
-                     "items": [item(it) for it in sh.get("items") or []]} for sh in lib["shelves"]],
+                     "items": [item(it) for it in sh.get("items") or []]} for sh in lib.get("shelves") or []],
+        "layers": [layer(ly) for ly in lib.get("layers") or []],
     }
 
 

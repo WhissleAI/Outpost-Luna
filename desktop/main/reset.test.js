@@ -9,10 +9,10 @@ const R = require("./reset");
 const MAC = "/Users/kid/Library/Application Support/Outpost Luna";
 const WIN = "C:\\Users\\kid\\AppData\\Roaming\\Outpost Luna";
 
-test("plan: Start over deletes the spoken-line cache, the turn log and on-device learning only; Reset everything the whole cache and hf", () => {
-  assert.deepStrictEqual(R.plan("start", MAC, "darwin").delete, [`${MAC}/cache/tts`, `${MAC}/cache/turnlog`, `${MAC}/cache/learning`]);
+test("plan: Start over deletes the spoken-line cache, the turn log, on-device learning and the brain counts only; Reset everything the whole cache and hf", () => {
+  assert.deepStrictEqual(R.plan("start", MAC, "darwin").delete, [`${MAC}/cache/tts`, `${MAC}/cache/turnlog`, `${MAC}/cache/learning`, `${MAC}/cache/brain`]);
   assert.deepStrictEqual(R.plan("all", MAC, "darwin").delete, [`${MAC}/cache`, `${MAC}/hf`, `${MAC}/assets`]);
-  assert.deepStrictEqual(R.plan("start", WIN, "win32").delete, [`${WIN}\\cache\\tts`, `${WIN}\\cache\\turnlog`, `${WIN}\\cache\\learning`]);
+  assert.deepStrictEqual(R.plan("start", WIN, "win32").delete, [`${WIN}\\cache\\tts`, `${WIN}\\cache\\turnlog`, `${WIN}\\cache\\learning`, `${WIN}\\cache\\brain`]);
   assert.deepStrictEqual(R.plan("all", WIN, "win32").delete, [`${WIN}\\cache`, `${WIN}\\hf`, `${WIN}\\assets`]);
   for (const [u, p] of [[MAC, "darwin"], [WIN, "win32"]]) for (const lv of R.LEVELS) {
     const pl = R.plan(lv, u, p);
@@ -59,7 +59,7 @@ for (const platform of ["darwin", "win32"]) {
     const out = await R.performReset({ level: "start", token: "t1" }, f.deps);
     assert.ok(out.done);
     const order = f.calls.filter((c) => !c.startsWith("log")).map((c) => c.split(" ")[0]);
-    assert.deepStrictEqual(order, ["confirm", "stop", "storage", "cache", "rm", "rm", "rm", "relaunch", "exit"]);
+    assert.deepStrictEqual(order, ["confirm", "stop", "storage", "cache", "rm", "rm", "rm", "rm", "relaunch", "exit"]);
     assert.ok(f.calls.some((c) => c.startsWith("log reset start: cleared browser storage (kept Flight School progress and call signs)")), "the reset is logged");
     assert.ok(!f.calls.find((c) => c.startsWith("storage")).includes("localstorage"), "progress (Local Storage) stays");
   });

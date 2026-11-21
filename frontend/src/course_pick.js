@@ -35,6 +35,9 @@ export const COPY = {
   later: "You can get it later in For grown-ups → Course storage.",
   go: "Start on the Moon",
   switching: t => `Opening ${t}…`,
+  // [arch QA] after the bytes: what the app is doing, from the desktop's real phases (course_packs.py phase)
+  verify: "Checking the download…",
+  install: "Installing…",
   help: names => `Say ${names}. Or say skip.`,
 };
 
@@ -162,9 +165,18 @@ export function pickHtml(opts, eyebrow = "") {
       </div>
     </div>`;
 }
+/** The progress line under the bar (pure): the percent while bytes come in, then the phase ("Checking the download…",
+ *  "Installing…"), then "Opening <course>…". An older desktop app sends no phase: 100% reads as checking. */
+export function stateLine(state = {}, title = "") {
+  const pct = state.progress != null ? Math.round(100 * state.progress) : null;
+  if (state.state === "installed") return COPY.switching(title);
+  if (state.phase === "install") return COPY.install;
+  if (state.phase === "verify" || (state.state === "downloading" && pct != null && pct >= 100)) return COPY.verify;
+  return pct != null ? COPY.pct(pct) : state.state === "queued" ? COPY.waiting : "";
+}
 export function progressHtml(title, state = {}) {
   const pct = state.progress != null ? Math.round(100 * state.progress) : null;
-  const label = pct != null ? COPY.pct(pct) : state.state === "queued" ? COPY.waiting : "";
+  const label = stateLine(state, title);
   return `<div class="h-wrap crp-wrap"><div class="h-form crp-form" role="group" aria-labelledby="aCrpTitle">
       <h1 class="h-title crp-title" id="aCrpTitle">${esc(COPY.getting(title))}</h1>
       <div class="crp-bar" role="progressbar" aria-label="${esc(COPY.getting(title))}" aria-valuemin="0" aria-valuemax="100"${pct != null ? ` aria-valuenow="${pct}"` : ""}><i style="width:${pct != null ? pct : 4}%"></i></div>
@@ -218,7 +230,7 @@ export function mountPick(panel, { opts, say = () => {}, onDone = () => {}, eyeb
         const bar = panel.querySelector(".crp-bar"), lab = panel.querySelector(".crp-state");
         const pct = st.progress != null ? Math.round(100 * st.progress) : null;
         if (bar) { bar.querySelector("i").style.width = `${pct != null ? pct : 4}%`; if (pct != null) bar.setAttribute("aria-valuenow", String(pct)); }
-        if (lab) lab.textContent = pct != null ? COPY.pct(pct) : st.state === "queued" ? COPY.waiting : "";
+        if (lab) lab.textContent = stateLine(st, title);
       };
       const r = await get(id, { ...deps, onState: paint, cancelled: () => gone });
       if (gone) return;
@@ -228,6 +240,11 @@ export function mountPick(panel, { opts, say = () => {}, onDone = () => {}, eyeb
     view = "switching";
     try { if (SS) SS.setItem(WELCOME_KEY, "1"); } catch (e) { /* */ }
     const lab = panel.querySelector(".crp-state"); if (lab) lab.textContent = COPY.switching(title);
+    { const h = panel.querySelector(".crp-title"); if (h) h.textContent = COPY.switching(title); }   // [arch QA] the title too
+    { const bar = panel.querySelector(".crp-bar i"); if (bar) bar.style.width = "100%"; }
+    say(COPY.switching(title));
+    // one paint of "Opening <course>…" before the reload takes the page (no frames in tests: no wait)
+    await new Promise(r => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(() => setTimeout(r, 300)) : r()));
     const ok = await set(id, { storage: S || undefined });   // stores "outpost-course", tells the backend, reloads
     if (!ok) { try { if (SS) SS.removeItem(WELCOME_KEY); } catch (e) { /* */ } fail("failed"); }
   }

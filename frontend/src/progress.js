@@ -16,16 +16,19 @@ import { icon } from "./assets/icons.js";
 import { anyPatch as defaultPatch, registerClassLessons } from "./academy/class_patch.js";   // Class lessons: the same letter patch as on the map
 import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./explorer.js";
 import { debriefStory } from "./mission/objective.js";
-import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
+import { brainOf, computerHtml, conceptsHtml, practiceHtml } from "./brain.js";   // [D5] + concepts and their spaced review   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
 import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
-import { activeCourse, courseLabel, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
+import { activeCourse, courseLabel, courseState, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
+/** [courses] The playing course flies outpost missions (the Moon); Archaeology has none (a season engine is P4). */
+const hasMissions = () => { const c = courseState.active; return !c || c === "moon" || !!(courseState.info && courseState.info.missions === "outpost"); };
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 export const COPY = {
   title: "Progress",
-  line: "Lessons, practice, patches and missions for each cadet on this computer, and how the app works with them.",
+  // [courses] a course with no outpost missions (Archaeology) has no missions to report
+  get line() { return `Lessons, practice, patches${hasMissions() ? " and missions" : ""} for each cadet on this computer, and how the app works with them.`; },
   print: "Print",
   loading: "Loading progress…",
   none: "No cadets yet.",
@@ -63,6 +66,8 @@ export const COPY = {
   words: (p, l, r) => `Words practised ${p}, learned ${l}, to review ${r}`,
   summaries: (n, k) => `Summaries told ${n}, key points ${k}`,
   printedOn: d => `Outpost Luna progress · ${d}`,
+  // [D8] the brain is never used for grading (EU AI Act Annex III; docs/BRAIN.md §6b). On screen and on paper.
+  practiceOnly: "A practice record for the cadet and the family, not an assessment. Not for grading.",
 };
 
 // ---------- reading what is saved ----------
@@ -169,7 +174,7 @@ export function speechHtml(speech) {
 
 /** One cadet's card. debriefs: {missionId: debrief|null}; brain: the cadet's practice counts (brain_store.js);
  *  summary: GET /api/brain/summary (shown on the playing cadet's card only: it is this computer's, not one cadet's). */
-export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined } = {}) {
+export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined, own = undefined, concepts = null } = {}) {
   const s = summarize(cadet, lessons), name = cadet.callsign || COPY.newCadet;
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   const tag = cadet.academy.qualified ? `<span class="set-tag pg-q">${esc(COPY.qualified)}</span>` : "";
@@ -184,21 +189,21 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
   return `<article class="pg-cadet${cadet.active ? " is-active" : ""}" data-cadet="${esc(cadet.id)}" aria-label="${esc(name)}">
     <header class="pg-head"><span class="set-av" aria-hidden="true">${esc(name.slice(0, 1).toUpperCase())}</span>
       <h4>${esc(name)}</h4>${tag}${cadet.active ? `<span class="set-tag pg-now">${esc(COPY.playing)}</span>` : ""}</header>
-    <dl class="mx-score pg-stats">${stat(courseLabel("lessons", COPY.lessons), `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(courseLabel("patches", COPY.nasaPatches), `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${stat(COPY.missions, cadet.flown.length)}</dl>
+    <dl class="mx-score pg-stats">${stat(courseLabel("lessons", COPY.lessons), `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(courseLabel("patches", COPY.nasaPatches), `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${hasMissions() || cadet.flown.length ? stat(COPY.missions, cadet.flown.length) : ""}</dl>
     ${s.current ? `<p class="pg-cur"><b>${esc(COPY.inProgress)}</b> ${esc(s.current.title)}, ${esc(COPY.step(s.current.i, s.current.n))}</p>` : ""}
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
-    ${brain ? practiceHtml(brain, lessons) : ""}
+    ${brain ? practiceHtml(brain, lessons) : ""}${brain && concepts ? conceptsHtml(brain, concepts) : ""}
     ${classes}${speechHtml(cadet.speech)}${missions}
-    ${cadet.active && summary !== undefined ? computerHtml(summary) : ""}
+    ${own !== undefined && own && own.scope === "cadet" ? computerHtml(own, cadet.id) : cadet.active && summary !== undefined ? computerHtml(summary, summary && summary.scope === "cadet" ? cadet.id : "") : ""}
     ${s.next.length ? `<p class="mx-try pg-try"><b>${esc(COPY.tryTitle)}</b> ${s.next.map(esc).join(" ")}</p>` : ""}</article>`;
 }
 
 /** The whole sheet. saved: GET /api/mission/saved's body (the paused mission on this computer) or null. */
-export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined } = {}) {
+export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined, summaries = {}, concepts = null } = {}) {
   if (!cadets.length) return `<p class="set-help">${esc(COPY.none)}</p>`;
   const pause = saved && saved.site_name ? `<p class="pg-paused">${esc(COPY.paused(String(saved.site_name).split(" (")[0], saved.day || 1))}</p>` : "";
-  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}${pause}
-    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary })).join("")}</div>`;
+  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}<p class="pg-practice-only" data-pg-not-grading>${esc(COPY.practiceOnly)}</p>${pause}
+    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary, own: summaries[c.id], concepts })).join("")}</div>`;
 }
 
 /** The part's frame (drawn at once; bind() fills the sheet). */
@@ -224,7 +229,11 @@ export async function loadData({ fetchFn, storage } = {}) {
   const brains = Object.fromEntries(cadets.map(c => [c.id, brainOf(c.id, storage)]));
   const act = cadets.find(c => c.active), pid = act && /^p\d{1,2}$/.test(act.id) ? act.id : "p1";
   const summary = await getJson(fetchFn, `/api/brain/summary?profile=${pid}`);
-  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary };
+  // [D2-D4] the counts are per cadet now (backend app/brain_counts.py): every other cadet's own summary too
+  const summaries = { [pid]: summary };
+  await Promise.all(cadets.filter(c => c.id !== pid && /^p\d{1,2}$/.test(c.id)).map(async c => { summaries[c.id] = await getJson(fetchFn, `/api/brain/summary?profile=${c.id}`); }));
+  const cm = await getJson(fetchFn, "/api/academy/concepts");   // [D5] the course's concepts (labels, review steps)
+  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary, summaries, concepts: (cm && cm.concepts) || null };
 }
 
 /** Print the sheet alone: a copy at the body's top level (#pgPrint), everything else hidden by progress.css. */
@@ -244,7 +253,14 @@ const section = {
     const view = el.querySelector("[data-pg-view]"), pr = el.querySelector("[data-pg-print]");
     if (!view || !fetchFn) return;
     let data = null, alive = true;
-    loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); });
+    const load = () => loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); try { dispatchEvent(new CustomEvent("outpost:safety-notes")); } catch (e) { /* */ } });
+    load();
+    // [D4] "Mark as seen" on a care flag; [D1] "Clear this cadet's safety counts" (both POST/DELETE to this computer's backend)
+    view.addEventListener("click", e => {
+      const ack = e.target.closest("[data-care-ack]"), clr = e.target.closest("[data-safety-clear]");
+      if (ack && /^[0-9a-f]{8}$/.test(ack.dataset.careAck)) { ack.disabled = true; Promise.resolve(fetchFn(`/api/safety/flags/${ack.dataset.careAck}/ack`, { method: "POST" })).catch(() => null).then(load); }
+      if (clr && /^p\d{1,2}$/.test(clr.dataset.safetyClear)) { clr.disabled = true; Promise.resolve(fetchFn(`/api/brain/counts?profile=${clr.dataset.safetyClear}`, { method: "DELETE" })).catch(() => null).then(load); }
+    });
     if (pr) pr.onclick = () => {
       const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
       printSheet(sheetHtml({ ...(data || { cadets: readCadets(storage) }), date }));

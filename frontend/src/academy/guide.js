@@ -12,6 +12,8 @@
 //   3  "help" a third time: CAPCOM shows it (the camera flies there, the right card glows) and the kid taps it;
 //      a third real miss: CAPCOM shows the answer and moves on (routes.py)
 // Pure helpers (marks, doLine, intro) are unit-tested in frontend/tests/guide.test.js.
+import { courseState } from "../courses.js";
+const onMoon = () => !courseState.active || courseState.active === "moon";
 
 /** The "do this" line under the question, per step type (a step's own `do` wins). ≤ 10 words, docs/COPY.md. */
 export const DO = {
@@ -54,6 +56,13 @@ export const INTRO = {
   vocab: "New: a word lab. Watch out for sound-alikes.",
   summary: "New: tell it back in your own words.",
 };
+/** [courses] Another course's lines where the Moon's are mission talk: a keywords step there names a term ("What is
+ *  the study of layers called?"), it is not a radio readback, and its globe is not the Moon. */
+export const COURSE_DO = { keywords: "Say the word, or type it", globe_side: "Drag the globe to turn it, or tap a side" };
+export const COURSE_INTRO = { keywords: "New: name it. Say the word, or type it.",
+  globe_side: "New: you can spin the globe. Drag it, or tap a side.", terminator: "New: the Sun lights half the globe. Find the edge." };
+/** The first-use line for a step type, in the course's words. */
+export const introFor = (t, moon = onMoon()) => (!moon && COURSE_INTRO[t]) || INTRO[t] || null;
 /** [0.3.12] The intro without its "New:" label: the card shows "New" as a chip, and TTS / captions never say "New:". */
 export const introText = t => String(t || "").replace(/^\s*New:\s*/i, "").replace(/^./, c => c.toUpperCase());
 /** [0.3.12] Predict before watch: where a Try-at-home lesson's "Watch how" videos go. In the Brief (behind its
@@ -81,7 +90,7 @@ export const doLine = (st, { gesture = false } = {}) => {
   if (st.do) return st.do;
   const kind = (st.accept || {}).type, g = gesture && DO_GESTURE[kind];
   if (kind === "video" && !((st.accept || {}).guess || {}).options) return g ? g() : DO_VIDEO_PLAIN;
-  return (g ? g((st.accept || {}).want) : DO[kind]) || "";
+  return (g ? g((st.accept || {}).want) : (!onMoon() && COURSE_DO[kind]) || DO[kind]) || "";
 };
 
 /** [audit2] "What do I do?" in a step: the do-line, then the hint, unless the hint says the same thing (then the hint

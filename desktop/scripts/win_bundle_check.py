@@ -201,6 +201,8 @@ MUST = {
     "NASA physics tables (docs/PHYSICS.md)": ["backend/data/physics/physics.json", "backend/app/mission/physics.py"],
     "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
+    "Moon map layers (docs/OPEN_DATA.md)": ["backend/data/courses/moon/library.json", "backend/data/courses/moon/media/moon_age.jpg",
+                                            "backend/data/courses/moon/media/moon_height.jpg"],
     "frontend": ["frontend/index.html"],
     "launcher": ["launch.py"],
 }

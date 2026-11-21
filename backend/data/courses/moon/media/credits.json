@@ -1,0 +1,27 @@
+[
+ {
+  "file": "moon_age.jpg",
+  "title": "Unified Geologic Map of the Moon, 1:5M, 2020: units coloured by period (equirectangular)",
+  "credit": "USGS Astrogeology Science Center: Fortezzo, Spudis and Harrel (2020), Unified Geologic Map of the Moon; shading from the NASA LRO colour map",
+  "licence": "CC0 (USGS: \"CC0, but please cite authors\")",
+  "source_url": "https://astrogeology.usgs.gov/search/map/unified_geologic_map_of_the_moon_1_5m_2020",
+  "alt": "Map of the whole Moon coloured by the age of its surface: purple oldest highlands, blue and green basins, gold younger lava plains and pale yellow young craters.",
+  "derived": "64 px/degree unit raster -> 4096 x 2048 nearest; each unit's Unit_Age (the younger bound for a two-period unit) -> one of 5 colours; times the LRO colour map's brightness.",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 1706400,
+  "sha256": "b733dcfc70deb3b955bdd8398bdf26eb339c7e9465500a945056f395b4d223e3"
+ },
+ {
+  "file": "moon_height.jpg",
+  "title": "Moon LRO LOLA Color Shaded Relief 388m v4 (equirectangular)",
+  "credit": "USGS Astrogeology Science Center, from the LRO LOLA elevation model (NASA Goddard Space Flight Center)",
+  "licence": "Public domain (USGS: \"Use Constraints: Public domain\")",
+  "source_url": "https://astrogeology.usgs.gov/search/map/moon_lro_lola_color_shaded_relief_388m_v4",
+  "alt": "Map of the whole Moon coloured by height: blue and purple low basins, green plains, orange and red high far-side highlands, with craters shaded in relief.",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 2796581,
+  "sha256": "8c7edabd45350b5d46c597b3f9592d58c6e2de9df97de8fdb816394ed4407a7b"
+ }
+]

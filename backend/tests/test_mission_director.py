@@ -138,11 +138,10 @@ def test_standing_order_fires_on_storm(sim, world):
     assert len(sim.m.applied) == 1   # fires once per storm
 
 
-def test_emotion_shapes_line(sim, world):
-    calm = ask(world, "move 20% to the shields", emotion="confused")
-    assert calm["say"] == "Copy. Radiation shields up 20 percent."   # first sentence only, no trade-off
-    hype = ask(world, "everyone into the shelter", emotion="excited")
-    assert hype["say"].endswith("!")
+def test_affect_label_changes_no_line(sim, world):
+    """[D6] A context affect label (an old client) changes nothing: one line for every kid."""
+    plain = ask(world, "move 20% to the shields")["say"]
+    assert ask(world, "move 20% to the shields", emotion="confused")["say"] == plain
 
 
 def test_chatter_ignored(sim, world):
