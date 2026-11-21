@@ -687,7 +687,8 @@ def _stem(ws) -> set[str]:
 
 
 def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: float = DD_MIN, *,
-              step_type: str | None = None, options: list[str] | None = None, strict: bool = False) -> bool:
+              step_type: str | None = None, options: list[str] | None = None, strict: bool = False,
+              sure: bool = False) -> bool:
     """Is this turn a real try at the step (a miss when wrong), or room talk / filler (ignored, never a miss)?
 
     A try: it names an option (a word of it, or its number / letter); it overlaps what the step expects (the keywords,
@@ -742,6 +743,9 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
         return True       # a mishear of what the step expects ("rover go get eyes", "four side"): a real try
     if strict:
         return False      # strict: the step's own words only (the router's fuzzy navigation check)
+    if sure and cw:
+        return True       # [arch QA] typed (or Space-held / Arc-sure) words meant for this step: "history", "Colorado",
+        #                   "show me Denver" are wrong tries (a miss, then the hint ladder), never a silent "Didn't catch"
     return len(cw) >= 3 and (dd is None or float(dd) >= dd_min)
 
 
