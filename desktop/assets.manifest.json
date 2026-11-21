@@ -5752,7 +5752,10 @@
    "min_app": "0.5.3",
    "note": "Optional: open Moon data beyond NASA's pack: one Apollo surface photo per landing site, the USGS geologic map as a Rock ages layer (CC0), the Smithsonian's Columbia in 3D (CC0) and Lunar Sample Compendium facts (scripts/moon_views_build.py). The app works without it.",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-moon_views.tar"
+   ]
   },
   {
    "id": "course_archaeology",
@@ -6237,7 +6240,10 @@
       "sha256": "2fb3c8cf19e6ef7ff7307eb05d24c8c75e2519fc1e2033058abf01db90f30d37"
      }
     ]
-   }
+   },
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-6.tar"
+   ]
   }
  ],
  "offline_pack": {
@@ -6247,6 +6253,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T21:21:46Z",
- "version": "2026.11.21.2121"
+ "published_at": "2026-11-21T21:22:21Z",
+ "version": "2026.11.21.2122"
 }
