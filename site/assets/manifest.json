@@ -5686,7 +5686,7 @@
    "title": "Moon views (Apollo photos, rock ages, Columbia 3D)",
    "required": false,
    "file": "outpost-luna-v2-moon_views.tar",
-   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-moon_views.tar",
+   "url": "https://www.dropbox.com/scl/fi/tvtk9wf9xi4hui213b6ee/outpost-luna-v2-moon_views.tar?rlkey=emzmj2vkn257fa1djgwcjlnoi&dl=1",
    "sha256": "fc19dd0e80fc02950ff1ad4647ea400ebf85f966c0b15c2170f9dfd83538942a",
    "size": 4300800,
    "unpacked_size": 4284062,
@@ -5764,7 +5764,7 @@
    "title": "Course: Archaeology",
    "required": false,
    "file": "outpost-luna-v2-course_archaeology-6.tar",
-   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-6.tar",
+   "url": "https://www.dropbox.com/scl/fi/pdtz5yk2emptjn8m9gv2a/outpost-luna-v2-course_archaeology-6.tar?rlkey=s1fh8vqhh7d4xs1vlpb441fjt&dl=1",
    "sha256": "ead869d2939f70b56b27a99c397d68d15147f5e98983bc40a5e477e491050aa2",
    "size": 40560640,
    "unpacked_size": 40523300,
@@ -6247,6 +6247,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T19:56:54Z",
- "version": "2026.11.21.1956"
+ "published_at": "2026-11-21T21:21:46Z",
+ "version": "2026.11.21.2121"
 }
