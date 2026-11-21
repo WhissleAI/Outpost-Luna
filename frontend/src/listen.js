@@ -3,7 +3,7 @@
 // interpolation, carrying the last sample across 128-frame blocks so non-integer ratios (44.1k) don't drift.
 // echoCancellation / noiseSuppression / autoGainControl stay on: the guide now plays as in-page audio (floor.js),
 // which the echo canceller can subtract. on.level(rms 0..1) reports the mic level per 80 ms frame (the meter).
-// Server → {t:"ready"|"words"|"turn"|"arc"|"emotion"|"error"}. Resolves start() false when the socket can't open,
+// Server → {t:"ready"|"words"|"turn"|"arc"|"error"}. Resolves start() false when the socket can't open,
 // so the caller can fall back to Web Speech.
 
 export const WORKLET = `

@@ -438,8 +438,7 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
     ctx = context or {}
     sess = str(ctx.get("session") or "")
     q = norm(text)
-    emotion = (ctx.get("emotion") or "").lower()
-    short = emotion in ("confused", "frustrated")
+    short = False   # [D6] one answer length for every kid: never chosen from a guess at how the kid feels
     out = {"action": "say", "say": "", "place": None, "view": None, "moment": None, "ask": None, "claims": [],
            "readout": read, "source": "rules", "corrected": False}
 
@@ -541,11 +540,7 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
         return {**base, "action": "fly", "say": say, "claims": cl, "moment": public(moment),
                 "source": f"{how}+{src}"}
 
-    # 6. Bored and nothing to act on: offer a mission.
-    if emotion == "bored":
-        return {**out, "action": "say", "say": MISSION, "source": "emotion"}
-
-    # 7. Nothing matched: the local brain. Card alias + attribute rules, else the embedder's nearest card+attribute
+    # 6. Nothing matched: the local brain. Card alias + attribute rules, else the embedder's nearest card+attribute
     #    (accept -> answer, ask band -> "Did you mean A or B?", below -> an honest "I don't know that one yet").
     return await _brain_turn(text, out, gaz, index, sess, short)
 
@@ -658,14 +653,6 @@ def due_rules(mid: str, state: dict | None) -> list[dict]:
     return fire
 
 
-def _tone(say: str, emotion: str) -> str:
-    if emotion in ("confused", "frustrated"):
-        return capcom.short(say)
-    if emotion == "excited":
-        return capcom.excited(say)
-    return say
-
-
 def linked_entity(read: dict, types: tuple[str, ...]):
     """The registry entity the ear linked on this turn with p >= LINK_ACT_P, of one of these types (or None)."""
     from .entities import registry
@@ -689,7 +676,6 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     """Mission layer first. None = not a mission turn (the Moon explorer answers)."""
     mctx = ctx.get("mission") or {}
     mid, role = mctx.get("id"), mctx.get("role")
-    emotion = (ctx.get("emotion") or "").lower()
     reg = _sim()
     state = await _sim_state(reg, mid)
     base = {**out, "source": "mission", "mission": mid}
@@ -697,7 +683,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     if DEFINE.search(norm(text)) and not ctx.get("commands"):
         g = capcom.glossary_line(text, None)   # mission words; Moon words fall through to the app glossary
         if g:
-            return {**base, "action": "say", "say": _tone(g, emotion), "source": "mission+glossary"}
+            return {**base, "action": "say", "say": g, "source": "mission+glossary"}
 
     if ctx.get("commands"):   # the learned Director (DIRECTOR_MODEL=on) read the command; it passed nlu.valid()
         nl = {"commands": [c for c in map(nlu.valid, ctx["commands"]) if c], "confidence": 0.8, "needs_clarify": None,
@@ -722,7 +708,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     base["nlu"] = {"commands": cmds, "confidence": nl["confidence"]}
     if nl["needs_clarify"]:
         q = nl["needs_clarify"]
-        return {**base, "action": "ask", "say": _tone(q, emotion), "ask": {"question": q, "options": []}}
+        return {**base, "action": "ask", "say": q, "ask": {"question": q, "options": []}}
 
     lines: list[str] = []
     # Standing orders whose moment has come go first.
@@ -801,7 +787,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         resp["state"] = state  # the LAST state: with several commands in one turn, the client must see all of them
     # one "Copy." per turn, however many commands
     lines = [x if i == 0 else re.sub(r"^(Copy, commander\.|Copy\.)\s+", "", x) for i, x in enumerate(y for y in lines if y)]
-    say = _tone(" ".join(lines), emotion)
+    say = " ".join(lines)
     if resp.get("action") == "command":
         # UI contract: a command response always carries `state` = the server already handled it (applied through the
         # sim, stored as a standing order, or held for confirmation). The client never POSTs it again. needs_confirm
@@ -824,12 +810,12 @@ def new_id(prefix: str = "d") -> str:
 
 
 def decision(t: str, priority: int = P_ANSWER, after: str | None = None, situation: str | None = None,
-             emotion: str | None = None, places: list[str] | None = None, **payload) -> dict:
-    """One typed decision. Every `say` carries `style` (backend/app/steering.py): from the situation, the kid's affect
-    and the persona voice, unless the caller passes one."""
+             places: list[str] | None = None, **payload) -> dict:
+    """One typed decision. Every `say` carries `style` (backend/app/steering.py): from the situation and the persona
+    voice, unless the caller passes one."""
     if t == "say" and "style" not in payload:
         payload["style"] = steering.style_for(payload.get("voice") or "guide", payload.get("text") or "",
-                                              situation=situation, emotion=emotion, places=places)
+                                              situation=situation, places=places)
     d = {"t": t, "id": new_id(), "priority": priority, **{k: v for k, v in payload.items() if v is not None}}
     if after:
         d["after"] = after
@@ -853,7 +839,7 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     ctx = ctx or {}
     mission = r.get("source", "").startswith("mission") or a in ("command", "status", "houston")
     voice = "houston" if a == "houston" else "capcom" if mission else "guide"
-    steer = {"situation": steering.situation_for(r) or _HINT_SITUATION.get(r.get("style_hint")), "emotion": ctx.get("emotion"),
+    steer = {"situation": steering.situation_for(r) or _HINT_SITUATION.get(r.get("style_hint")),
              "places": [ctx["place_name"]] if ctx.get("place_name") else None}
     title = "CAPCOM" if mission else "Guide"
     out: list[dict] = []

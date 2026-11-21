@@ -81,10 +81,10 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     prefs = {k: style[k] for k in PREF_KEYS if k in style} if isinstance(style, dict) else {}
     if not isinstance(style, dict) or not (set(style) - set(PREF_KEYS)):
         style = steering.style_for(voice, text)   # none, or only Settings: the persona default style, with them
-    elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
+    elif "tag" not in style:   # the client named only the situation (e.g. a badge line it wrote itself)
         sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
         persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
-        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"),
+        style = steering.style_for(persona, text, situation=sit,
                                    vocab=style.get("vocab") if isinstance(style.get("vocab"), list) else None)
     persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
     tag = str(style.get("tag") or "none")

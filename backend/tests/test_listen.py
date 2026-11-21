@@ -70,7 +70,7 @@ def fakes(monkeypatch):
     loop.call_soon_threadsafe(loop.stop)
 
 
-def test_listen_relays_words_turns_and_emotion(fakes):
+def test_listen_relays_words_turns_and_never_affect(fakes):
     with TestClient(app) as c, c.websocket_connect("/ws/listen") as ws:
         assert ws.receive_json() == {"t": "ready"}
         for _ in range(4):
@@ -82,7 +82,7 @@ def test_listen_relays_words_turns_and_emotion(fakes):
     turns = [m["state"] for m in out if m["t"] == "turn"]
     assert turns == ["start", "eager", "end"]
     assert [m for m in out if m["t"] == "words"][-1] == {"t": "words", "text": "show me the giant bullseye", "final": True}
-    assert {"t": "emotion", "label": "curious", "p": 0.8} in out
+    assert not [m for m in out if m["t"] == "emotion"]   # [D6] an affect stream is never relayed
     assert not [m for m in out if m["t"] == "other"]
 
 

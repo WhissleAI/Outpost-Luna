@@ -90,6 +90,7 @@ test("sheetHtml: every cadet, the paused mission; zone has a Print button; empty
   assert.equal((h.match(/class="pg-cadet/g) || []).length, 2);
   assert.match(h, /Paused at Shackleton Rim, day 4 of 10\./);
   assert.match(h, /Outpost Luna progress · 19 November 2026/);
+  assert.match(h, /not an assessment\. Not for grading\./, "D8: the sheet says it is never for grading (on paper too)");
   assert.match(P.zoneHtml(), /<button type="button" class="btn" data-pg-print>Print<\/button>/);
   assert.match(P.sheetHtml({ cadets: [] }), /No cadets yet/);
 });

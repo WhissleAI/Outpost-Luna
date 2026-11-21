@@ -129,7 +129,7 @@ async function boot() {
   const placeById = id => byId[id] || null;
   (window.__outpost = window.__outpost || {}).placeById = placeById;   // [learning-v3] globe step directives
 
-  const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
+  const turn = { lastPlace: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const tour = { id: 0, active: false, paused: false, held: false, why: "", stops: [], i: -1, timer: null, token: 0, heldT: 0 };
   // [flows] while the Library tour is paused, any other card (an answer, a tapped place) offers the way back to it
@@ -168,7 +168,6 @@ async function boot() {
     onTurn: (text, o = {}) => ask(text, "voice", o),
     onBargeIn: o => onBarge(o),
     onKidDone: () => onKidDone(),
-    onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
     screen: () => screenFrame(),          // the pending offer / open step: their reply is never an echo of the tail
   });
@@ -252,7 +251,7 @@ async function boot() {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined), repeat, source, ...(priority != null ? { priority } : {}) });
+    const ok = await speak(text, { ...(v || {}), style: style || undefined, repeat, source, ...(priority != null ? { priority } : {}) });
     voice.show("idle");
     return ok;
   }
@@ -260,7 +259,6 @@ async function boot() {
   const context = () => {
     const c = {};
     if (turn.lastPlace) c.last_place = turn.lastPlace;
-    if (turn.emotion) c.emotion = turn.emotion;
     const p = player.playing; if (p) c.playing = p;
     const m = missionUI.active && missionUI.context(); if (m) c.mission = m;
     return c;

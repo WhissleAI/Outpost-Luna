@@ -72,7 +72,6 @@ class Playing(BaseModel):
 
 class AskContext(BaseModel):
     last_place: str | None = None
-    emotion: str | None = None
     playing: Playing | None = None
     mission: dict | None = None          # {"id": mid, "role": "power|life|comms|null"} (docs/MISSION_CONTRACT.md)
     device_directed: float | None = None  # Arc's last device_directed for this turn (from /ws/listen); low = chatter

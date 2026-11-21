@@ -61,7 +61,7 @@ Deepgram fallback: guide=`aura-2-thalia-en`, capcom/houston=`aura-2-orion-en`, s
 
 ## 4. The steering policy (`backend/app/steering.py`)
 
-`style_for(voice, text, situation, emotion, places)` → `style`. One table plus five rules; `tests/test_steering.py`
+`style_for(voice, text, situation, places)` → `style`. One table plus four rules; `tests/test_steering.py`
 pins each row.
 
 **Persona base** — guide `interest`; CAPCOM `confidence`, rate +0.3; story `nostalgia`, rate −0.5, f0_med +0.4;
@@ -91,28 +91,25 @@ pairs its tag with controls that carry the effect):
 
 **Rules**
 
-1. **Kid affect** (Arc / emotion stream): frustrated → `sympathy`, confused → `serenity`, scared/anxious → `serenity`
-   (all: rate −0.6…−0.7, pause +0.6…+0.8, softer); excited → `excited` (rate +0.4, f0_iqr +0.8), happy → `happiness`.
-   Exceptions: an upset kid during an alarm keeps the alert's tag but loses the speed-up and loudness boost (rate −0.3,
-   pause +0.5); good news stays good news, just slower; an excited kid doesn't hype a calm line (night, guard, retry).
-2. **A question to the kid** (text ends with `?`) → f0_end ≥ +1.5 (rising).
-3. **Emphasis**: in readbacks, alerts, failure, night and explanations, the first 3 distinct numbers; in any line, the
+0. **No kid affect** (D6, `docs/BRAIN.md` §6a): the style never changes with a guess at how the kid feels. The old
+   affect rule and its stream are deleted; `backend/tests/test_no_emotion.py` guards it.
+1. **A question to the kid** (text ends with `?`) → f0_end ≥ +1.5 (rising).
+2. **Emphasis**: in readbacks, alerts, failure, night and explanations, the first 3 distinct numbers; in any line, the
    place name when the Director resolved one. Sent as `style.emph`; the backend wraps them in emphasis markup (`*40*`,
    `<emph>Mare Tranquillitatis</emph>`) just before rendering, so captions stay clean and sentence splitting is not
    affected.
-4. **Safety**: never `anger`, `contempt`, `disgust`, `sarcasm`, `panic`, `disappointment` (nor `irritation`,
+3. **Safety**: never `anger`, `contempt`, `disgust`, `sarcasm`, `panic`, `disappointment` (nor `irritation`,
    `frustration`, `skeptical`, `bored`) toward a kid. A forbidden tag from any source (row, caller, client) becomes the
    persona's tag; the backend re-checks the client's style. Controls are clamped to ±2.5.
-5. **Performance**: every style carries `perform: {genre: "children", strength: 0.7}` (§1).
+4. **Performance**: every style carries `perform: {genre: "children", strength: 0.7}` (§1).
 
 **Where the Director picks the situation**
 
 | Producer | Situation |
 | --- | --- |
-| `director.decisions_for` (session Director and `/api/ask`) | `steering.situation_for(r)`: guard, glossary → explain, play → awe, command → readback, status → storm_alert / night_low_power / readback; emotion from the turn context; the resolved place name for emphasis; `houston` action → houston voice |
+| `director.decisions_for` (session Director and `/api/ask`) | `steering.situation_for(r)`: guard, glossary → explain, play → awe, command → readback, status → storm_alert / night_low_power / readback; the resolved place name for emphasis; `houston` action → houston voice |
 | `Session.proactive` (sim events) | solar_storm → storm_warning / storm_alert, storm_end → all_clear (new say), comm_open, low_power → night_low_power (new calm say), failure, mission_complete |
 | `Session.end_shift` | from the new state (storm / night low power / readback) |
-| `Session._turn` alarm rewrite | re-steers the shortened line with the kid's emotion |
 | Academy `/api/academy/attempt` | passed / retry / hint / missed / done, badge → `badge` |
 | Client-written lines (`floor.js` callers) | lesson brief, badge award, hardware story send `{situation}` only; the backend resolves it through the same table |
 

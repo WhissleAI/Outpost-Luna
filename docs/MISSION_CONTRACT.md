@@ -53,7 +53,7 @@ return `needs_confirm: true` with a readback; the kid says "yes"/"confirm" (→ 
 `{"t_h":…,"kind":"solar_storm|storm_end|sunset|sunrise|comm_open|comm_closed|low_power|dose_alert|rover_back|failure","text":"…","source":{"title","url"}|null,"real_date":"YYYY-MM-DD"|null}`
 
 ## /api/ask in mission mode
-Client sends `context.mission = {"id": mid, "role": "power|life|comms|null"}` (plus `last_place`, `emotion` as before).
+Client sends `context.mission = {"id": mid, "role": "power|life|comms|null"}` (plus `last_place` as before; D6: no affect field).
 The Director then may return:
 - `action:"command"` + `command: Command` + `say` (CAPCOM readback) + `needs_confirm`
 - `action:"status"` + `say` (answer from State) + `state`
