@@ -5683,18 +5683,18 @@
   },
   {
    "id": "course_archaeology",
-   "version": "3",
+   "version": "4",
    "min_app": "0.1.0",
    "max_app": null,
    "requires": [],
-   "min_version": "2",
+   "min_version": "4",
    "title": "Course: Archaeology",
    "required": false,
-   "file": "outpost-luna-v2-course_archaeology-3.tar",
-   "url": null,
-   "sha256": "00428ea521a2e06a33725dffc6b9cde66cc6911cd033a661cfdcbd35214dc712",
+   "file": "outpost-luna-v2-course_archaeology-4.tar",
+   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-4.tar",
+   "sha256": "6bd530e789c938ebc664793ec1726e11b272f0c6c0b8a6d90a5ac4a06062e9bb",
    "size": 39157760,
-   "unpacked_size": 39114870,
+   "unpacked_size": 39117111,
    "n_files": 42,
    "env": "",
    "subdir": "",
@@ -5702,13 +5702,13 @@
    "files": [
     {
      "path": "course.json",
-     "size": 68375,
-     "sha256": "8d44da502e0df07ed469487c892e9ab1988ebfbcb09804f8b3330df5d70de8fb"
+     "size": 68626,
+     "sha256": "647e60395543655ada7fad79756c8543acd4ccb3bfb1fce64e99941ec412ddc2"
     },
     {
      "path": "course.manifest.json",
-     "size": 4188,
-     "sha256": "a980bc08163d1ee96b339691ab4fcde8e48908df0b0d67486199dbf10bbbbb3f"
+     "size": 6178,
+     "sha256": "553f85ea6494a89d973cda1c5b4861459e999be60228006722f9205524586419"
     },
     {
      "path": "ear_vocab.json",
@@ -6127,7 +6127,10 @@
       "sha256": "2fb3c8cf19e6ef7ff7307eb05d24c8c75e2519fc1e2033058abf01db90f30d37"
      }
     ]
-   }
+   },
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-4.tar"
+   ]
   }
  ],
  "offline_pack": {
@@ -6137,6 +6140,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T07:18:05Z",
- "version": "2026.11.21.0718"
+ "published_at": "2026-11-21T07:55:57Z",
+ "version": "2026.11.21.0755"
 }
