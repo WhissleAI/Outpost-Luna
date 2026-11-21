@@ -142,7 +142,9 @@ def state(e: dict) -> dict:
     for kind, st in ((".active", "downloading"), (".want", "queued")):
         f = _flag(kind, e["asset"])
         if f is not None and f.exists():
-            return {"state": st} | ({"progress": progress(f)} if st == "downloading" and progress(f) is not None else {})
+            ph = phase(f) if st == "downloading" else None
+            return {"state": st} | ({"progress": progress(f)} if st == "downloading" and progress(f) is not None else {}) \
+                | ({"phase": ph} if ph else {})
     f = _flag(".failed", e["asset"])
     if f is not None and f.exists():
         try:
@@ -183,6 +185,16 @@ def progress(f: Path) -> float | None:
     except (OSError, ValueError):
         return None
     return round(min(1.0, max(0.0, done / total)), 3) if total > 0 else None
+
+
+def phase(f: Path) -> str | None:
+    """[arch QA] After the bytes: "verify" (the sha256 check) or "install" (unpacking), the desktop app's third word in
+    .active/<asset> (assets.js downloadTracked). None while downloading, or from an older app."""
+    try:
+        w = f.read_text(encoding="utf-8").split()
+    except OSError:
+        return None
+    return w[2] if len(w) >= 3 and w[2] in ("verify", "install") else None
 
 
 def downloadable() -> bool:

@@ -4,7 +4,7 @@
 // course being played switches to the Moon first. School network mode blocks a download and says so; so does a full
 // disk. Behind the grown-up hold, so a kid can switch courses (the top-bar chip) but not download or delete one; the
 // one exception is the first-run course pick (course_pick.js): a new cadet may download one catalog course, once.
-import { COURSE_KEY, courseState, setCourse, syncCourse } from "./courses.js";
+import { COURSE_KEY, courseState, setCourse, syncCourse, REMOVED_KEY } from "./courses.js";
 import { size } from "./storage_ui.js";
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
@@ -18,6 +18,9 @@ export const COPY = {
   get: s => `Get (${s})`,
   queued: "Waiting to download…",
   downloading: "Downloading…",
+  downloadingPct: n => `Downloading… ${n}%`,   // [arch QA] the real percent (it said "Downloading…" only)
+  verify: "Checking the download…",
+  install: "Installing…",
   installed: "On this computer",
   play: "Switch to it",
   remove: "Remove",
@@ -60,7 +63,11 @@ export function rowOf(p, { moon = false } = {}) {
     const d = dlNote(p);
     r.note = d.note; r.bar = d.bar; r.busy = d.busy;
   }
-  else if (p.state === "downloading") r.note = COPY.downloading;
+  else if (p.state === "downloading") {
+    const n = pct(p.progress);
+    r.note = p.phase === "install" ? COPY.install : p.phase === "verify" || n === 100 ? COPY.verify : n != null ? COPY.downloadingPct(n) : COPY.downloading;
+    r.bar = n ?? 0; r.busy = true;
+  }
   else if (p.state === "queued") r.note = COPY.queued;
   else if (p.blocked) r.note = COPY.school;
   else { r.actions = [{ act: "get", label: COPY.get(size(p.size)) }]; if (p.state === "failed") r.note = p.reason || ""; }
@@ -122,7 +129,12 @@ const section = {
         if (act === "remove") {
           msg.textContent = COPY.removed;
           // it was being played: the Moon now (its patches stay; the choice goes, so it doesn't come back with a re-download)
-          if (courseState.active === id) { try { localStorage.removeItem(COURSE_KEY); } catch (e) { /* */ } location.reload(); return; }
+          if (courseState.active === id) {
+            try { localStorage.removeItem(COURSE_KEY); } catch (e) { /* */ }
+            // [arch QA] the map says what happened after the reload (academy/ui.js), never a silent jump to the Moon
+            try { sessionStorage.setItem(REMOVED_KEY, String((courseState.info && courseState.info.title) || id)); } catch (e) { /* */ }
+            location.reload(); return;
+          }
         }
         paint(await load(fetchFn));
         if (act === "get" && d.state !== "installed") watch();
