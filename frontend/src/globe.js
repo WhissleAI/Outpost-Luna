@@ -552,6 +552,25 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     controls.minDistance = Math.min(controls.minDistance, minDistance);
     return m;
   }
+  // [open data] map layers (map_layers.js): another whole-globe map (an equirectangular picture, -180..180) in place of the
+  // body's own, e.g. the Moon's age (USGS geologic map) or height (LOLA). null = the body's own map again. While a layer is
+  // on, the sharp polar cap and the draped regional pictures step aside (they would cover it with the photo).
+  let baseUrl = null, baseTex = null;
+  function setBaseMap(url) {
+    const show = on => { if (cap) cap.visible = on; overlays.forEach(o => { o.visible = on; }); };
+    if (!url) {
+      baseUrl = null; moon.material.map = tex; moon.material.needsUpdate = true; show(true);
+      if (baseTex) { baseTex.dispose(); baseTex = null; }
+      return Promise.resolve(true);
+    }
+    baseUrl = url;
+    return new Promise(res => new THREE.TextureLoader().load(url, t => {
+      if (baseUrl !== url) { t.dispose(); return res(false); }   // another layer was picked meanwhile
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      if (baseTex) baseTex.dispose();
+      baseTex = t; moon.material.map = t; moon.material.needsUpdate = true; show(false); res(true);
+    }, undefined, () => { if (baseUrl === url) baseUrl = null; res(false); }));
+  }
   const mlayer2 = document.createElement("div"); mlayer2.className = "cmarks"; stage.append(mlayer2);
   let cmarks = [];
   /** Labelled markers [{id, lat, lon, label, kind: "place" | "view" | "video"}]; pick(marker) on a tap. Shown with the
@@ -652,7 +671,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     // 0.4 real NASA views (media/nasa_views.js; all optional, today's visuals until called)
     setSky, setPolarCap, setHardwareModels, setOrbiters,
     // [courses] Earth extras (a course Library): a draped regional picture, labelled markers, the Moon as context
-    setOverlay, setMarkers, setMoonContext, get markerCount() { return cmarks.length; }, get overlayCount() { return overlays.length; },
+    setOverlay, setMarkers, setMoonContext, setBaseMap, get baseMap() { return baseUrl; }, get markerCount() { return cmarks.length; }, get overlayCount() { return overlays.length; },
     get hasContextMoon() { return !!ctxMoon; },
     /** The body's name ("Moon", "Earth"): spoken lines say which globe turns. */
     get bodyName() { return BODY.name; },

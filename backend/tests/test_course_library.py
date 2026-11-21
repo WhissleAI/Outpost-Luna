@@ -2,7 +2,7 @@
 
 Archaeology: real NASA Earth views (Landsat, ISS astronaut photos, Blue Marble), NPS site photos, USGS lidar and
 orthoimagery, and NASA videos about remote sensing, lidar, tree rings and the Moon. Every file credited, every id known.
-The Moon has no library and its video catalog is exactly what it was."""
+The Moon has no shelves (only map layers, tests/test_open_data.py) and its video catalog is exactly what it was."""
 from __future__ import annotations
 
 import copy
@@ -77,7 +77,7 @@ def test_validate_catches_what_would_break_the_screen(dev):
     f = _files()
     bad = copy.deepcopy(LIB)
     bad["shelves"][0]["items"][0]["file"] = "nope.jpg"
-    bad["shelves"][3]["items"][0]["video"] = "psr"              # a Moon video is not the course's
+    next(sh for sh in bad["shelves"] if sh["id"] == "watch")["items"][0]["video"] = "psr"              # a Moon video is not the course's
     bad["shelves"][1]["items"][0]["source"] = "made_up"
     bad["overlays"][0]["bounds"] = {"west": -110.2, "south": 35.7, "east": -100, "north": 38.0}   # wrong shape
     bad["tour"]["stops"].append("atlantis")
@@ -92,7 +92,7 @@ def test_the_route_serves_the_active_courses_library(dev):
     from app.main import app
     d = TestClient(app).get("/api/course/library").json()
     assert d["course"] == "archaeology" and "problems" not in d
-    assert [s["id"] for s in d["shelves"]] == ["orbit", "sites", "lidar", "watch", "moon"]
+    assert [s["id"] for s in d["shelves"]] == ["orbit", "sentinel", "sites", "lidar", "climate", "watch", "moon"]
     it = next(i for s in d["shelves"] for i in s["items"] if i["id"] == "iss_san_juan")
     assert it["url"] == "/api/courses/archaeology/media/iss_pastora_san_juan.jpg" and it["image_credit"].startswith("NASA")
     v = next(i for s in d["shelves"] for i in s["items"] if i["id"] == "v_lidar")
@@ -109,7 +109,8 @@ def test_course_videos_join_the_catalog_only_while_the_course_is_active(dev, mon
     monkeypatch.delenv(content.DEV_COURSE_ENV)
     _drop()
     assert [v["id"] for v in video.catalog()] == [v["id"] for v in BASE]
-    assert cl.current() == {"course": "moon", "shelves": []}
+    moon = cl.current()   # the Moon: no shelves (its Library is code), only its open-data map layers (docs/OPEN_DATA.md)
+    assert moon["course"] == "moon" and moon["shelves"] == [] and [l["id"] for l in moon["layers"]] == ["age", "height"]
 
 
 def test_a_course_pack_can_carry_its_videos(dev, tmp_path, monkeypatch):

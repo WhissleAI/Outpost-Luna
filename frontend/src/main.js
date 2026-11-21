@@ -47,6 +47,7 @@ import "./field_library.css";   // [courses] a non-Moon course's Library
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow, openVideo } from "./media/video.js";
 import { installFieldLibrary } from "./field_library.js";   // [courses] a non-Moon course's Library: real NASA views, sites, videos
+import { installMapLayers } from "./map_layers.js";   // [open data] the Library's Maps: whole-globe layers (the Moon's USGS age + height maps)
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
@@ -156,6 +157,8 @@ async function boot() {
     mapUrl: (courseState.info.globe || {}).map || "",
   });
   if (fieldLib) window.__outpost.fieldLib = fieldLib;
+  // [open data] the Library's Maps button (docs/OPEN_DATA.md): a course's whole-globe layers, the photo back on leaving
+  installMapLayers({ globe, hudRow: $("tourBtn").parentElement, host: $("stage"), say: t => guideSay(t), bodyName });
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,

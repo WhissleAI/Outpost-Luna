@@ -30,6 +30,9 @@ nasa-views:      ## 0.4 NASA views asset: sky, 3D models, Moon rocks, photos, SD
 	uv run --no-project --with OpenEXR==3.5.4 --with numpy --with pillow --with certifi python -I scripts/nasa_views_build.py
 	uv run --project backend python scripts/asset_pack.py --only nasa_views --no-zip
 
+open-data:       ## Open data beyond NASA (docs/OPEN_DATA.md): USGS Moon age + height maps, ESA Sentinel-2 + NOAA chart for Archaeology -> courses/*/media
+	nice uv run --no-project --with numpy --with pillow --with tifffile --with imagecodecs --with rasterio --with matplotlib python -I scripts/open_data_build.py
+
 media-desktop:   ## Trimmed mono crew clips for the desktop installer -> backend/data/media/desktop (after `make data`)
 	cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media
 
@@ -197,4 +200,4 @@ smoke-installed: ## Smoke the INSTALLED app without touching your data: launches
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views open-data ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop

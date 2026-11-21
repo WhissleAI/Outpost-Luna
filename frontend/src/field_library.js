@@ -52,8 +52,8 @@ export function markersFor(lib, places) {
   return out;
 }
 
-/** The pictures of a place (its photo first), in shelf order. Pure. */
-export const picturesOf = (lib, placeId) => (lib ? [...lib.items.values()].filter(it => it.kind === "image" && it.url && it.place === placeId) : []);
+/** The photos of a place (its photo first), in shelf order; a picture with its own label (a chart) is not a photo. Pure. */
+export const picturesOf = (lib, placeId) => (lib ? [...lib.items.values()].filter(it => it.kind === "image" && it.url && it.place === placeId && !it.label) : []);
 
 /** A chip's action: {type: "tour"} | {type: "item", id} | null. Pure. */
 export function chipAction(c) {
@@ -80,9 +80,10 @@ export function placeEntry(f, lib, k = 0) {
 export function itemEntry(it, placeById = () => null) {
   const p = it.place ? placeById(it.place) : null;
   const e = { title: it.title || (p && p.name) || "", place: !!p, say: it.caption || (p && p.fact) || "",
-              eyebrow: [it.kind === "image" ? "Real photo" : "", it.by].filter(Boolean).join(" · ") };
-  if (it.kind === "image" && it.url) e.photo = { src: it.url, alt: it.image_alt || it.title, credit: imageCredit(it), caption: it.image_title || it.title };
-  e.sources = [it.source, it.image_source_url ? { title: "Photo source", url: it.image_source_url } : null].filter(x => x && x.url);
+              eyebrow: [it.kind === "image" ? (it.label || "Real photo") : "", it.by].filter(Boolean).join(" · ") };
+  if (it.kind === "image" && it.url) e.photo = { src: it.url, alt: it.image_alt || it.title, credit: imageCredit(it), caption: it.image_title || it.title,
+                                                ...(it.label ? { creditLabel: it.label } : {}) };
+  e.sources = [it.source, it.image_source_url ? { title: `${it.label || "Photo"} source`, url: it.image_source_url } : null].filter(x => x && x.url);
   return e;
 }
 

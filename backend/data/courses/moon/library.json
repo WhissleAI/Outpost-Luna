@@ -1,0 +1,36 @@
+{
+ "_note": "The Moon's open-data map layers (docs/OPEN_DATA.md). The Moon's Library itself is built from code (hardware, crew audio, the nasa_views pack); this file adds whole-globe maps that the Library's Maps button shows in place of the LRO photo map. Files in media/ (built by scripts/open_data_build.py moon), credits in media/credits.json, sources in sources.json. backend/app/course_library.py checks it and serves it at GET /api/course/library.",
+ "format": "outpost-luna-library",
+ "version": 1,
+ "title": "Library",
+ "layers": [
+  {
+   "id": "age",
+   "title": "Age",
+   "file": "moon_age.jpg",
+   "say": "Colours show how old the ground is. Purple and blue highlands are oldest. Gold lava plains and pale craters came later.",
+   "source": "usgs_unified_geology",
+   "legend": [
+    {"color": "#7848a0", "label": "Pre-Nectarian", "note": "oldest, over 3.9 billion years"},
+    {"color": "#466ecd", "label": "Nectarian", "note": "about 3.9 billion years"},
+    {"color": "#3caa96", "label": "Imbrian", "note": "about 3.85 to 3.2 billion years"},
+    {"color": "#d7b446", "label": "Eratosthenian", "note": "about 3.2 to 1.1 billion years"},
+    {"color": "#ffecaa", "label": "Copernican", "note": "youngest, under about 1.1 billion years"}
+   ]
+  },
+  {
+   "id": "height",
+   "title": "Height",
+   "file": "moon_height.jpg",
+   "say": "Colours show height, from purple for low ground to red for high ground. The far side stands higher than the near side.",
+   "source": "usgs_lola_relief",
+   "legend": [
+    {"color": "#7a3cc8", "label": "Lowest"},
+    {"color": "#3c78dc", "label": "Low"},
+    {"color": "#46c8a0", "label": "Middle"},
+    {"color": "#e6b43c", "label": "High"},
+    {"color": "#dc3c32", "label": "Highest"}
+   ]
+  }
+ ]
+}

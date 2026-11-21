@@ -1,0 +1,22 @@
+{
+ "_note": "Checked sources for the Moon's open-data layers (docs/OPEN_DATA.md). status: supported = page opened and the quote is on it; search = from search results, page not opened.",
+ "checked": "2026-11-20",
+ "sources": [
+  {
+   "id": "usgs_unified_geology",
+   "status": "supported",
+   "title": "Unified Geologic Map of the Moon, 1:5M, 2020 (USGS Astrogeology Science Center)",
+   "url": "https://astrogeology.usgs.gov/search/map/unified_geologic_map_of_the_moon_1_5m_2020",
+   "quote": "This new work represents a seamless, globally consistent, 1:5,000,000-scale geologic map ... Use Constraints CC0, but please cite authors ... Temporal Keywords Copernican, Eratosthenian, Imbrian, Nectarian, Pre-Nectarian",
+   "note": "Authors: Corey M. Fortezzo (USGS), Paul D. Spudis (LPI), Shannon L. Harrel (SD Mines), 2020. The raster release (unified_geologic_map_of_the_moon_raster.zip, 64 px/degree, Dn_GeologicUnit_RGBcolor.csv) gives each of the 49 units its Unit_Age. Period ages on the legend (status search, not opened: the PDF is 125 MB): Wilhelms (1987), The Geologic History of the Moon, USGS Professional Paper 1348, https://pubs.usgs.gov/pp/1348/report.pdf (Eratosthenian 3.2-1.1 aeons ago, Copernican 1.1 aeons ago to present; Nectarian from about 3.92, Imbrian 3.85-3.2). Boundary ages are debated (other tables put the Copernican base near 0.8), so the legend says 'about'."
+  },
+  {
+   "id": "usgs_lola_relief",
+   "status": "supported",
+   "title": "Moon LRO LOLA Color Shaded Relief 388m v4 (USGS Astrogeology Science Center)",
+   "url": "https://astrogeology.usgs.gov/search/map/moon_lro_lola_color_shaded_relief_388m_v4",
+   "quote": "Use Constraints Public domain",
+   "note": "Made by USGS for the Lunar Mapping and Modeling Project from the LRO Lunar Orbiter Laser Altimeter DEM (NASA Goddard Space Flight Center). The app's copy is the USGS map service's LOLA_color layer (planetarymaps.usgs.gov, moon_simp_cyl.map) at 4096 x 2048. 'The far side stands higher': visible on the map itself (the far-side highlands are orange and red, the near-side maria blue)."
+  }
+ ]
+}

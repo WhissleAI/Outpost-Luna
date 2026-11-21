@@ -102,3 +102,16 @@ test("the Moon is untouched: main.js installs the course Library only off the Mo
   for (const f of ["setOverlay", "setMarkers", "setMoonContext"]) assert.match(globe, new RegExp(`function ${f}\\(`));
   assert.doesNotMatch(main.slice(0, main.indexOf("const fieldLib")), /setOverlay|setMarkers|setMoonContext/);
 });
+
+test("[open data] a labelled picture (a chart) says what it is and is never a place's photo", () => {
+  const raw = structuredClone(RAW);
+  raw.shelves.push({ id: "climate", title: "Climate record", by: "NOAA", items: [
+    { id: "rings_chart", kind: "image", label: "Chart", title: "Tree rings", place: "mesa_verde", url: "/api/courses/archaeology/media/co652_chart.png",
+      image_credit: "NOAA NCEI", image_licence: "Open data", image_source_url: "https://www.ncei.noaa.gov/x" }] });
+  const L = F.normalizeLibrary(raw);
+  const e = F.itemEntry(L.items.get("rings_chart"));
+  assert.equal(e.eyebrow, "Chart · NOAA");
+  assert.equal(e.photo.creditLabel, "Chart");
+  assert.equal(e.sources.at(-1).title, "Chart source");
+  assert.ok(!F.picturesOf(L, "mesa_verde").some(p => p.id === "rings_chart"));
+});

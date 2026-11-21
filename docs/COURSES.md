@@ -628,6 +628,15 @@ Client: `frontend/src/field_library.js` (+ `globe.js setOverlay / setMarkers / s
 `frontend/tests/e2e/field_library_e2e.py` (Archaeology at 1440x900 and 1280x720; `--moon-base` checks the Moon's
 Library is unchanged).
 
+**Open data beyond NASA** (`docs/OPEN_DATA.md`).
+- Archaeology adds a Sentinel-2 shelf (ESA Copernicus, true colour and near-infrared) and a Climate record shelf
+  (NOAA's CO652 tree rings as a chart).
+- A library may now list `layers`: whole-globe maps that the Library's **Maps** button swaps onto the globe
+  (`frontend/src/map_layers.js`, `globe.setBaseMap`).
+- The Moon's `library.json` has layers only: Age (USGS Unified Geologic Map, CC0) and Height (USGS LOLA colour relief,
+  public domain). It ships in the app.
+- Tests: `backend/tests/test_open_data.py`, `frontend/tests/map_layers.test.js`, and the two runs of `field_library_e2e.py`.
+
 ---
 
 ## 5. Phased plan
