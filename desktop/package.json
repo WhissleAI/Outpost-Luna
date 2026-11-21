@@ -1,7 +1,7 @@
 {
   "name": "outpost-luna-desktop",
   "productName": "Outpost Luna",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "description": "Outpost Luna as one offline desktop app: Electron shell supervising the backend and the model server, every model bundled.",
   "author": "Whissle Inc.",
