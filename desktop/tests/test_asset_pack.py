@@ -66,3 +66,29 @@ def test_upload_assets_github_set_mirror_replaces_only_its_own_release_links():
     e = {"mirrors": ["https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v1/x.tar", "https://example.org/x.tar"]}
     G.set_mirror(e, G.mirror_url(G.REPO, "assets-v2", "x.tar"), G.REPO)
     assert e["mirrors"] == [G.mirror_url(G.REPO, "assets-v2", "x.tar"), "https://example.org/x.tar"]
+
+
+
+def test_course_videos_ship_the_pack_copy_checked_against_videos_json(tmp_path, monkeypatch):
+    """COURSE_PACK_VIDEOS=1: an item with a `pack` copy (the re-encode) goes in as video/<id>.mp4 instead of the NASA
+    file, only if it matches pack.bytes + pack.sha256; the NASA original is never downloaded for it."""
+    import hashlib
+    import json
+    import pytest
+    copy = b"lighter re-encode"
+    v = {"id": "arch_x", "source": "nasa_file", "prefetch": True, "file_url": "https://images-assets.nasa.gov/x.mp4",
+         "bytes": 999, "sha256": "0" * 64,
+         "pack": {"derive": "-c:v libx264", "bytes": len(copy), "sha256": hashlib.sha256(copy).hexdigest()}}
+    vfile = tmp_path / "videos.json"
+    vfile.write_text(json.dumps([v]))
+    monkeypatch.setattr(AP, "OUT", tmp_path / "out")
+    monkeypatch.setattr(AP, "fetch", lambda url, dst, want_sha=None: pytest.fail(f"downloaded {url}"))
+    monkeypatch.setenv("VIDEO_LOCAL_SRC", str(tmp_path / "local"))
+    (tmp_path / "local/pack").mkdir(parents=True)
+    with pytest.raises(SystemExit, match="pack copy"):
+        AP.course_videos("archaeology", vfile)            # not made yet: a clear error, never the original
+    (tmp_path / "local/pack/arch_x.mp4").write_bytes(b"something else")
+    with pytest.raises(SystemExit, match="pack copy"):
+        AP.course_videos("archaeology", vfile)            # not the pinned copy
+    (tmp_path / "local/pack/arch_x.mp4").write_bytes(copy)
+    assert AP.course_videos("archaeology", vfile) == [("video/arch_x.mp4", tmp_path / "local/pack/arch_x.mp4")]

@@ -602,6 +602,11 @@ folder (no course ids in code):
   merged into `/api/video/catalog` only while that course is active. They stream through the backend on first play
   and are pinned for the background download; an installed course pack may carry them as `video/<id>.mp4|.vtt|.jpg`
   (`scripts/asset_pack.py` with `COURSE_PACK_VIDEOS=1`), which the backend copies into the cache instead.
+  - The pack carries lighter re-encodes, as the video pack does: each item's `pack` = `{derive, bytes, sha256}`
+    (`uv run python tools/video_catalog.py --pack --catalog data/courses/archaeology/videos.json` in `backend/`,
+    written to `VIDEO_LOCAL_SRC/pack/<id>.mp4`). `app/video.py pack_copy_ok` accepts the NASA file or that copy.
+    Captions and posters are NASA's own; the re-encode keeps the timing. Archaeology v2 (`course_archaeology` version
+    2): H.264 CRF 28, 640x360, AAC copied, 147 MB of video down to 32 MB, a 38 MB pack.
 
 Archaeology's library: Earth from orbit (Landsat 8 Mesa Verde, two ISS astronaut photos of the Colorado Plateau, the
 Blue Marble), Mesa Verde sites (seven NPS photos), lidar (two USGS 3DEP hillshades), Watch (NASA: remote sensing from the
