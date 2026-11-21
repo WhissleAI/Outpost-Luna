@@ -379,15 +379,26 @@ def src_course(f: Path):
 def course_videos(cid: str, vfile: Path) -> list:
     """COURSE_PACK_VIDEOS=1: the course's pinned (prefetch) NASA videos as video/<id>.mp4 (+ .vtt captions, .jpg poster),
     downloaded from NASA and checked against videos.json's sha256. The backend plays them from <pack>/video
-    (app/video.py course_video_dir). Off by default: they add their sizes (bytes) to the course pack."""
+    (app/video.py course_video_dir). Off by default: they add their sizes (bytes) to the course pack.
+    An item with a `pack` copy (the lighter re-encode, as in the video pack: `tools/video_catalog.py --pack --catalog
+    <videos.json>` writes it to VIDEO_LOCAL_SRC/pack/<id>.mp4) ships that copy instead; app/video.py pack_copy_ok
+    accepts it by pack.bytes + pack.sha256. Captions and poster are NASA's own (same timing: the re-encode keeps it)."""
     sys.path.insert(0, str(ROOT / "backend"))
     from app.video import has_cues, srt_to_vtt
     stage, out = OUT / f"src-course-{cid}-video", []
+    local = Path(os.environ.get("VIDEO_LOCAL_SRC", ROOT / "backend/data/video/local"))
     for v in json.loads(vfile.read_text(encoding="utf-8")):
         if not (v.get("prefetch") and v.get("source") == "nasa_file"):
             continue
         mp4 = stage / f"{v['id']}.mp4"
-        if not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
+        if v.get("pack"):
+            pk = local / "pack" / mp4.name
+            if not (pk.exists() and pk.stat().st_size == v["pack"].get("bytes") and sha256_file(pk) == v["pack"].get("sha256")):
+                rel = vfile.relative_to(ROOT / "backend") if vfile.is_relative_to(ROOT / "backend") else vfile
+                sys.exit(f"{cid}: {pk} missing or not videos.json's pack copy (sha256): run `uv run python tools/video_catalog.py "
+                         f"--pack --catalog {rel} --only {v['id']}` in backend/")
+            mp4 = pk
+        elif not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
             print(f"  {cid}: downloading video {v['id']} ({v['bytes'] / 1e6:.0f} MB) from NASA", flush=True)
             fetch(v["file_url"], mp4, v["sha256"])
         out.append((f"video/{mp4.name}", mp4))

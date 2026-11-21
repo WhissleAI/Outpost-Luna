@@ -39,7 +39,9 @@ import silent  # noqa: E402,F401
 from silent import LAUNCH_ARGS, silence  # noqa: E402
 
 results: list[tuple[bool, str]] = []
-TAR = "outpost-luna-v2-course_archaeology.tar"
+# the tar the backend looks for in COURSE_PACK_SRC: the manifest entry's file name (a new version is a new name)
+TAR = next(x["file"] for x in json.loads((Path(_d).parents[2] / "desktop/assets.manifest.json").read_text())["assets"]
+           if x["id"] == "course_archaeology")
 
 
 def ok(cond, what):

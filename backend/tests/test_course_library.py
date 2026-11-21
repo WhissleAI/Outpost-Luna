@@ -122,6 +122,24 @@ def test_a_course_pack_can_carry_its_videos(dev, tmp_path, monkeypatch):
     assert video.pack_has(v) and video.availability(v) == "cached"
 
 
+def test_the_course_pack_carries_lighter_copies_the_backend_accepts(dev, tmp_path):
+    """Pack v2 ships re-encodes (videos.json `pack`, tools/video_catalog.py --pack --catalog): pack_copy_ok takes the
+    file by pack.bytes + pack.sha256 (or the NASA original), and nothing else."""
+    for v in VIDS:
+        pk = v["pack"]
+        assert "libx264" in pk["derive"] and "+faststart" in pk["derive"] and "yuv420p" in pk["derive"]
+        assert 0 < pk["bytes"] < v["bytes"] / 2, f"{v['id']}: the pack copy is the lighter one"
+    assert sum(v["pack"]["bytes"] for v in VIDS) < 40_000_000
+    blob = b"pretend re-encode"
+    v = {**video.item("arch_landsat_pushbroom"),
+         "pack": {"derive": "x", "bytes": len(blob), "sha256": __import__("hashlib").sha256(blob).hexdigest()}}
+    f = tmp_path / "arch_landsat_pushbroom.mp4"
+    f.write_bytes(blob)
+    assert video.pack_copy_ok(v, f)
+    f.write_bytes(b"pretend re-encodf")
+    assert not video.pack_copy_ok(v, f), "same size, other bytes: refused"
+
+
 def test_the_pack_manifest_points_at_the_library_and_videos():
     m = json.loads((content.DATA / "courses" / "archaeology.json").read_text())
     pack, _ = courses.to_pack(m)

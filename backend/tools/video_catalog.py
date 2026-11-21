@@ -10,6 +10,9 @@
                                                     # (`pack`: {derive, bytes, sha256}): the NASA file (VIDEO_ORIG_SRC,
                                                     # the dev cache, or nasa.gov; checked against its sha256) re-encoded
                                                     # with pack.derive into LOCAL_DIR/pack/<id>.mp4, bytes + sha256 pinned
+    uv run python tools/video_catalog.py --pack --catalog data/courses/archaeology/videos.json   # a course's own
+                                                    # videos (the same schema; scripts/asset_pack.py COURSE_PACK_VIDEOS=1
+                                                    # puts their pack copies in the course pack)
 
 Never run by the app; a maintainer runs it when the catalog changes. YouTube ids are checked with YouTube's public
 oEmbed endpoint (the uploader must be a NASA channel, or the channel NON_NASA_YOUTUBE names for that id).
@@ -108,8 +111,9 @@ def main() -> int:
     ap.add_argument("--derive", action="store_true", help="rebuild the NASA pack_files from their originals (ffmpeg)")
     ap.add_argument("--pack", action="store_true", help="rebuild the video pack's lighter copies of NASA files (ffmpeg)")
     ap.add_argument("--only", default="", help="--pack: these ids only (comma list)")
+    ap.add_argument("--catalog", default="", help="another file in the catalog's schema (a course's videos.json)")
     a = ap.parse_args()
-    path = video.catalog_path()
+    path = Path(a.catalog) if a.catalog else video.catalog_path()
     items = json.loads(path.read_text(encoding="utf-8"))
     bad = 0
     only = {x for x in a.only.split(",") if x}

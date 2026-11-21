@@ -16,7 +16,12 @@
   "source_page": "https://images.nasa.gov/details/jsc2024m000175-STEMonstrations_Earth_Science_Remote_Sensing_social",
   "bytes": 44162143,
   "sha256": "480eee2b79959467c462c8723e16d9c41d65f0b77a108e1af059407132882af5",
-  "note": "Astronaut Mike Barratt on the space station's Earth-watching sensors (EMIT, GEDI). Lesson: survey."
+  "note": "Astronaut Mike Barratt on the space station's Earth-watching sensors (EMIT, GEDI). Lesson: survey.",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 28 -maxrate 900k -bufsize 1800k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 4 -c:a copy -map_metadata -1 -movflags +faststart",
+   "bytes": 11385740,
+   "sha256": "fe74efc2ef9ad4d7bf629aaf8d925d3b6adab84630f39882413eb214fc3dbb26"
+  }
  },
  {
   "id": "arch_lidar_space",
@@ -35,7 +40,12 @@
   "source_page": "https://images.nasa.gov/details/296_GEDI",
   "bytes": 41677295,
   "sha256": "ed2e9e40e530f4d164a7ba94929dfb3ec628cfb2569e6865ed8e3994dbe5167e",
-  "note": "GEDI times laser pulses from the space station: the same idea as the lidar hillshade in lesson survey."
+  "note": "GEDI times laser pulses from the space station: the same idea as the lidar hillshade in lesson survey.",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 28 -maxrate 900k -bufsize 1800k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 4 -c:a copy -map_metadata -1 -movflags +faststart",
+   "bytes": 12107143,
+   "sha256": "7697c9134701115c4706eec81818cb025159d24093962f8c055ae0cc80ac243b"
+  }
  },
  {
   "id": "arch_tree_ring_drought",
@@ -54,7 +64,12 @@
   "source_page": "https://images.nasa.gov/details/GSFC_20150212_Drought_m11776_21st_Century_1",
   "bytes": 30875439,
   "sha256": "caed345074444fde55b2113563a97d520f1467fb02d40777a2d18fbd6986cf9b",
-  "note": "Tree rings record past droughts in the Southwest (SVS 11776; no music credit). Lessons: dating, mesa_verde."
+  "note": "Tree rings record past droughts in the Southwest (SVS 11776; no music credit). Lessons: dating, mesa_verde.",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 28 -maxrate 900k -bufsize 1800k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 4 -c:a copy -map_metadata -1 -movflags +faststart",
+   "bytes": 5443031,
+   "sha256": "15c53b2c6277ab234ae189e5780c3acc356cdbf8bde5b916ec8c28943bafdc58"
+  }
  },
  {
   "id": "arch_landsat_moon",
@@ -73,7 +88,12 @@
   "source_page": "https://images.nasa.gov/details/GSFC_20140711_Landsat_m11606_Lunar",
   "bytes": 23595132,
   "sha256": "b5da942328f301738e5c9ea4b9dd8467f8623a479d7696fa7bc39f1b244058e2",
-  "note": "Every full Moon, Landsat turns to the Moon to check its camera (SVS 11606; no music credit). The Moon as context."
+  "note": "Every full Moon, Landsat turns to the Moon to check its camera (SVS 11606; no music credit). The Moon as context.",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 28 -maxrate 900k -bufsize 1800k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 4 -c:a copy -map_metadata -1 -movflags +faststart",
+   "bytes": 2247583,
+   "sha256": "98c88c8cfd8209717159442b7858f596b8c7399afafc59b569033895883e9079"
+  }
  },
  {
   "id": "arch_landsat_pushbroom",
@@ -92,6 +112,11 @@
   "source_page": "https://images.nasa.gov/details/GSFC_20171031_Landsat_m12754_pushbroom",
   "bytes": 7219469,
   "sha256": "5b2dc043f5566c2b43d7e31470a20872b46222df6dbc50c9e53bd7899d72e5e4",
-  "note": "Silent animation (SVS 12754): Landsat images Earth in 185 km strips."
+  "note": "Silent animation (SVS 12754): Landsat images Earth in 185 km strips.",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 28 -maxrate 900k -bufsize 1800k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 4 -c:a copy -map_metadata -1 -movflags +faststart",
+   "bytes": 445348,
+   "sha256": "7271b1fa243828fc4af8b535fc2caa2f10296fbad0a1fde7eec92b10f593df59"
+  }
  }
 ]
