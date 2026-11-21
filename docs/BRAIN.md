@@ -191,7 +191,7 @@ education). A school that files a printout still owns that record (FERPA); the s
 
 - **Mission decisions as counts** (shelter on time, readbacks). Debriefs are live only, so a small aggregate like §5
   would keep them.
-- **A teacher roll-up across computers.** Out of scope: nothing leaves the device.
+- **A teacher roll-up across computers** (D7 follow-up, §12).
 
 ## 9. Safety counts, care flags and crew rotation (D1-D4)
 
@@ -288,4 +288,22 @@ trait or a grade (§6b).
 - **Grown-ups see** "Ideas, step by step": per idea, first try / with help / shown and the next review ("Now", a day,
   or "remembered"), and "Remembered after a week or more: 8 of 11 ideas practised." The table says it is what the app
   will do next, not a grade.
+
+## 12. Teacher PIN and the class summary (D7)
+
+- **Teacher PIN** (`frontend/src/teacher_pin.js`, Settings → For grown-ups → Teacher PIN). Optional, per computer, 4
+  to 8 digits typed twice. Once set, the 3-second hold leads to a PIN step before For grown-ups opens (the hold stops a
+  young cadet, not an older one). Stored as a salted SHA-256 hash in `localStorage["outpost-teacher-pin"]`, never the
+  digits, never sent anywhere. Five wrong tries wait 30 seconds. Change or remove it from the same part. Forgotten:
+  clearing the app's data on the computer removes it (`docs/SCHOOL_IT.md`); Start over removes it too.
+- **Class summary** (`frontend/src/class_summary.js`, right after Progress, printable): every cadet on this computer,
+  one row each, in call-sign order, never sorted by a count. Lessons, steps answered, first try, ideas remembered (§11),
+  days practised, filtered words as own (typed + push-to-talk) / heard near the app, kept private, safety notes (the
+  notes themselves stay on each cadet's card). It reads the same stores as Progress, plus
+  `GET /api/brain/class?profiles=p1,p2,...` in one read. "Counts only, never words. Not a ranking, and not for
+  grading."
+- **Follow-up, not built: a roll-up across computers.** Each computer exports a counts-only file (no text, no words,
+  profile ids and call signs only, signed so a hand edit shows), and the teacher imports them on the teacher's
+  computer into the same summary. Nothing reaches Whissle, which keeps Whissle out of FERPA's "school official" role and
+  out of Colorado's contract-provider duties (`docs/DPIA.md` §4). Until then: print each computer's summary.
 
