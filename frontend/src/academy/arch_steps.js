@@ -214,6 +214,7 @@ O.stepRenderers.hillshade = ctx => {
         <figcaption class="ar-hill-cap">
           <span class="f-count" aria-live="polite">${Math.min(found.length, acc.need)} of ${acc.need} found</span>
           ${im.high_url ? `<button type="button" class="a-choice f-chip ar-sun" aria-pressed="${st.sun === "low"}">${icon("sun", { size: 16 })}${st.sun === "low" ? "Low sun" : "High sun"}</button>` : ""}
+          <button type="button" class="f-chip ar-zoom" data-enlarge="step" aria-label="Enlarge the map (taps there count)">${icon("zoom", { size: 16 })}Enlarge</button>
           <span class="ar-credit">${esc(im.credit || "")} ${src(im.source)}</span>
         </figcaption>
       </figure>`,

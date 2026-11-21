@@ -25,6 +25,12 @@ the course's sources.json, the checked quotes). `overlays` drape a media picture
 "Real views" ribbon shows, `home` where the Library's camera starts, `moon` the context Moon in Earth's sky (its line,
 a place and an item to go to; no `moon`, no Moon in the sky).
 
+`docs` ([0.5.6], the owner's playtest of 0.5.5: the NPS rack card was a dead link) are documents a lesson cites, kept in
+the pack so they open in the app, offline: {id, url (the web address the course's sources cite), title, by, pdf (the
+original file, kept as it was), pages: [{file, alt}] (each page rendered to a picture, shown in the app's picture
+viewer)}. Every file credited like any other media (licence_class pd | cc0 | by | by-sa). A link to `url` anywhere in the
+app opens the pages (frontend/src/links.js); the rest of the web opens in the system browser.
+
 `layers` (docs/OPEN_DATA.md) are whole-globe maps the Library can show in place of the body's own: each a media picture
 (equirectangular, -180..180, 2:1) with a title, a line to say, a legend ([{color: "#rrggbb", label, note?}]) and a
 `source`. The Moon has layers and no shelves (its Library is built from code); a library needs shelves or layers.
@@ -202,6 +208,37 @@ def validate(lib, files: dict) -> list[str]:
             out.append(f"{at}: {f}'s credit needs credit, licence, an https source_url and alt")
         elif licence_problem(cred[f]):
             out.append(f"{at}: {f}: {licence_problem(cred[f])}")
+    docs = lib.get("docs")
+    if docs is not None and not isinstance(docs, list):
+        out.append("docs: a list")
+    dseen, durls = set(), set()
+    for k, d in enumerate(docs if isinstance(docs, list) else []):
+        at = f"docs[{k}]"
+        if not isinstance(d, dict) or not ID.match(str(d.get("id", ""))) or d["id"] in dseen:
+            out.append(f"{at}: needs a unique lower_snake_case id")
+            continue
+        dseen.add(d["id"])
+        u = str(d.get("url") or "")
+        if not u.startswith("https://") or u in durls:
+            out.append(f"{at}: needs the https url its sources cite (once)")
+        durls.add(u)
+        if not d.get("title"):
+            out.append(f"{at}: needs a title")
+        pages = d.get("pages")
+        if not isinstance(pages, list) or not pages or len(pages) > 40:
+            out.append(f"{at}: pages: 1-40 pictures [{{file, alt}}]")
+            pages = []
+        for j, pg in enumerate(pages):
+            f = pg.get("file") if isinstance(pg, dict) else None
+            if not isinstance(f, str) or not f.endswith((".jpg", ".png")):
+                out.append(f"{at}.pages[{j}]: a .jpg or .png")
+            else:
+                need_file(f"{at}.pages[{j}]", f)
+        if d.get("pdf") is not None:
+            if not str(d["pdf"]).endswith(".pdf"):
+                out.append(f"{at}: pdf: the original .pdf")
+            else:
+                need_file(f"{at}.pdf", d["pdf"])
     layers = lib.get("layers")
     if layers is not None and (not isinstance(layers, list) or not layers):
         out.append("layers: a non-empty list")
@@ -360,6 +397,12 @@ def resolve(lib: dict, files: dict, course_id: str) -> dict:
             o["source"] = {"title": s.get("title"), "url": s.get("url")}
         return o
 
+    def doc(d):
+        first = credit(d["pages"][0]["file"])
+        return {"id": d["id"], "url": d["url"], "title": d["title"], "by": d.get("by") or "",
+                "credit": first.get("credit"), "licence": first.get("licence"),
+                "pages": [{"url": url(pg["file"]), "alt": pg.get("alt") or credit(pg["file"]).get("alt") or ""} for pg in d["pages"]]}
+
     return {
         "course": course_id, "title": lib.get("title") or "Library", "intro": lib.get("intro") or "",
         "home": lib.get("home"), "tour": lib.get("tour"), "chips": lib.get("chips") or [],
@@ -368,6 +411,7 @@ def resolve(lib: dict, files: dict, course_id: str) -> dict:
         "shelves": [{"id": sh["id"], "title": sh["title"], "by": sh.get("by") or "",
                      "items": [item(it) for it in sh.get("items") or []]} for sh in lib.get("shelves") or []],
         "layers": [layer(ly) for ly in lib.get("layers") or []],
+        "docs": [doc(d) for d in lib.get("docs") or []],
     }
 
 

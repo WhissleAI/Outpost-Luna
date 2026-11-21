@@ -116,9 +116,11 @@ def test_manifest_entries_for_moon_views_and_the_archaeology_pack():
     assert {f["path"] for f in mv_["files"]} >= {"index.json", "NOTICE", "models/columbia.glb", "layers/rock_ages.png"}
     assert mv_["size"] < 30_000_000
     arch = by["course_archaeology"]
-    assert arch["version"] == "6" and arch["min_version"] == "6" and arch["min_app"] == "0.5.3"
-    assert arch["fallback"]["kind"] == "pack" and arch["fallback"]["version"] == "5", "older apps keep v5"
-    assert {f["path"] for f in arch["files"]} >= {"media/drought_mesa_verde.json", "media/s2_mesa_verde.jpg", "video/arch_lidar_space.mp4"}
+    # [0.5.6] v7: v6 plus the NPS rack card (library docs) and the seamless region overlay; v6 is the pack fallback
+    assert arch["version"] == "7" and arch["min_version"] == "7" and arch["min_app"] == "0.5.3"
+    assert arch["fallback"]["kind"] == "pack" and arch["fallback"]["version"] == "6", "the fallback is the published v6"
+    assert {f["path"] for f in arch["files"]} >= {"media/drought_mesa_verde.json", "media/s2_mesa_verde.jpg", "video/arch_lidar_space.mp4",
+                                                  "media/nps_rack_artifacts_p1.jpg", "media/nps_rack_artifacts.pdf"}
     assert arch["size"] - arch["fallback"]["size"] < 25_000_000
     assert (ROOT / "site/assets/manifest.json").read_text() == (ROOT / "desktop/assets.manifest.json").read_text()
     main_js = (ROOT / "desktop/main/main.js").read_text()

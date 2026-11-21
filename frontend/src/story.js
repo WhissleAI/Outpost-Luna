@@ -379,6 +379,7 @@ export const SCHOOL = {
   lessonsCount: (n, of) => `${n} of ${of} lessons`,
   /** [arch QA] one count pin for lessons that share a place (zoomed out): its label for screen readers */
   clusterPin: n => `${n} lessons here. Tap to zoom in.`,
+  clusterDone: d => `${d} ${d === 1 ? "patch" : "patches"} earned here.`,   // [0.5.6] the count pin wears its earned patches
   /** [audit2] "What do I do?" on the map names the button the card really shows. */
   mapHelp: (cta, title, ride) => (ride ? `Tap ${cta}. One solo shift, then you take command.` : `Tap ${cta} to begin ${title}.`),
 };

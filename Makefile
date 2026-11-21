@@ -40,6 +40,12 @@ moon-views:      ## Open Moon data asset: Apollo photos, USGS rock ages, Smithso
 arch-open-data:  ## Archaeology open data (NOAA drought, ITRDB rings, p3k14c, Sentinel-2, Natural Earth) -> backend/data/courses/archaeology/media (scripts/arch_open_data_build.py)
 	uv run --no-project --with pillow --with pyshp --with rdata --with pandas --with rasterio --with certifi python -I scripts/arch_open_data_build.py
 
+arch-region:     ## Archaeology: the seamless Four Corners overlay (USGS detail on one seamless colour) -> courses/archaeology/media/four_corners_region.jpg (scripts/arch_region_overlay.py)
+	uv run --no-project --with pillow --with numpy python -I scripts/arch_region_overlay.py
+
+arch-docs:       ## Archaeology: documents the lessons cite, kept in the pack (NPS rack card PDF + page pictures; needs pdftoppm) (scripts/arch_docs_build.py)
+	python3 -I scripts/arch_docs_build.py
+
 media-desktop:   ## Trimmed mono crew clips for the desktop installer -> backend/data/media/desktop (after `make data`)
 	cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media
 
@@ -207,4 +213,4 @@ smoke-installed: ## Smoke the INSTALLED app without touching your data: launches
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check smoke-installed site-physics site-layers nasa-views open-data moon-views arch-open-data ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views open-data moon-views arch-open-data arch-region arch-docs ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop

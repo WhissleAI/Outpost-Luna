@@ -259,8 +259,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       });
       rgroups.forEach(g => {
         const n = g.members.length, nx = g.members.some(s => s.el.classList.contains("is-next"));
-        g.el.innerHTML = `<b>${n}</b>`; g.el.classList.toggle("is-next", nx);
-        g.el.setAttribute("aria-label", opts.cluster && opts.cluster.label ? opts.cluster.label(n) : `${n} lessons here. Zoom in`);
+        // [0.5.6] the count pin wears the spot's earned patches (the newest on top, up to three): zoomed out, or while
+        // the map flies in, the nine Mesa Verde pins fold into it, and a plain number made the patch just earned vanish
+        const won = g.members.filter(s => s.done).map(s => s.el.querySelector(".pin-badge svg")).filter(Boolean).slice(-3);
+        g.el.innerHTML = `${won.length ? `<span class="rc-patches" aria-hidden="true">${won.map(v => `<span class="rc-patch">${v.outerHTML}</span>`).join("")}</span>` : ""}<b>${n}</b>`;
+        g.el.classList.toggle("is-next", nx); g.el.classList.toggle("has-done", won.length > 0); g.el.dataset.done = String(g.members.filter(s => s.done).length);
+        const lbl = opts.cluster && opts.cluster.label ? opts.cluster.label(n) : `${n} lessons here. Zoom in`;
+        g.el.setAttribute("aria-label", won.length && opts.cluster && opts.cluster.doneLabel ? `${lbl} ${opts.cluster.doneLabel(+g.el.dataset.done)}` : lbl);
       });
       rdone = done; rlayer.hidden = !rstops.length;
     },
@@ -363,6 +368,16 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     /** The marks' text, for tests and the a11y "where am I" line. */
     get labels() { return gmarks.filter(m => m.label).map(m => m.label); },
   };
+  /** [0.5.6] Is the highlighted place already named on the globe by a guide mark or a course marker? (same name, or
+   *  a mark within ~5 km of it): then the highlight's own label hides, so a place is never labelled twice. Pure on
+   *  the marks. */
+  const sameSpot = (a, b) => Math.abs(a.lat - b.lat) < 0.05 && Math.abs(a.lon - b.lon) < 0.05;
+  function namedElsewhere(f) {
+    if (!f) return false;
+    if (!glayer.hidden && gmarks.some(m => m.label && (m.label === f.name || sameSpot(m, f)))) return true;
+    return mlayer2.style.display !== "none" && cmarks.some(c => c.m.label && !c.el.classList.contains("no-label") && !c.el.classList.contains("is-hidden")
+      && (c.m.label === f.name || sameSpot(c.m, f)));
+  }
   function tickGuide() {
     if (glayer.hidden) return;
     const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
@@ -550,7 +565,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       const p = ll2v(sel.lat, sel.lon, R * 1.01), facing = p.clone().normalize().dot(camera.position.clone().normalize()) > 0.15;
       tmp.copy(p).project(camera);
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
-      label.style.opacity = facing ? 1 : 0;
+      // [0.5.6] one name per place: a guide mark (or a course marker) already naming the highlighted place keeps its
+      // label and this one steps aside (Lesson 1 showed "Mesa Verde National Park" twice, above and below the ring)
+      label.style.opacity = facing && !namedElsewhere(sel) ? 1 : 0;
     }
     tickMission(); tickRoute(); tickGuide(); tickViews(now);
     if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
@@ -584,16 +601,32 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   /** Drape `url` (an equirectangular picture) between bounds {west, south, east, north} (degrees). Allows a closer zoom,
    *  since the picture is far sharper than the whole-globe map there. */
   // lift: how far above the surface (a map layer sits above the course's picture); opacity: a see-through layer
-  function setOverlay({ url, bounds: b, minDistance = 1.05, lift = 1.0006, opacity = 1 } = {}) {
+  // feather: [0.5.6] the picture's edges fade out over this fraction of its size (0 = a hard square), so a regional
+  // picture reads as a deliberate inset rather than a pasted square
+  function setOverlay({ url, bounds: b, minDistance = 1.05, lift = 1.0006, opacity = 1, feather = 0 } = {}) {
     if (!url || !b) return null;
     const t = new THREE.TextureLoader().load(url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const D = Math.PI / 180;
     // three's sphere: phi = azimuth = (lon + 180)°, theta = polar = (90 - lat)° (the same frame as ll2v)
     const g = new THREE.SphereGeometry(R * lift, 64, 48, (b.west + 180) * D, (b.east - b.west) * D, (90 - b.north) * D, (b.north - b.south) * D);
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0, transparent: true, opacity, depthWrite: opacity >= 1 }));
+    const alphaMap = feather > 0 ? featherMap(feather) : null;
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0, transparent: true, opacity, alphaMap, depthWrite: opacity >= 1 && !alphaMap }));
+    m.userData.feather = feather;
     scene.add(m); overlays.push(m);
     controls.minDistance = Math.min(controls.minDistance, minDistance);
     return m;
+  }
+  /** [0.5.6] An alpha map (green channel) that is 1 inside and eases to 0 over `f` of the width at every edge. */
+  function featherMap(f) {
+    const n = 128, c = document.createElement("canvas"); c.width = c.height = n;
+    const ctx = c.getContext("2d"), im = ctx.createImageData(n, n);
+    const ease = v => { const x = Math.max(0, Math.min(1, v / f)); return x * x * (3 - 2 * x); };
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const u = (x + 0.5) / n, v = (y + 0.5) / n, a = Math.round(255 * ease(Math.min(u, 1 - u)) * ease(Math.min(v, 1 - v))), k = (y * n + x) * 4;
+      im.data[k] = im.data[k + 1] = im.data[k + 2] = a; im.data[k + 3] = 255;
+    }
+    ctx.putImageData(im, 0, 0);
+    return new THREE.CanvasTexture(c);
   }
   // [open data] map layers (map_layers.js): another whole-globe map (an equirectangular picture, -180..180) in place of the
   // body's own, e.g. the Moon's age (USGS geologic map) or height (LOLA). null = the body's own map again. While a layer is

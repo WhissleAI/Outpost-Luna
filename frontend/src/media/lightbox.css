@@ -1,0 +1,51 @@
+/* [0.5.6] The picture viewer (media/lightbox.js): a lesson picture, the lidar map (live) or a bundled document, big. */
+.lbx{position:fixed;inset:0;z-index:var(--z-modal,50);display:grid;grid-template-rows:auto 1fr auto;gap:var(--space-2,8px);
+  padding:var(--space-3,12px) var(--space-4,16px);background:rgba(5,7,13,.94);color:var(--color-on-space,#f3f5f8);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.lbx-head{display:flex;align-items:center;gap:var(--space-3,12px);min-height:44px}
+.lbx-head h2{margin:0;font-size:var(--text-md,16px);font-weight:var(--weight-semibold,600);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbx-count{font-size:var(--text-sm,14px);color:var(--color-on-space-2,#aeb6c4);font-variant-numeric:tabular-nums;flex:1}
+.lbx-tools{display:flex;align-items:center;gap:6px}
+.lbx-btn,.lbx-close{min-width:40px;height:40px;padding:0 12px;border-radius:var(--radius-full,999px);border:1px solid var(--color-glass-line,rgba(243,245,248,.18));
+  background:rgba(243,245,248,.06);color:inherit;font:inherit;font-size:var(--text-md,16px);cursor:pointer}
+.lbx-btn:hover,.lbx-close:hover{background:rgba(243,245,248,.14)}
+.lbx-btn:focus-visible,.lbx-close:focus-visible,.lbx-view:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 3px #8DB2FF)}
+.lbx-btn[disabled]{opacity:.35;cursor:default}
+.lbx-btn[hidden]{display:none}
+.lbx-pct{min-width:48px;text-align:center;font-size:var(--text-sm,14px);font-variant-numeric:tabular-nums;color:var(--color-on-space-2,#aeb6c4)}
+.lbx-close{display:inline-flex;align-items:center;gap:6px;font-weight:var(--weight-semibold,600);background:var(--color-on-space,#f3f5f8);color:#05070d;border-color:transparent}
+.lbx-close:hover{background:#fff}
+.lbx-close span{font-size:22px;line-height:1}
+.lbx-view{position:relative;overflow:hidden;border-radius:var(--radius-md,10px);background:rgba(0,0,0,.35);touch-action:none;cursor:zoom-in;min-height:0}
+.lbx.is-zoomed .lbx-view{cursor:grab}
+.lbx.is-zoomed .lbx-view:active{cursor:grabbing}
+.lbx.is-live .lbx-view{cursor:default}
+.lbx-canvas{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.lbx-canvas>img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.lbx-foot{display:flex;align-items:center;gap:var(--space-3,12px);min-height:40px}
+.lbx-cap{flex:1;margin:0;font-size:var(--text-sm,14px);line-height:1.4;color:var(--color-on-space-2,#aeb6c4)}
+.lbx-cap small{display:inline-block;margin-left:6px;opacity:.85}
+/* the live lidar map inside: the step's own figure, big; its Enlarge button is this viewer */
+.lbx .ar-hill{margin:0}
+.lbx .ar-zoom{display:none}
+.lbx .ar-hill-img{cursor:crosshair}
+body.has-lightbox{overflow:hidden}
+
+/* the lesson card's pictures say they can be enlarged: a corner button (keyboard and voice-bar users) and the picture */
+.zoomable{position:relative}
+.zoomable img{cursor:zoom-in}
+.zoom-btn{position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border-radius:var(--radius-full,999px);
+  border:1px solid rgba(243,245,248,.35);background:rgba(5,7,13,.72);color:#f3f5f8;font:inherit;font-size:var(--text-xs,12px);font-weight:var(--weight-semibold,600);cursor:pointer}
+.zoom-btn:hover{background:rgba(5,7,13,.9)}
+.zoom-btn:focus-visible{outline:none;box-shadow:var(--focus-ring,0 0 0 3px #8DB2FF)}
+.zoom-btn svg{width:14px;height:14px}
+
+/* links: a bundled document opens here (a page icon); any other web link says it opens the browser (an arrow) */
+a.is-local-doc::after{content:"";display:inline-block;width:.85em;height:.85em;margin-left:4px;vertical-align:-1px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M4 1.5h5.5L13 5v9.5H4z'/%3E%3Cpath d='M9.5 1.5V5H13M6 8.5h4.5M6 11h4.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M4 1.5h5.5L13 5v9.5H4z'/%3E%3Cpath d='M9.5 1.5V5H13M6 8.5h4.5M6 11h4.5'/%3E%3C/svg%3E") center/contain no-repeat}
+a.is-web::after{content:"";display:inline-block;width:.7em;height:.7em;margin-left:3px;vertical-align:0;background:currentColor;opacity:.8;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4.5 2H10v5.5M10 2 2 10'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M4.5 2H10v5.5M10 2 2 10'/%3E%3C/svg%3E") center/contain no-repeat}
+@media (max-width:720px){.lbx-head h2{font-size:var(--text-sm,14px)}.lbx-fit{display:none}}
+@media (prefers-reduced-motion:reduce){.lbx-canvas{will-change:auto}}

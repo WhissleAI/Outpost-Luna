@@ -63,7 +63,12 @@ export function normalizeLibrary(raw) {
   return { course: raw.course, title: raw.title || "Library", intro: raw.intro || "", home: raw.home || null,
            tour: raw.tour && Array.isArray(raw.tour.stops) ? raw.tour : null, chips: raw.chips || [], overlays, shelves, items,
            featured: Array.isArray(raw.featured) ? raw.featured.filter(id => items.has(id)) : [],
-           moon: raw.moon && raw.moon.say ? raw.moon : null };
+           moon: raw.moon && raw.moon.say ? raw.moon : null, docs: normalizeDocs(raw.docs) };
+}
+/** [0.5.6] The documents the course keeps in its pack (links.js opens them in the app): our own page urls only. Pure. */
+export function normalizeDocs(raw) {
+  return (Array.isArray(raw) ? raw : []).map(d => ({ ...d, pages: (d && Array.isArray(d.pages) ? d.pages : []).map(p => ({ ...p, url: safeUrl(p && p.url) })).filter(p => p.url) }))
+    .filter(d => d && typeof d.url === "string" && /^https:\/\//.test(d.url) && d.title && d.pages.length);
 }
 
 /** One credit line for a picture: "NASA (…) · Public domain (US Government work)". Pure. */
@@ -144,7 +149,7 @@ export const legendHtml = L => `<ul class="flv-legend" aria-label="Map key">${L.
  * runTour(ids, intro, {title}), goLibrary(), mapUrl (the globe's own map), fetchFn}. -> {ready: Promise<lib|null>, enter(), placeEntry(f), openItem(id),
  * tour(), get lib}
  */
-export function installFieldLibrary({ stage, chipsEl, globe, card, places, placeById, say = () => {}, openVideo, runTour, goLibrary = () => {}, mapUrl = "", fetchFn = (u) => fetch(u) }) {
+export function installFieldLibrary({ stage, chipsEl, globe, card, places, placeById, say = () => {}, openVideo, runTour, goLibrary = () => {}, mapUrl = "", fetchFn = (u) => fetch(u), onDocs = null }) {
   let lib = null;
   const pageOf = new Map();   // place id -> which of its photos the card shows (More photos steps through them)
   const panel = document.createElement("aside");
@@ -312,8 +317,9 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
   const ready = Promise.resolve().then(() => fetchFn(LIBRARY_API)).then(r => (r && r.ok ? r.json() : null)).catch(() => null).then(raw => {
     lib = normalizeLibrary(raw);
     if (!lib) return null;
-    lib.overlays.forEach(o => globe.setOverlay && globe.setOverlay(o));
+    lib.overlays.forEach(o => globe.setOverlay && globe.setOverlay({ feather: 0.07, ...o }));   // [0.5.6] a feathered inset, not a pasted square
     if (globe.setMarkers) globe.setMarkers(markersFor(lib, places), onMarker);
+    if (onDocs) onDocs(lib.docs);   // [0.5.6] a link to a document the pack keeps opens it here (links.js)
     if (lib.moon && globe.setMoonContext) globe.setMoonContext({ onPick: () => { if (document.body.dataset.mode === "cadet") moonCard(); } });
     draw(); drawRibbon(); drawChips();
     panel.hidden = false;

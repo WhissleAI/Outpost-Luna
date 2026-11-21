@@ -151,9 +151,10 @@
   "alt": "Aerial view of the Four Corners region: the canyon-cut Mesa Verde plateau, Sleeping Ute Mountain, farm fields and the San Juan River.",
   "width": 2000,
   "height": 1394,
-  "bytes": 916159,
-  "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660",
-  "licence_class": "pd"
+  "bytes": 702500,
+  "sha256": "9cfb60e2e0eb3ab921eca060faf974d38a56c203659d29744b89be4f499e4453",
+  "licence_class": "pd",
+  "note": "Built by scripts/arch_region_overlay.py: the fine detail of the 2,000 px USGS export (per state tile) on the colour of the same service's seamless 500 px picture of the same ground (no seam at 37 N / 109.05 W)."
  },
  {
   "file": "iss_wupatki.jpg",
@@ -334,5 +335,38 @@
   "sha256": "e27b37c36bec338e15f22c66d773aa4d25c8790eb88c300f61c74cec01b7a99e",
   "licence_class": "by",
   "licence_evidence": "https://www.ncei.noaa.gov/access/paleo-search/study/19080"
+ },
+ {
+  "file": "nps_rack_artifacts.pdf",
+  "title": "What If I Find an Artifact? (NPS Archeology Program), the original PDF",
+  "credit": "National Park Service, Archeology Program (NPS photos)",
+  "licence": "Public domain (US Government work, 17 U.S.C. 105; nps.gov/aboutus/disclaimer.htm). The NPS Arrowhead is a registered mark, shown only as part of the unmodified card.",
+  "source_url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf",
+  "alt": "Page 1 of the NPS rack card What If I Find an Artifact?: what an artifact is; leave it be; document the location; alert a park ranger. Photo: visitors helping archeologists at a dig.",
+  "bytes": 328474,
+  "sha256": "97c727921eefc92d902b521c4bae9848d8113b623b84ab849f4009671cbd34a5",
+  "licence_class": "pd"
+ },
+ {
+  "file": "nps_rack_artifacts_p1.jpg",
+  "title": "What If I Find an Artifact? (NPS Archeology Program), page 1",
+  "credit": "National Park Service, Archeology Program (NPS photos)",
+  "licence": "Public domain (US Government work, 17 U.S.C. 105; nps.gov/aboutus/disclaimer.htm). The NPS Arrowhead is a registered mark, shown only as part of the unmodified card.",
+  "source_url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf",
+  "alt": "Page 1 of the NPS rack card What If I Find an Artifact?: what an artifact is; leave it be; document the location; alert a park ranger. Photo: visitors helping archeologists at a dig.",
+  "bytes": 283699,
+  "sha256": "689d84520c57588751f7a7e12c01a4c50d6f2c0005ccfac7d0aab5e14fcbbc06",
+  "licence_class": "pd"
+ },
+ {
+  "file": "nps_rack_artifacts_p2.jpg",
+  "title": "What If I Find an Artifact? (NPS Archeology Program), page 2",
+  "credit": "National Park Service, Archeology Program (NPS photos)",
+  "licence": "Public domain (US Government work, 17 U.S.C. 105; nps.gov/aboutus/disclaimer.htm). The NPS Arrowhead is a registered mark, shown only as part of the unmodified card.",
+  "source_url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf",
+  "alt": "Page 2 of the NPS rack card: defacing rock images is illegal; taking artifacts is illegal under federal law (ARPA); if you see something wrong, tell a ranger; learn more.",
+  "bytes": 286329,
+  "sha256": "2513813ee857e57c1e27fe5abe8b0f0af08b30b5637f6779776b246d47fa6470",
+  "licence_class": "pd"
  }
 ]

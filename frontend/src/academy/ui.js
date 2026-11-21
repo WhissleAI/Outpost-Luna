@@ -27,7 +27,8 @@ import { SPEECH_STEP_TYPES } from "./speech_steps.js";   // speech learning step
 const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES, ...SPEECH_STEP_TYPES];
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, introFor, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
-import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
+import { earnedPatches, patchStripHtml } from "./earned.js";
+import { openLightbox, closeLightbox, lightboxState } from "../media/lightbox.js";   // [0.5.6] lesson pictures and the lidar map, big   // the map header's earned patches (always in view)
 import { courseState, courseLabel, setRoles, roleName, REMOVED_KEY, REMOVED_COPY } from "../courses.js";
 import { options as pickOptions, shouldOffer as offerPick, mountPick, WELCOME_KEY } from "../course_pick.js";   // [courses] the first-run course pick
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
@@ -217,6 +218,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.className = "apanel is-" + kind;
     document.body.dataset.aview = kind;
     if (kind !== "map") { globe.route.clear(); globe.setViewport(null); }
+    if (kind !== "lesson") { const lb = lightboxState(); if (lb && lb.live) closeLightbox(); }   // [0.5.6] the live lidar map goes with its lesson
     // a lesson's place name never outlives it (novice playtest #31: "Shackleton (south pole)" stayed as a label)
     if (kind !== "lesson" && kind !== "ride" && globe.clearHighlight) globe.clearHighlight();
     if (kind !== "lesson" && kind !== "ride" && globe.setSunDir) globe.setSunDir(null);
@@ -439,7 +441,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // [arch QA] and the globe folds a shared spot into one count pin while zoomed out too far for its fan (pins.js fanFits)
     const near = region ? { deg: 0.2, gap: 34 } : undefined, groups = moonGlobe() ? [] : clusterOf(stops, near);
     if (!moonGlobe()) clusterNudges(stops, near).forEach((nd, k) => { if (nd) { stops[k].nudge = nd; stops[k].group = groups[k]; } });
-    globe.route.set(stops, n, { cluster: { label: c => SCHOOL.clusterPin(c), onPick: g => (region ? globe.flyTo(region.lat, region.lon, region.dist) : globe.flyTo(g.lat, g.lon, REGION_DIST)) } });
+    globe.route.set(stops, n, { cluster: { label: c => SCHOOL.clusterPin(c), doneLabel: d => SCHOOL.clusterDone(d), onPick: g => (region ? globe.flyTo(region.lat, region.lon, region.dist) : globe.flyTo(g.lat, g.lon, REGION_DIST)) } });
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
     const cta = ctaFor(sel, nx, n);
     const nl = prog.qualified ? newLesson() : null;
@@ -623,13 +625,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (a.type === "vocab_fill" && a.sentence && p.includes(a.sentence.slice(0, 16)) && p.includes(":")) return p.split(":")[0].trim();
     return p;
   }
-  function render() {
-    if (view !== "lesson" || !L) return;
-    const st = L.steps[i], acc = st.accept;
-    if (stepKey !== L.id + ":" + i) { stepKey = L.id + ":" + i; stepAt = now(); rememberStep(); }
-    const clip = st.clip || (i === hookAt(L) ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
-    setLayout(L.ride ? "ride" : "lesson");
-    panel.dataset.step = acc.type;   // [keys] a Moon step gets the keyboard reticle (input/spatial.js)
+  /** The step's renderer and its context, as the card draws it (also the picture viewer's live copy: enlargeStep). */
+  function stepView(st, acc, clip) {
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
@@ -638,6 +635,50 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const R = typeof E === "function"
       ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext, state: stepState, guide: gs, lesson: L, stepIndex: i }))
       : (E || { html: () => "" });
+    return { ctx, R };
+  }
+  // [0.5.6] Pictures in the lesson card open big (media/lightbox.js; owner playtest 0.5.5: too small to read). A photo or
+  // figure: the picture, or its corner "Enlarge" button. The lidar map: its "Enlarge" button opens the step itself, live
+  // (taps there count, the found rings show, Low sun works), redrawn after every answer; closing redraws the card.
+  function decoratePictures(root) {
+    root.querySelectorAll(".a-step figure.a-photo").forEach(fig => {
+      const img = fig.querySelector("img"); if (!img || fig.querySelector(".zoom-btn")) return;
+      fig.classList.add("zoomable");
+      const b = document.createElement("button"); b.type = "button"; b.className = "zoom-btn";
+      b.setAttribute("aria-label", `Enlarge the picture: ${img.alt || "photo"}`); b.innerHTML = `${icon("zoom", { size: 14 })}<span>Enlarge</span>`;
+      const cap = fig.querySelector("figcaption"), credit = cap && cap.querySelector("a") ? cap.querySelector("a").textContent : "";
+      const go = () => openLightbox({ title: L ? L.title : "Picture", items: [{ src: img.currentSrc || img.src, alt: img.alt, caption: img.alt, credit }] });
+      b.onclick = go; img.onclick = go;
+      fig.append(b);
+    });
+    const ez = root.querySelector("[data-enlarge=step]"); if (ez) ez.onclick = () => enlargeStep();
+  }
+  function enlargeStep() {
+    if (view !== "lesson" || !L) return false;
+    const me = L, at = i, im = ((L.steps[i].accept || {}).image) || {};
+    openLightbox({
+      title: `${L.title} · ${promptOf(L.steps[i]).split(/[.!?]/)[0]}`,
+      live: {
+        aspect: im.w && im.h ? im.w / im.h : 4 / 3,
+        render: host => {
+          if (view !== "lesson" || L !== me || i !== at) { setTimeout(closeLightbox, 0); return; }   // the lesson moved on (voice "next")
+          const st = L.steps[i], { ctx, R } = stepView(st, st.accept, null);
+          host.innerHTML = R.html(st, ctx);
+          if (!waitingNext && R.wire) R.wire(host, ctx); else lockInput(host);
+        },
+      },
+      onClose: () => { if (view === "lesson" && L === me) render(); },
+    });
+    return true;
+  }
+  function render() {
+    if (view !== "lesson" || !L) return;
+    const st = L.steps[i], acc = st.accept;
+    if (stepKey !== L.id + ":" + i) { stepKey = L.id + ":" + i; stepAt = now(); rememberStep(); }
+    const clip = st.clip || (i === hookAt(L) ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
+    setLayout(L.ride ? "ride" : "lesson");
+    panel.dataset.step = acc.type;   // [keys] a Moon step gets the keyboard reticle (input/spatial.js)
+    const { ctx, R } = stepView(st, acc, clip);
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
     // [video fix 0.3.11] a lesson with a Try-at-home task shows its "Watch how" videos (online only); just buttons, never
@@ -709,6 +750,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (prepHere) fillPrepVideos(L.prep, { where: "lesson", nasaOnly: !isExplorer(L) });
     applyGuide();
     fitBody();
+    decoratePictures(panel);
+    try { dispatchEvent(new CustomEvent("outpost:step-render", { detail: { lesson: L.id, step: i } })); } catch (e) { /* tests */ }   // an open live viewer redraws
   }
   /** The card's body scrolls only when it can't fit (school.css): a fade marks the edge with more, and the focused or
    *  picked answer is always scrolled into view (card_clear.py; the owner's answer 3 under the caption). */
@@ -1204,6 +1247,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   try { if (window.__outpostTest) (window.__outpost = window.__outpost || {}).academyTest = {
     step: n => { if (view !== "lesson" || !L || !L.steps[n]) return false; i = n; misses = 0; waitingNext = false; feedback = null; stepKey = ""; freshStep(); render(); return true; },
     prep: id => openLesson(id, { prep: true }),   // "Try at home" (opened from the map card or the patch screen)
+    open: id => openLesson(id),   // [0.5.6] e2e: a lesson straight from the map (its pin may sit in a fan or a count pin)
     get where() { return { view, lesson: L && L.id, step: i, waitingNext }; } }; } catch (e) { /* */ }
   return ui;
 }
