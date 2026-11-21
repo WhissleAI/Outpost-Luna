@@ -4,7 +4,11 @@
 // course). P2 adds "Get more courses" (Settings → For grown-ups → Course storage, behind the hold) for courses that are
 // not downloaded yet. The chip shows once two courses are installed, or (first-run pick round) with only the Moon when
 // the catalog has a course this computer can download, so the feature is discoverable; hidden otherwise (the iPad).
-import { courseState, installed, setCourse } from "./courses.js";
+// [course switch] Right after a switch the new course's videos (and an outdated pack's update) download in the
+// background: the chip shows a thin, calm progress line under the name and says it in its label ("Course: Archaeology.
+// Getting its videos… 40%"); it polls GET /api/courses/active/progress every few seconds only while something is on
+// its way, then goes quiet. The name itself never changes (textContent stays the course's short name).
+import { courseState, installed, setCourse, courseProgress, progressView } from "./courses.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -21,6 +25,13 @@ export const COPY = {
   failed: "Couldn't switch. Try again.",
   switching: "Switching…",
 };
+
+/** The chip's progress (pure): the progress answer -> {show, pct, label} (label: the chip's aria-label and tooltip). */
+export function chipProgress(p, name) {
+  const v = progressView(p);
+  return v.busy ? { show: true, pct: v.pct, label: `${COPY.chip(name)}. ${v.label}` } : { show: false, pct: null, label: COPY.chip(name) };
+}
+export const POLL_MS = 3000;
 
 /** The chip's label: the course's short name (labels.course, else the title). Pure. */
 export const shortName = c => (c && ((c.labels && c.labels.course) || c.title)) || "Moon";
@@ -40,15 +51,43 @@ export function confirmHtml(to, from) {
 }
 
 /** Wire the chip and its dialog. -> {open, close, paint, isOpen}. */
-export function installCourseSwitch({ chip = document.getElementById("courseChip"), doc = document, onMore = null, more = () => false, set = setCourse } = {}) {
-  let box = null, back = null;
+export function installCourseSwitch({ chip = document.getElementById("courseChip"), doc = document, onMore = null, more = () => false, set = setCourse,
+  fetchFn = typeof window !== "undefined" && typeof window.fetch === "function" ? window.fetch.bind(window) : null, pollMs = POLL_MS } = {}) {
+  let box = null, back = null, dl = null, timer = 0, idle = 0;
   const visible = () => installed().length > 1 || (!!onMore && !!more());
   function paint() {
     if (!chip) return;
     chip.hidden = !visible();
     chip.textContent = shortName(courseState.info);
-    chip.setAttribute("aria-label", COPY.chip(shortName(courseState.info)));
+    paintProgress();
     document.documentElement.dataset.course = courseState.active;
+  }
+  function paintProgress() {
+    if (!chip) return;
+    const v = chipProgress(dl, shortName(courseState.info));
+    chip.setAttribute("aria-label", v.label);
+    if (!chip.dataset) return;   // (a bare test stub)
+    if (v.show) {
+      chip.dataset.dl = v.pct != null ? String(v.pct) : "";
+      chip.title = v.label;
+      if (chip.style) chip.style.setProperty("--crs-dl", `${v.pct != null ? v.pct : 8}%`);
+    } else if ("dl" in chip.dataset) {
+      delete chip.dataset.dl; chip.title = "";
+      if (chip.style) chip.style.removeProperty("--crs-dl");
+    }
+  }
+  /** Ask how far the course's downloads are; again in a few seconds while something is on its way. */
+  async function watch() {
+    clearTimeout(timer);
+    if (!fetchFn || courseState.active === "moon") { if (dl) { dl = null; paintProgress(); } return null; }
+    dl = await courseProgress({ fetchFn });
+    paintProgress();
+    const v = dl && dl.videos;
+    // keep asking while busy; videos still to get but not on their way yet (the launch download starts a few seconds
+    // after the app): ask twice more, slowly, then stop
+    if (dl && dl.busy) { idle = 0; timer = setTimeout(watch, pollMs); }
+    else if (v && v.state === "waiting" && v.reason !== "school" && v.reason !== "off" && idle < 2) { idle++; timer = setTimeout(watch, pollMs * 4); }
+    return dl;
   }
   function close() {
     if (!box) return;
@@ -95,5 +134,6 @@ export function installCourseSwitch({ chip = document.getElementById("courseChip
     chip.addEventListener("click", () => (box ? close() : open()));
   }
   paint();
-  return { open, close, paint, isOpen: () => !!box, visible };
+  watch();
+  return { open, close, paint, isOpen: () => !!box, visible, watch, progress: () => dl, stop: () => clearTimeout(timer) };
 }

@@ -51,6 +51,7 @@ def catalog(manifest: Path | None = None) -> list[dict]:
                         "size": int(a.get("size") or 0), "unpacked_size": int(a.get("unpacked_size") or a.get("size") or 0),
                         "version": str(a.get("version") or "1"), "sha256": a.get("sha256"), "file": a.get("file"),
                         "url": a.get("url"), "urls": sources(a), "files": a.get("files") or [],
+                        "min_version": str(a["min_version"]) if a.get("min_version") else None,
                         "card": card(a["id"][len(PREFIX):], a.get("course"))})
     return out
 
@@ -124,10 +125,20 @@ def school_blocks(urls: str | list[str] | None) -> bool:
 
 
 def state(e: dict) -> dict:
-    """{state: installed | downloading | queued | failed | missing, reason?} for one catalog entry."""
+    """{state: installed | downloading | queued | failed | missing, reason?, progress?} for one catalog entry. An installed
+    pack may be updating (the desktop app re-downloads an outdated one: `updating`, `progress`) or `outdated` (older than
+    the catalog's min_version, waiting for a download)."""
     courses.courses.cache_clear()
     if courses.get(e["id"]) is not None:
-        return {"state": "installed"}
+        out = {"state": "installed"}
+        f = _flag(".active", e["asset"])
+        if f is not None and f.exists():
+            out["updating"] = True
+            if progress(f) is not None:
+                out["progress"] = progress(f)
+        elif outdated(e):
+            out["outdated"] = True
+        return out
     for kind, st in ((".active", "downloading"), (".want", "queued")):
         f = _flag(kind, e["asset"])
         if f is not None and f.exists():
@@ -140,6 +151,29 @@ def state(e: dict) -> dict:
             why = ""
         return {"state": "failed", "reason": why or "The download stopped. Try again."}
     return {"state": "missing"}
+
+
+def _vkey(v: str) -> tuple:
+    return tuple(int(x) if x.isdigit() else 0 for x in str(v or "0").split("."))
+
+
+def installed_version(asset: str) -> str | None:
+    """The version the desktop app installed (its <assets>/state.json record, desktop/main/assets.js commit), or None."""
+    a = _assets()
+    if a is None:
+        return None
+    try:
+        rec = json.loads((a / "state.json").read_text(encoding="utf-8")).get(asset)
+        return str(rec.get("version") or "1") if isinstance(rec, dict) else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def outdated(e: dict) -> bool:
+    """The installed copy is older than the catalog's min_version for it: the desktop app's check() calls it "outdated"
+    and replaces it on request (a .want flag), keeping the old copy in use until the new one is verified."""
+    v = installed_version(e["asset"]) if e.get("min_version") else None
+    return v is not None and _vkey(v) < _vkey(e["min_version"])
 
 
 def progress(f: Path) -> float | None:
@@ -161,8 +195,11 @@ def listing() -> dict:
     act = courses.active()
     packs = []
     for e in catalog():
-        packs.append({k: e[k] for k in ("id", "title", "size", "unpacked_size", "version")} | e["card"] | state(e)
-                     | {"active": e["id"] == act, "blocked": school_blocks(e["urls"])})
+        row = ({k: e[k] for k in ("id", "title", "size", "unpacked_size", "version")} | e["card"] | state(e)
+               | {"active": e["id"] == act, "blocked": school_blocks(e["urls"])})
+        if row["active"]:
+            row["videos"] = _videos()   # [course switch] the playing course's own videos: saved, or on their way
+        packs.append(row)
     from .config import settings
     return {"managed": _assets() is not None, "downloadable": downloadable(), "free_bytes": free_bytes(), "packs": packs,
             "school_network": any(p["blocked"] for p in packs) or _school_on(), "assets_dir": bool(settings.assets_dir)}
@@ -174,6 +211,57 @@ def _school_on() -> bool:
         return bool(netgate.policy().get("school_network"))
     except Exception:   # noqa: BLE001
         return False
+
+
+def _videos() -> dict | None:
+    try:
+        from . import video
+        return video.course_progress()
+    except Exception:   # noqa: BLE001  (a video hiccup never hides Course storage)
+        return None
+
+
+# ------------------------------------------------------------------------------------------- course switch
+def ensure_active() -> dict | None:
+    """[course switch] The course just switched to: if its pack is outdated (or its update is not on disk yet), ask the
+    desktop app for it now (the .want flag, as Course storage does: same sha256 check and mirrors). The course keeps
+    playing from the copy it has meanwhile. Nothing is asked in School network mode when the pack's hosts are blocked,
+    and nothing without the desktop app (the local fallback installs on request only). -> the pack's state, or None."""
+    cid = courses.active()
+    e = entry(cid) if cid != courses.DEFAULT else None
+    a = _assets()
+    if e is None or a is None:
+        return None
+    st = state(e)
+    if st.get("outdated") and not school_blocks(e["urls"]):
+        (a / ".failed" / e["asset"]).unlink(missing_ok=True)
+        (a / ".want").mkdir(parents=True, exist_ok=True)
+        (a / ".want" / e["asset"]).write_text("")
+        st = {"state": "installed", "updating": True}
+    return st
+
+
+def on_course_change() -> None:
+    """courses.on_change hook (main.py)."""
+    try:
+        ensure_active()
+    except OSError:
+        pass
+
+
+def active_progress() -> dict:
+    """[course switch] What the course being played still needs on this computer, for the course chip and Course
+    storage: {course, pack: state | None, videos: app/video.py course_progress(), busy, progress}. busy: something is
+    downloading right now (its pack update, or its videos). The Moon: nothing, ever (busy false)."""
+    cid = courses.active()
+    e = entry(cid) if cid != courses.DEFAULT else None
+    pk = state(e) if e is not None else None
+    vids = _videos() or {"state": "none", "total": 0, "ready": 0, "progress": 1.0}
+    pack_busy = bool(pk and (pk.get("updating") or pk["state"] in ("downloading", "queued")))
+    vid_busy = vids.get("state") in ("downloading", "paused")
+    prog = (pk or {}).get("progress") if pack_busy else vids.get("progress")
+    return {"course": cid, "pack": pk, "videos": vids, "busy": pack_busy or vid_busy,
+            "progress": prog if isinstance(prog, (int, float)) else None}
 
 
 # ------------------------------------------------------------------------------------------- the local fallback
@@ -234,6 +322,11 @@ def remove_local(asset: str) -> bool:
 @router.get("/api/courses/packs")
 def list_packs():
     return listing()
+
+
+@router.get("/api/courses/active/progress")
+def course_progress():
+    return active_progress()
 
 
 @router.post("/api/courses/packs/{cid}/get")

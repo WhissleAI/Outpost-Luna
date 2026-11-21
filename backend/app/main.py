@@ -15,7 +15,7 @@ from .listen import router as listen_router
 from .local_guard import LocalGuard, env_options as local_guard_options
 from .config import settings
 from .gazetteer import Gazetteer
-from . import courses
+from . import course_packs, courses
 from .director import _voice as voice_moment, direct
 from .moments import MomentIndex, public
 from .readout import summarize
@@ -37,6 +37,9 @@ async def lifespan(app: FastAPI):
     diag.setup("backend")   # [#92] JSON-lines log + metrics + the daily summary (app/diag.py, docs/DIAGNOSTICS.md)
     S["gaz"] = course_gazetteer()
     courses.on_change(_swap_gaz)   # a course switch swaps the places
+    # [course switch] and starts getting what the new course still needs: its pack update, its own videos
+    courses.on_change(course_packs.on_course_change)
+    courses.on_change(video.on_course_change)
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
     asyncio.create_task(_warm_brain())

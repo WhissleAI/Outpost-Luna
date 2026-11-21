@@ -174,3 +174,35 @@ export async function setCourse(id, { fetchFn = typeof fetch === "function" ? fe
   reload();
   return true;
 }
+
+// ---------------------------------------------------------------- what the course still needs (course switch)
+// A switch starts getting what the new course still needs in the background (backend: app/video.py kick, app/
+// course_packs.py ensure_active): its own videos (copied from its pack, or downloaded), and an outdated pack's update.
+// GET /api/courses/active/progress says how far: {course, pack, videos: {total, ready, progress, state, reason?}, busy,
+// progress}. The course chip and Course storage show it; lessons work meanwhile, and a video on its way says so.
+export const PROGRESS_COPY = {
+  videos: n => `Getting its videos… ${n}%`,
+  videosSome: "Getting its videos…",
+  pack: n => `Getting the new course files… ${n}%`,
+  packSome: "Getting the new course files…",
+};
+const pctOf = x => (typeof x === "number" && isFinite(x) ? Math.max(0, Math.min(100, Math.round(100 * x))) : null);
+
+/** The progress answer -> {busy, pct (0-100 | null), label, what: "pack" | "videos" | ""}. Pure. Not busy (nothing on its
+ *  way, the Moon, an older backend): {busy: false, label: ""}. */
+export function progressView(p) {
+  if (!p || !p.busy) return { busy: false, pct: null, label: "", what: "" };
+  const pk = p.pack || {};
+  if (pk.updating || pk.state === "downloading" || pk.state === "queued") {
+    const n = pctOf(pk.progress);
+    return { busy: true, pct: n, label: n != null ? PROGRESS_COPY.pack(n) : PROGRESS_COPY.packSome, what: "pack" };
+  }
+  const n = pctOf(p.videos && p.videos.progress);
+  return { busy: true, pct: n, label: n != null ? PROGRESS_COPY.videos(n) : PROGRESS_COPY.videosSome, what: "videos" };
+}
+
+/** GET /api/courses/active/progress, or null (an older backend, a blip). Never throws. */
+export async function courseProgress({ fetchFn = typeof fetch === "function" ? fetch : null } = {}) {
+  if (!fetchFn) return null;
+  try { const r = await fetchFn("/api/courses/active/progress"); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}

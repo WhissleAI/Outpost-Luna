@@ -21,9 +21,9 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, stallWatch, YT_STALL_MS } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, stallWatch, YT_STALL_MS, DOWNLOADING, DOWNLOADING_LINE } from "./commands.js";
 
-export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE };
+export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, DOWNLOADING, DOWNLOADING_LINE };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
@@ -38,16 +38,18 @@ export function catalog() {
 }
 export async function getVideo(id) { try { return (await catalog()).find(v => v.id === id) || null; } catch (e) { return null; } }
 
-/** "cached" (plays offline), "online" (needs internet, which we have) or "offline". Never throws. */
+/** "cached" (plays offline), "online" (needs internet, which we have), "offline", or "downloading" (a course's own
+ *  video on its way after a course switch: it plays once saved, never streams meanwhile). Never throws. */
 export async function isAvailable(id) {
   try {
     const r = await fetch(`/api/video/${encodeURIComponent(id)}/available`);
     if (!r.ok) return "offline";
     const s = (await r.json()).status;
     if (s === "online" && typeof navigator !== "undefined" && navigator.onLine === false) return "offline";
-    return s === "cached" || s === "online" ? s : "offline";
+    return s === "cached" || s === "online" || s === "downloading" ? s : "offline";
   } catch (e) { return "offline"; }
 }
+export const DOWNLOAD_POLL_MS = 2000;
 
 /**
  * After the player failed: is that because we are offline ("offline") or something else ("error": the embed refused,
@@ -144,6 +146,7 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
     dlg.querySelector("#vidTitle").textContent = item.title;
     dlg.querySelector(".vid-credit").textContent = item.credit ? `Video: ${item.credit}${kind === "youtube" ? " · YouTube" : ""}` : "";
     if (kind === "offline" || kind === "error") { player = null; offlineCard(stage, bar, item, kind); return; }
+    if (kind === "downloading") { player = null; downloadingCard(stage, bar, item); return; }
     player = kind === "file" ? filePlayer(stage, bar, item) : youtubePlayer(stage, bar, item);
     detach = floor ? floor.attachMedia({ get paused() { return player ? player.paused : true; }, get ended() { return player ? player.ended : true; },
       duck: l => player && player.duck(l), unduck: () => player && player.unduck(), text: () => (player ? player.text() : "") }) : () => {};
@@ -307,6 +310,28 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
     (b || y || bar.querySelector("[data-close]")).focus({ preventScroll: true });
   }
 
+  // ---- [course switch] still downloading: the NASA still, a calm line, and it plays by itself once it is saved ----
+  function downloadingCard(stage, bar, item) {
+    if (!stage || !bar) return;
+    dlg.dataset.card = "downloading";
+    stage.innerHTML = `<div class="vid-off vid-dl" role="status">
+        ${item.poster_src ? `<img class="vid-off-img" alt="" src="${esc(item.poster_src)}">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
+        <p class="vid-off-line">${esc(DOWNLOADING_LINE)}</p></div>`;
+    const img = stage.querySelector(".vid-off-img");
+    if (img) img.onerror = () => img.remove();
+    bar.innerHTML = `<button type="button" class="btn-primary vid-x" data-close>${icon("close")}<span>Close</span></button>`;
+    bar.querySelector("[data-close]").focus({ preventScroll: true });
+    const tick = async () => {
+      if (closed || dlg.dataset.card !== "downloading") return;
+      const s = await isAvailable(item.id);
+      if (closed || dlg.dataset.card !== "downloading") return;
+      if (s === "cached") { delete dlg.dataset.card; mount("file", item); return; }
+      if (s !== "downloading") { mount("offline", item); return; }   // the download stopped (offline): say so plainly
+      setTimeout(tick, DOWNLOAD_POLL_MS);
+    };
+    setTimeout(tick, DOWNLOAD_POLL_MS);
+  }
+
   function finish(how) {
     if (closed) return;
     closed = true;
@@ -347,7 +372,7 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
   try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "video" } })); } catch (e) { /* */ }
   if (!dlg.open) dlg.showModal();
   const kind = v.missing ? "error" : v.source === "youtube" ? (status === "online" ? "youtube" : "offline")
-    : status === "cached" || status === "online" ? "file" : "offline";
+    : status === "cached" || status === "online" ? "file" : status === "downloading" ? "downloading" : "offline";
   mount(kind, v);
   changed();
 }

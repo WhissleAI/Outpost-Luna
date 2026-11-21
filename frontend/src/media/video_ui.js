@@ -5,7 +5,7 @@
 //   - Settings → Videos: "X MB saved · Clear"
 //   - About → Videos: every video the app can show, with its credit
 import { icon } from "../assets/icons.js";
-import { openVideo, isAvailable, getVideo, credits, videoCommand, watchLabel, needsNet } from "./video.js";
+import { openVideo, isAvailable, getVideo, credits, videoCommand, watchLabel, needsNet, DOWNLOADING } from "./video.js";
 import { holdButtonHtml, bindHold } from "../reset.js";   // Settings → Videos: Clear is a 3-second hold, like Reset
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
@@ -61,6 +61,7 @@ O.stepRenderers.video = ctx => {
       Promise.all([deps.getVideo(id), deps.isAvailable(id)]).then(([v, s]) => {
         if (!watch.isConnected) return;
         if (s === "offline" && !(v && v.fallback)) { watch.querySelector("[data-label]").textContent = needsNet(); watch.classList.add("is-offline"); }
+        else if (s === "downloading") watch.querySelector("[data-label]").textContent = DOWNLOADING;   // [course switch] plays once saved
         else if (v) watch.querySelector("[data-label]").textContent = watchLabel(v);
         if (v && v.credit) { note.textContent = `Video: ${v.credit}`; note.hidden = false; }
       });

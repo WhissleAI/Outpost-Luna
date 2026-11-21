@@ -35,6 +35,10 @@ export const SCHOOL_LINE = "Off on the school network. Saved videos still play."
 const school = () => { try { return !!(window.__outpost && window.__outpost.network && window.__outpost.network.school_network); } catch (e) { return false; } };
 export const needsNet = (on = school()) => (on ? SCHOOL_NET : NEEDS_NET);
 export const offlineLine = (on = school()) => (on ? SCHOOL_LINE : OFFLINE_LINE);
+// [course switch] a course's own video still downloading after a switch: wait for it calmly (it plays when it lands)
+export const DOWNLOADING = "Getting ready…";
+export const DOWNLOADING_LINE = "This video is still downloading. It plays here as soon as it's ready.";
+
 /** The player failed while we ARE online (YouTube error 2/5/100/101/150/153, an unknown id): not "Needs internet". */
 export const NO_PLAY_LINE = "This video won't play here.";
 /** In a lesson, a video that can't play is never a dead end: closing it gives the step's answer (playtest #25). */
