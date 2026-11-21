@@ -5686,7 +5686,7 @@
    "title": "Moon views (Apollo photos, rock ages, Columbia 3D)",
    "required": false,
    "file": "outpost-luna-v2-moon_views.tar",
-   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-moon_views.tar",
+   "url": "https://www.dropbox.com/scl/fi/tvtk9wf9xi4hui213b6ee/outpost-luna-v2-moon_views.tar?rlkey=emzmj2vkn257fa1djgwcjlnoi&dl=1",
    "sha256": "fc19dd0e80fc02950ff1ad4647ea400ebf85f966c0b15c2170f9dfd83538942a",
    "size": 4300800,
    "unpacked_size": 4284062,
@@ -5752,23 +5752,26 @@
    "min_app": "0.5.3",
    "note": "Optional: open Moon data beyond NASA's pack: one Apollo surface photo per landing site, the USGS geologic map as a Rock ages layer (CC0), the Smithsonian's Columbia in 3D (CC0) and Lunar Sample Compendium facts (scripts/moon_views_build.py). The app works without it.",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-moon_views.tar"
+   ]
   },
   {
    "id": "course_archaeology",
-   "version": "6",
+   "version": "7",
    "min_app": "0.5.3",
    "max_app": null,
    "requires": [],
-   "min_version": "6",
+   "min_version": "7",
    "title": "Course: Archaeology",
    "required": false,
-   "file": "outpost-luna-v2-course_archaeology-6.tar",
-   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-6.tar",
-   "sha256": "ead869d2939f70b56b27a99c397d68d15147f5e98983bc40a5e477e491050aa2",
-   "size": 40560640,
-   "unpacked_size": 40523300,
-   "n_files": 47,
+   "file": "outpost-luna-v2-course_archaeology-7.tar",
+   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-7.tar",
+   "sha256": "c8c5b025538f7fecc7765eeccd3fc391ba6ef8ec286332cc2ffe870ffab75073",
+   "size": 41256960,
+   "unpacked_size": 41211491,
+   "n_files": 50,
    "env": "",
    "subdir": "",
    "licence": [],
@@ -5795,8 +5798,8 @@
     },
     {
      "path": "library.json",
-     "size": 11950,
-     "sha256": "30b9fd980b37962fbad6d4ea4cae7ba7df5619cd19e9b1cc284c993a5402723f"
+     "size": 12718,
+     "sha256": "4a7ab98cb0536b20fabb5eb4b4d973427c037071dda1e8d9bc1d59a33f43b750"
     },
     {
      "path": "media/co652_chart.png",
@@ -5805,8 +5808,8 @@
     },
     {
      "path": "media/credits.json",
-     "size": 17857,
-     "sha256": "495f1e2bf7e9ce7244929876adef710e13d05a8c376d4faec2503226d8f3541f"
+     "size": 20437,
+     "sha256": "d35e4d90be0450176c2a0a6c63fc87a1222bab56c526048fdd9845569115eb48"
     },
     {
      "path": "media/drought_mesa_verde.json",
@@ -5835,8 +5838,8 @@
     },
     {
      "path": "media/four_corners_region.jpg",
-     "size": 916159,
-     "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660"
+     "size": 702500,
+     "sha256": "9cfb60e2e0eb3ab921eca060faf974d38a56c203659d29744b89be4f499e4453"
     },
     {
      "path": "media/iss_pastora_san_juan.jpg",
@@ -5852,6 +5855,21 @@
      "path": "media/layer_rivers_states.png",
      "size": 152651,
      "sha256": "42df06107308efacb473d8c67291e6fb29ff146893dae28efbce7af5b88137b1"
+    },
+    {
+     "path": "media/nps_rack_artifacts.pdf",
+     "size": 328474,
+     "sha256": "97c727921eefc92d902b521c4bae9848d8113b623b84ab849f4009671cbd34a5"
+    },
+    {
+     "path": "media/nps_rack_artifacts_p1.jpg",
+     "size": 283699,
+     "sha256": "689d84520c57588751f7a7e12c01a4c50d6f2c0005ccfac7d0aab5e14fcbbc06"
+    },
+    {
+     "path": "media/nps_rack_artifacts_p2.jpg",
+     "size": 286329,
+     "sha256": "2513813ee857e57c1e27fe5abe8b0f0af08b30b5637f6779776b246d47fa6470"
     },
     {
      "path": "media/photo_cliff_palace.jpg",
@@ -6018,13 +6036,16 @@
    "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable.",
    "fallback": {
     "kind": "pack",
-    "version": "5",
-    "file": "outpost-luna-v2-course_archaeology-5.tar",
-    "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-5.tar",
-    "sha256": "0fbef938157e89b594c3c82dcf4755818cae2fca8ed357d01dbce250eb2f340d",
-    "size": 39157760,
-    "unpacked_size": 39117905,
-    "n_files": 42,
+    "version": "6",
+    "file": "outpost-luna-v2-course_archaeology-6.tar",
+    "url": "https://www.dropbox.com/scl/fi/pdtz5yk2emptjn8m9gv2a/outpost-luna-v2-course_archaeology-6.tar?rlkey=s1fh8vqhh7d4xs1vlpb441fjt&dl=1",
+    "mirrors": [
+     "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-6.tar"
+    ],
+    "sha256": "ead869d2939f70b56b27a99c397d68d15147f5e98983bc40a5e477e491050aa2",
+    "size": 40560640,
+    "unpacked_size": 40523300,
+    "n_files": 47,
     "files": [
      {
       "path": "course.json",
@@ -6048,8 +6069,8 @@
      },
      {
       "path": "library.json",
-      "size": 8402,
-      "sha256": "97025b0b47f8b1177a00b3c5c0d04bfb9958188c293e3e5c59dd0c9c475a34f7"
+      "size": 11950,
+      "sha256": "30b9fd980b37962fbad6d4ea4cae7ba7df5619cd19e9b1cc284c993a5402723f"
      },
      {
       "path": "media/co652_chart.png",
@@ -6058,8 +6079,13 @@
      },
      {
       "path": "media/credits.json",
-      "size": 10842,
-      "sha256": "a18aba672d8c11c6fa0285d8d604f2a21e93d813e459f30cee8a779487d7b8ee"
+      "size": 17857,
+      "sha256": "495f1e2bf7e9ce7244929876adef710e13d05a8c376d4faec2503226d8f3541f"
+     },
+     {
+      "path": "media/drought_mesa_verde.json",
+      "size": 33820,
+      "sha256": "2dd40839d39cd39bcae079043f2ea83f6f740bc1484561ddbb24559ccdcb675c"
      },
      {
       "path": "media/earth5400.jpg",
@@ -6097,6 +6123,11 @@
       "sha256": "281fb954487914a8487cbc47d5568406d7fa3f6ac5ceaab8d1d7bc10efc157f2"
      },
      {
+      "path": "media/layer_rivers_states.png",
+      "size": 152651,
+      "sha256": "42df06107308efacb473d8c67291e6fb29ff146893dae28efbce7af5b88137b1"
+     },
+     {
       "path": "media/photo_cliff_palace.jpg",
       "size": 230491,
       "sha256": "6bc7a1462b5a65e9d7eb772acca8c0048f235b3a23513f4dc688ad68c3e40bc9"
@@ -6132,6 +6163,16 @@
       "sha256": "6c1f39cfb112e7f0f2c2491a0c38095537598e2be7440338a89f4eca99ac1d37"
      },
      {
+      "path": "media/radiocarbon_four_corners.json",
+      "size": 778,
+      "sha256": "e4f935f6dea63893a189bb5eeeec914d2e66cf6567161d11277d338c719404b2"
+     },
+     {
+      "path": "media/s2_mesa_verde.jpg",
+      "size": 1201704,
+      "sha256": "eb6b92004215eda6e3a0e492e7a934f1906c78f3fa4e5426dfcd892b9ce13eb9"
+     },
+     {
       "path": "media/s2_mesa_verde_nir.jpg",
       "size": 666685,
       "sha256": "75abd36eb401bc5e197aec05a2a642268c38e13e9b34e5a1d7d223e1ca58e0f0"
@@ -6140,6 +6181,11 @@
       "path": "media/s2_mesa_verde_true.jpg",
       "size": 643386,
       "sha256": "ff2ef052be6877d720590c2ce5156a8659e7f35006f98b13dbc24c0c0d18e51b"
+     },
+     {
+      "path": "media/tree_rings_1200_1320.json",
+      "size": 5879,
+      "sha256": "81df6d0902e1da902cd7fdc99de8ddc92562ff8456984db6dbd4e8d1935e6bb9"
      },
      {
       "path": "places.json",
@@ -6247,6 +6293,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T19:56:54Z",
- "version": "2026.11.21.1956"
+ "published_at": "2026-11-21T22:03:58Z",
+ "version": "2026.11.21.2203"
 }
