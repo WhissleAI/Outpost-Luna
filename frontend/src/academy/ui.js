@@ -17,10 +17,10 @@ import { rideInset } from "../mission/ride.js";   // [0.3.12] the ride cabin fit
 import { icon } from "../assets/icons.js";
 import { anyPatch as patch, registerClassLessons } from "./class_patch.js";   // Class lessons draw a letter patch (docs/CURRICULUM.md)
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER, FIELD, CLASS } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, COURSE_DONE, COURSE_CREDIT, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER, FIELD, CLASS } from "../story.js";
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, isField, isBonus, isClass, coreLessons, fieldLessons } from "../explorer.js";   // explorer lessons open after missions; Field School after the ride
-import { pinInnerHtml, fieldTrackHtml, classTrackHtml } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
+import { pinInnerHtml, fieldTrackHtml, classTrackHtml, clusterNudges } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
 import { FIELD_STEP_TYPES as MOON_FIELD_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
 import { ARCH_BUILDUP_TYPES } from "./arch_steps.js";   // [courses] layers and hillshade build up over turns the same way
 import { SPEECH_STEP_TYPES } from "./speech_steps.js";   // speech learning steps: read, vocab, summary (docs/SPEECH_LEARNING.md)
@@ -28,7 +28,7 @@ const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES, ...SPEECH_
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
-import { courseState } from "../courses.js";
+import { courseState, courseLabel } from "../courses.js";
 import { options as pickOptions, shouldOffer as offerPick, mountPick, WELCOME_KEY } from "../course_pick.js";   // [courses] the first-run course pick
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
 const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
@@ -39,11 +39,15 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
 const NEXT_WORDS = /^(next|next one|continue|go on|ok|okay|ready|let s go|lets go|start|yes)\b/;
 /** UI labels (not story copy). Copy requests: docs/UX_ROUNDS.md. */
+/** [courses] The Moon (course #1) keeps every line as it was; another course gets its own words (courses.js labels). */
+const moonCourse = () => !courseState.active || courseState.active === "moon";
 const UI = {
-  begin: "Start", start: SCHOOL.start, cont: SCHOOL.continue, replay2: "Replay", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "Brief",
+  begin: "Start", start: SCHOOL.start, cont: SCHOOL.continue, replay2: "Replay", next: "Next", map: "Map", replay: "Hear it again", brief: "Brief",
+  get facts() { return moonCourse() ? "NASA facts" : "Facts"; },   // [courses] another course's facts aren't NASA's
   nextUp: SCHOOL.next, lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: SCHOOL.minutes,
   patches: SCHOOL.progress, qualified: "Qualified", retry: "Fly it again", shuffle: CALLSIGN_COPY.random,
-  callsign: CALLSIGN_COPY.edit, ride: "Check ride", patchEarned: "Patch earned", commander: SCHOOL.go,
+  callsign: CALLSIGN_COPY.edit, ride: "Check ride", commander: SCHOOL.go,
+  get patchEarned() { const w = courseLabel("patch", "patch"); return `${w.charAt(0).toUpperCase()}${w.slice(1)} earned`; },   // [courses] the course's word
   patchNext: "Get your patch", bonus: "Bonus patch",
   resumed: n => `Picking up at step ${n}.`,   // [0.4.1] a half-done lesson reopened
 };
@@ -215,13 +219,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   async function enter() {
     ui.active = true; panel.hidden = false;
     if (!course) {
-      setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading Flight School…</p>`;
+      setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading ${esc(SCHOOL.eyebrow)}…</p>`;
       // [audit2] the course failing once was a dead end ("Close the app and open it again"): keep trying, like the Moon does
       for (let tries = 0; !course; tries++) {
         try { course = await fetchCourse(); }
         catch (e) {
           if (!ui.active) return;
-          if (!tries) panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Trying again. If this stays, close the app and open it again.</span></p>`;
+          if (!tries) panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach ${esc(SCHOOL.eyebrow)}</b><span>Trying again. If this stays, close the app and open it again.</span></p>`;
           await new Promise(res => setTimeout(res, 3000));
           if (!ui.active) return;
         }
@@ -359,6 +363,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (typeof p === "string") { const f = placeById(p); if (f) return { name: f.name.split(" (")[0], lat: f.lat, lon: f.lon }; }
     return (l && LESSON_PLACE[l.id]) || LESSON_PLACE.moon;
   }
+  /** [courses] The globe is the Moon (its polar route layout and NASA credit stay exactly as they were). */
+  function moonGlobe() { const g = courseState.info && courseState.info.globe; return moonCourse() || !g || !g.body || g.body === "moon"; }
+  /** The map's small print: the Moon's NASA / pretend-outpost line; another globe credits its own imagery (or nothing). */
+  function mapCredit() { return moonGlobe() ? `${CREDIT} ${PRETEND_BASE}` : (COURSE_CREDIT[courseState.info.globe.body] || ""); }
+  /** The patch screen's count. "then your check ride" only in a course that has one. */
+  function patchProgressLine() { const c = coreDone(); return lessons().some(l => l.ride) ? TRANSITION.patchProgress(c.n, c.of) : COURSE_DONE.progress(c.n, c.of); }
   /** A pin (or its patch in the header strip) tapped: select it and fly there; a second tap opens it. */
   function pickPin(l, sel) {
     if (sel && sel.id === l.id) { openLesson(l.id); return; }
@@ -389,6 +399,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (isClass(l)) b.classList.add("is-class");
       return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next, noLeg: isClass(l) };   // Class pins: no route leg
     });
+    // [courses] lessons that share a spot (Archaeology: nine at Mesa Verde) get fixed slots round it, so an earned pin
+    // stays where it was lesson after lesson (pins.js clusterNudges). The Moon's route is laid out as it always was.
+    if (!moonGlobe()) clusterNudges(stops).forEach((nd, k) => { if (nd) stops[k].nudge = nd; });
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
     const cta = ctaFor(sel, nx, n);
@@ -403,7 +416,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <div class="mp-copy"><p class="eyebrow">${esc(sel === nx && !isField(sel) ? UI.nextUp : eyebrowOf(sel))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
             <h2>${esc(sel.title)}</h2><p class="mp-sub">${open(sel) ? "" : `${icon("lock", { size: 14 })} `}${esc(open(sel) ? (LESSON_BLURB[sel.id] || sel.brief) : lockedText(sel))}</p></div>
           ${open(sel) ? `<div class="mp-actions"><button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button>
-          ${sel.prep && has(sel.badge.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}</div>` : ""}</div>` : "";
+          ${sel.prep && has(sel.badge.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}</div>` : ""}</div>`
+      // [courses] a course with no check ride: every lesson done used to leave the map with no card at all
+      : !ls.length || moonCourse() ? "" : `<div class="mp-card mp-done"><span class="mp-patch">${patch(ls[ls.length - 1].id, { earned: true, size: 64 })}</span>
+          <div class="mp-copy"><p class="eyebrow">${esc(SCHOOL.eyebrow)}</p><h2>${esc(COURSE_DONE.title(n, courseLabel("patches", "patches")))}</h2>
+            <p class="mp-sub">${esc(COURSE_DONE.sub)}</p></div></div>`;
     panel.innerHTML = `
       <header class="mp-top">
         <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
@@ -421,7 +438,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       ${classTrackHtml({ lessons: ls.filter(isClass), has, copy: CLASS, esc, patch })}
       </div>
       ${card}
-      <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
+      ${mapCredit() ? `<p class="mp-credit">${esc(mapCredit())}</p>` : ""}`;
     // [brain] the cadet chip opens My Brain (brain.js: stars, voice, how the outpost thinks); it has "Change call sign"
     panel.querySelector("#aCsEdit").onclick = () => { const O = window.__outpost || {}; if (O.brain && O.brain.open) O.brain.open(); else showCallSign(() => showMap(true)); };
     // [0.4.1] the earned patches stay in view in the header (the polar view hides the near-side pins: academy/earned.js)
@@ -695,7 +712,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "map") {
       const nx = nextLesson(), n = lessons().filter(l => has(l.badge.id)).length, sel = (mapSel && lessons().find(l => l.id === mapSel)) || nx;
       if (prog.qualified && (!mapSel || !sel)) return newLesson() ? "Tap Open it for your new lesson, or Take command." : "Tap Take command to run the outpost.";
-      return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title, !!sel.ride && !has(sel.badge.id)) : "Tap a patch to fly a lesson again.";
+      return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title, !!sel.ride && !has(sel.badge.id)) : moonCourse() ? "Tap a patch to fly a lesson again." : COURSE_DONE.sub;
     }
     if (view === "badge") return "Tap Next for the next lesson, or Map.";
     if (view === "prep") return PREP.ask;
@@ -947,7 +964,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="a-bigpatch">${patch(L.id, { earned: true, size: 168 })}</span>
         <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
-        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : isField(L) ? esc(FIELD.patchProgress(fieldLessons(lessons()).filter(l => has(l.badge.id)).length, fieldNo(L).of)) : isExplorer(L) ? esc(TRANSITION.bonusPatch) : isClass(L) ? esc(L.preview ? CLASS.previewNote : CLASS.patch) : esc(TRANSITION.patchProgress(coreDone().n, coreDone().of))}</p>
+        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : isField(L) ? esc(FIELD.patchProgress(fieldLessons(lessons()).filter(l => has(l.badge.id)).length, fieldNo(L).of)) : isExplorer(L) ? esc(TRANSITION.bonusPatch) : isClass(L) ? esc(L.preview ? CLASS.previewNote : CLASS.patch) : esc(patchProgressLine())}</p>
         <div class="a-actions">
           ${commander ? `<button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>`
             : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}

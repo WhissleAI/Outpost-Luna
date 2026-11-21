@@ -191,3 +191,25 @@ test("wiring: the top bar button, B key, router intent, the map chip and the CSP
   const src = readFileSync(new URL("../src/brain.js", import.meta.url), "utf8");
   assert.ok(!/<script|\son[a-z]+=\\?"/i.test(src), "no inline script or handler attribute in the drawer's HTML");
 });
+
+// [arch-patches] The owner's store said "course":"moon" while every lesson id was "archaeology:*": the field was a
+// constant nobody set. It now records the course last practised; the ids keep carrying their own course.
+test("[arch-patches] record: the course field follows the course being played; ids stay prefixed", () => {
+  let s = S.record(S.blank(), { lesson: "archaeology:what_is", type: "choice", status: "passed", misses: 0, course: "archaeology" }, "2026-11-20");
+  assert.equal(s.course, "archaeology");
+  assert.equal(s.lessons["archaeology:what_is"].first, 1);
+  s = S.record(s, { lesson: "moon", type: "choice", status: "passed", misses: 0, course: "moon" }, "2026-11-20");
+  assert.equal(s.course, "moon"); assert.equal(s.lessons["archaeology:what_is"].first, 1, "the other course's counts stay");
+  assert.equal(S.record(S.blank(), { lesson: "x", type: "choice", status: "passed", course: "../bad" }).course, "moon");
+  assert.equal(S.clean(JSON.parse(JSON.stringify(s))).course, "moon");
+  assert.match(readFileSync(new URL("../src/brain.js", import.meta.url), "utf8"), /course: courseState\.active \|\| store\.COURSE/);
+});
+
+test("[arch-patches] a course lesson's star is its patch name, not the first two words of its title", () => {
+  const arch = [{ id: "archaeology:what_is", title: "Clues, not treasure", badge: { id: "archaeology:field_scout", name: "Field Scout" }, steps: [{}] },
+    { id: "archaeology:chimney_rock", title: "Moonrise at Chimney Rock", badge: { id: "archaeology:moon_watcher", name: "Moon Watcher" }, steps: [{}] }];
+  assert.deepEqual(arch.map(l => B.skillOf(l).star), ["Field Scout", "Moon Watcher"]);
+  assert.equal(B.skillOf(arch[0]).idea, "Clues, not treasure");
+  assert.equal(B.skillOf(L("c-room5-tides", { track: "class", title: "Tides" })).star, "Tides", "a Class lesson keeps its title");
+  assert.equal(B.COPY.tryGo, "Go to Flight School", "the Moon's words unchanged");
+});

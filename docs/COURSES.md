@@ -448,7 +448,7 @@ Effort: S ≤ 1 day, M 2–4 days, L 1–2 weeks (one agent).
 **Active course.** Per call sign on the client (`outpost-course`, a profile key in `prefs.js`; default and absent = the
 Moon), per computer on the backend (`<cache or data>/course_state/active.json`, `ACTIVE_COURSE_FILE` in tests). At launch
 `courses.js syncCourse()` reads `GET /api/courses` and, when the backend plays another course, `POST /api/courses/active`.
-A course that is gone (pack removed) falls back to the Moon. Switching (`setCourse`) stores the choice, posts it, fires
+A course that is missing at launch plays the Moon but keeps the cadet's choice (it comes back when the pack is there again; removing the pack in Course storage clears the choice). Progress reads and writes under the course actually being played (`playingCourse()`), never just the stored key. Switching (`setCourse`) stores the choice, posts it, fires
 `outpost:course-changed` and reloads the app, as a profile switch does: every module and the globe start clean.
 
 **The registry.** Built-ins from `backend/data/courses/*.json` (status `builtin`), then packs from
