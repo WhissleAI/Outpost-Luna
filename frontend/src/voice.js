@@ -41,13 +41,12 @@ const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo referen
  * @param {(o:{keepGuide:boolean, reason:string})=>void} o.onBargeIn  the kid started talking (the floor already stopped the
  *                                            guide, ducked the crew; keepGuide: muted, the silent line keeps its captions)
  * @param {()=>void} o.onKidDone              the kid stopped without asking
- * @param {(label:string)=>void} o.onEmotion
  * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
  * @param {()=>object|null} [o.screen]        the screen frame the router gets ({screen, step_type, offer}, main.js)
  * @param {object} [o.floor]                  the floor manager (default: the app's one floor; tests pass their own)
  * @param {Function} [o.createListener]       the mic socket factory (default: listen.js; tests pass a fake ear)
  */
-export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null,
+export function createVoice({ onTurn, onBargeIn, onKidDone, isOutputBusy = () => false, screen = () => null,
   floor = defaultFloor, createListener = defaultListener }) {
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
@@ -422,7 +421,6 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "resumed") { kidTalking = true; if (floor) floor.setKid(true); turnAsked = false; set("hearing"); }
         else if (m.state === "end") { if (ptt.held && ptt.latch && (m.text || turnText())) { release(); return; } if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
-      else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
       else if (m.t === "error") { console.warn("ear error:", m.message); if (earErrorIsFatal(m.message)) setEarFailed(true); note(earNote() || "Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
     },
     level,

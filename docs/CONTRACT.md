@@ -9,10 +9,10 @@ Request (`context` and each of its fields optional):
 
 ```json
 {"text": "what did the astronauts say about Hertzsprung",
- "context": {"last_place": "orientale", "emotion": "confused", "playing": {"clip_id": "hertz", "t": 31.5}}}
+ "context": {"last_place": "orientale", "playing": {"clip_id": "hertz", "t": 31.5}}}
 ```
 
-`emotion` is one of `confused | frustrated | bored | excited`.
+There is no affect field (D6, `docs/BRAIN.md` §6a): an old client's `emotion` is ignored.
 
 Response (always every key):
 

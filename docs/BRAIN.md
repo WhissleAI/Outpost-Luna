@@ -141,6 +141,33 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 | Ear internals (dd, link p, almost-matches), Director model numbers | Engineering signals (diagnostics, `docs/DIAGNOSTICS.md`), not learning ones |
 | Anything to the cadet about another cadet | Each cadet sees only their own page |
 
+### 6a. Out by decision (D6, `docs/BRAIN_SIGNALS_AUDIT.md`)
+
+The signals audit proposed these, and the owner decided against all of them. They are not "later": they are out.
+
+| Rejected | Audit id | Why |
+|---|---|---|
+| Emotion of any kind (inferred, stored or used to shape a line or a voice) | R7 | Profiling; the EU AI Act Art 5(1)(f) prohibits emotion recognition in education. There is no emotion head anyway |
+| A reading level or words-correct-per-minute score | L4 | An ability assessment from an AI (EU AI Act Annex III). Reading stays a volume count |
+| A "persistence", "grit" or "gives up" label | R4 | A trait label. Counts of what happened stay; the label is the line |
+| A per-cadet off-task or room-talk rate | R2 | Behaviour monitoring of a child (Annex III point 3). Room state stays about the room |
+| Vocabulary harvested from the cadet's free speech | L3 | An interests profile (AADC profiling). Glossary words used in a step that asked for one stay |
+| Stored hesitation (fillers, long pauses, low confidence) | R6 | A confidence or anxiety proxy, and on a child who stammers it points at a disability (GDPR Art 9). It stays a one-turn flag that brings the next hint sooner; the app's early-hint count is all that is kept |
+
+**"No emotion" is checked in code.** The old plumbing is deleted: the ear relay drops any affect stream, the session
+drops one on arrival (`session.NO_AFFECT`), the Director, the mission lines and voice steering take no affect input
+(`steering.style_for` has no such parameter), and the client never forwards one. The learned Director's input
+columns that once carried it are frozen at "neutral" (the shipped weights expect them). `backend/tests/test_no_emotion.py`
+scans `backend/app` and `frontend/src` and fails the build if the plumbing comes back.
+
+### 6b. Never used for grading (D8)
+
+The brain is a practice record the cadet and the family own, not an assessment a school acts on. It is not used to
+grade, rank or place a cadet, and the app gives it to nobody. The grown-ups' Progress page and its printout say so
+("A practice record for the cadet and the family, not an assessment. Not for grading."). This keeps it out of the EU AI
+Act's Annex III high-risk uses (evaluating learning outcomes, steering the learning process, assessing the level of
+education). A school that files a printout still owns that record (FERPA); the sheet tells it what the numbers are for.
+
 ## 7. Backend: `GET /api/brain/summary?profile=p1&days=30` (`backend/app/brain.py`)
 
 - **Loopback only:** the `LocalGuard` middleware on every route (`backend/app/main.py`), plus the local token like

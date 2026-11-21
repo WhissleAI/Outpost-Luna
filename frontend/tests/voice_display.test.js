@@ -31,7 +31,7 @@ let ear, voice, turns, trace, sampler;
 async function boot(onTurn = async t => { turns.push(t); return "session"; }) {
   els = {}; turns = []; trace = [];
   voice = createVoice({
-    onTurn, onBargeIn() {}, onKidDone() {}, onEmotion() {},
+    onTurn, onBargeIn() {}, onKidDone() {},
     screen: () => ({ screen: "map", offer: "next_lesson" }), floor: null,
     createListener: on => { ear = on; return { start: async () => true, stop() {}, send() {} }; },
   });

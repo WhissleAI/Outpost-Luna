@@ -34,7 +34,7 @@ beforeEach(() => {
   turns = [];
   window.__outpost = { prefs: { filter: "normal", listen: "handsfree" } };
   createVoice({
-    onTurn: async (t, o) => { turns.push({ t, ptt: !!(o && o.ptt) }); }, onBargeIn() {}, onKidDone() {}, onEmotion() {},
+    onTurn: async (t, o) => { turns.push({ t, ptt: !!(o && o.ptt) }); }, onBargeIn() {}, onKidDone() {},
     screen: () => ({ screen: "map" }),
     createListener: on => { ear = on; return { start: async () => true, stop() {}, send() {} }; },
   });
@@ -91,7 +91,7 @@ test("room talk the router ignores makes the room busy and asks for hold to talk
   // the voice api is not exposed here: drive decided() through a fresh voice
   let api;
   els = { spaceHint: el(), q: el() }; els.spaceHint.lastElementChild.textContent = "Hold to talk";
-  api = createVoice({ onTurn: async () => {}, onBargeIn() {}, onKidDone() {}, onEmotion() {}, screen: () => ({ screen: "map" }),
+  api = createVoice({ onTurn: async () => {}, onBargeIn() {}, onKidDone() {}, screen: () => ({ screen: "map" }),
     createListener: on => { ear = on; return { start: async () => true, stop() {}, send() {} }; } });
   const room = window.__outpost.room;
   for (let i = 0; i < 4; i++) {

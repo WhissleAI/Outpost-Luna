@@ -40,7 +40,7 @@ beforeEach(() => {
   floor = createFloor();
   floor.on("playback", e => events.push(e));
   createVoice({
-    onTurn: async t => { turns.push(t); }, onBargeIn: () => { barges++; }, onKidDone() {}, onEmotion() {},
+    onTurn: async t => { turns.push(t); }, onBargeIn: () => { barges++; }, onKidDone() {},
     screen: () => ({ screen: "lesson", step_type: "vocab_match", step_options: ["A dark, flat sea of old cooled lava."], lesson_id: "history", step: 0 }),
     floor, createListener: on => { ear = on; return { start: async () => false, stop() {}, send() {} }; },
   });

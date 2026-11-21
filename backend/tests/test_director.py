@@ -108,11 +108,12 @@ def test_confident_fuzzy_link_flies():
     assert r["action"] == "fly" and r["place"] == "hertzsprung"
 
 
-def test_emotion_confused_is_shorter_and_bored_gets_mission():
-    long = ask("show me Orientale")["say"]
-    short = ask("show me Orientale", context={"emotion": "confused"})["say"]
-    assert len(short) < len(long)
-    assert "mission" in ask("this is boring", context={"emotion": "bored"})["say"].lower()
+def test_affect_label_changes_nothing():
+    """[D6] A context affect label (an old client) never shortens an answer or offers a mission."""
+    a, b = ask("show me Orientale", context={"emotion": "confused"}), ask("show me Orientale")
+    assert (a["action"], a["place"]) == (b["action"], b["place"])
+    r = ask("this is boring", context={"emotion": "bored"})
+    assert r["source"] != "emotion" and "Want a mission" not in r["say"]
 
 
 def test_jargon_question_uses_glossary():
