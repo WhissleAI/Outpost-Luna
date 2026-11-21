@@ -198,6 +198,22 @@ https://cde.state.co.us/cosocialstudies/1192resourcebank.
 data for Mesa Verde is USGS (3DEP, Landsat). NASA supplies the globe, the climate context and the space-archaeology
 story.
 
+**Open data beyond US agencies (as built, pack v3; details and evidence in docs/MEDIA.md "Open data beyond NASA").**
+Rule: public domain, CC0, CC BY, CC BY-SA unmodified; never NC, ND, ODbL or permission-only. Each credit carries
+`licence_class`, checked when the library loads and when the pack is built.
+
+| Source | Licence | URL | In the pack | Sensitivity |
+|---|---|---|---|---|
+| NOAA NCEI study 19059 (Stahle et al. 2015): Mesa Verde moisture reconstruction → "Drought timeline AD 722–2011" chart, Great Drought band 1276–1299 | NCEI: no licence stated, no access constraints, cite (`by`) | https://www.ncei.noaa.gov/access/paleo-search/study/19059 | 34 KB | people "moved / migrated", never "abandoned" / "vanished" |
+| ITRDB NM597, NM589, CO067 beside CO652 → "Four tree-ring records" chart, AD 1200–1320 | NCEI, as above (`by`) | https://www.ncei.noaa.gov/products/paleoclimatology/tree-ring | 6 KB | — |
+| p3k14c radiocarbon database → "Radiocarbon dates near here" per century | CC0 (`cc0`) | https://github.com/people3k/p3k14c | 1 KB | region counts only; no points; human remains and possible grave goods excluded |
+| Copernicus Sentinel-2 L2A (AWS Open Data) → "Mesa Verde from Sentinel-2" | Copernicus terms, "Contains modified Copernicus Sentinel data 2025" (`by`) | https://registry.opendata.aws/sentinel-2-l2a-cogs/ | 1.2 MB | — |
+| Natural Earth 10m → "Rivers and state lines" globe layer | public domain (`pd`) | https://www.naturalearthdata.com/ | 153 KB | — |
+| Museum objects (AIC, Cleveland, Smithsonian, Met) | CC0 images | — | none | **left out**: no find-spot provenance (likely burials) or sacred items |
+
+The Moon gets the same treatment in its own optional asset, `moon_views` (Apollo surface photos, the USGS geologic map
+as "Rock ages", the Smithsonian's Columbia in 3D, Lunar Sample Compendium facts): docs/MEDIA.md "Moon views".
+
 ---
 
 ## 3. Archaeology v1 course design
@@ -598,6 +614,11 @@ folder (no course ids in code):
   `featured` (the Field School map's "Real views" ribbon), `home` (where the Library's camera starts) and `moon` (the
   context Moon in Earth's sky, not to scale). `app/course_library.py` validates every file, credit, id and bounds and
   serves the resolved library at `GET /api/course/library` (`{"shelves": []}` on the Moon or a pack without one).
+  From 0.5.3 an item may also be a `chart` (a JSON / CSV time series drawn as an accessible SVG with annotated
+  bands), a `model` (a `.glb` in the turntable) or a `layer` (a PNG draped on the globe with a legend), and every credit
+  needs a `licence_class` (`pd` | `cc0` | `by` | `by-sa` unmodified): docs/MEDIA.md "Open data beyond NASA". A pack
+  that uses the new kinds gets `min_app` 0.5.3 and `min_version` = its version (`scripts/asset_pack.py`), so older apps
+  keep the previous pack. Archaeology v3 adds the "Clues in the data" shelf and a Sentinel-2 view.
 - `videos.json`: NASA files in the base catalog's schema (`app/video.py validate()`), each marked `course: <id>` and
   merged into `/api/video/catalog` only while that course is active. They stream through the backend on first play
   and are pinned for the background download; an installed course pack may carry them as `video/<id>.mp4|.vtt|.jpg`

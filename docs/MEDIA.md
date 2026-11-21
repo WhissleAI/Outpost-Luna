@@ -204,6 +204,78 @@ only `site_layers` (not `nasa_views`), and is on for every screen that shows the
 (`ui.js PICK_VIEW`), with the view's centre shifted into the free area left of the side panel
 (`globe.setViewport(band, xFrac)`) and the site's name on its dot.
 
+## Open data beyond NASA (0.5.3)
+
+Explore used to show only US-agency media (NASA, USGS, NPS). It now also takes open datasets from other publishers, for
+both courses, under one rule: **the app may be sold, so only public domain, CC0, CC BY, or CC BY-SA shipped unmodified.**
+Nothing NC, nothing ND, no ODbL, nothing that needs permission.
+
+**The licence gate.** Every course media file is credited in `media/credits.json` with `credit`, `licence`, an https
+`source_url`, `alt` and a **`licence_class`**: `pd` | `cc0` | `by` | `by-sa` (by-sa also needs `modified: false`).
+`app/course_library.py licence_problem` rejects anything else: nc, nd, `unknown`, a missing class, or a licence text that
+names a non-commercial or no-derivatives term. It runs when the library is served (a bad entry means no library) and
+when the pack is built (`scripts/asset_pack.py src_course` stops). New entries also carry `licence_evidence` (where the
+licence was read) and, for data, `data_url` and `citation`. The moon_views pack applies the same classes per index entry
+(`scripts/moon_views_build.py validate_index`; `app/moon_views.py` drops anything else).
+
+**New library item kinds** (`docs/COURSES.md` §4.11; `frontend/src/field_library.js`, `frontend/src/media/chart.js`):
+
+| kind | file in `media/` | what the screen does |
+|---|---|---|
+| `chart` | an `outpost-luna-chart` JSON (`{format, series: [{label, points: [[x, y]…], faint?}], x_format, zero}`) or a CSV (x, then one column per series) | an inline SVG line or bar chart (no chart library): `<title>` + `<desc>` from the item's required `summary`, annotated `bands` (`[{from, to, label}]`), a legend and direct end labels for 2+ series, a hover read-out, and a "Show the numbers" table. Colours: blue, orange, aqua, yellow (validated on the dark glass: CVD ΔE ≥ 8.4, contrast ≥ 3:1); a `faint` context series is grey |
+| `model` | a `.glb` | the Moon rocks turntable (`media/turntable.js`), in a viewer beside the card |
+| `layer` | a transparent equirectangular `.png` | draped on the globe between `bounds` (`globe.setOverlay({lift, opacity})`), switched from its card, with its `legend` (`[{color: "#rrggbb", label}]`) |
+
+Course media names are one flat segment with one dot (`app/courses.py MEDIA_NAME`, `field_library.js safeDataUrl`):
+`.jpg .png` for pictures, `.json .csv` only for a chart and `.glb` only for a model, always from the course's own
+`/api/courses/<id>/media/`. Nothing is hot-linked.
+
+### Archaeology sources (`scripts/arch_open_data_build.py`, `make arch-open-data`)
+
+Each download is pinned by sha256 in `scripts/arch_open_data.pins.json` (a changed upstream file stops the build until
+its licence is re-read and `--repin`). Raw files go to `.cache/arch_open_data_raw` and are only parsed, never run.
+
+| Item | Source | Licence (class) | URL | Size in the pack | Sensitivity |
+|---|---|---|---|---|---|
+| Drought timeline AD 722–2011 (`drought_mesa_verde.json`) | NOAA NCEI study 19059, Stahle et al. 2015, cool-season P-PE reconstruction, each year + 10-year spline; Great Drought band 1276–1299 | No licence on the NCEI record; access constraints none; use constraint "cite" (`by`) | https://www.ncei.noaa.gov/access/paleo-search/study/19059 | 34 KB | Copy says people **moved / migrated**; drought was one of several reasons |
+| Four tree-ring records AD 1200–1320 (`tree_rings_1200_1320.json`) | ITRDB CO652 (rings/, computed) + NM597 Gobernador (archaeological + modern), NM589 Chuska Mountains, CO067 Dolores (from 1270) `.crn` chronologies | NCEI terms as above (`by`) | https://www.ncei.noaa.gov/products/paleoclimatology/tree-ring | 6 KB | — |
+| Radiocarbon dates near here (`radiocarbon_four_corners.json`) | p3k14c 2025.07 (Bird et al. 2022), records in 36–38 N, 110–107 W, counted per century of 1950 − ¹⁴C age (uncalibrated) | Data CC0 1.0 (`cc0`) | https://github.com/people3k/p3k14c | 1 KB | **Counts only**: no coordinates, site names or lab ids. A materials whitelist (charcoal, wood, seeds, sediment); bone, collagen, teeth, hair, coprolites, *Homo sapiens* and perishables that may be grave goods (textile, leather, basketry, sandals) excluded first: 792 kept, 180 excluded |
+| Mesa Verde from Sentinel-2 (`s2_mesa_verde.jpg`) | Copernicus Sentinel-2 L2A `S2B_12SYG_20250925_0_L2A` true colour, one window via the AWS Open Data COGs | Copernicus Sentinel data terms; credit "Contains modified Copernicus Sentinel data 2025" (`by`) | https://registry.opendata.aws/sentinel-2-l2a-cogs/ | 1.2 MB | — |
+| Rivers and state lines (`layer_rivers_states.png`) | Natural Earth 10m state lines + rivers (and the North America supplement: Animas, Dolores, Chaco) | Public domain (`pd`) | https://www.naturalearthdata.com/ | 153 KB | The Mancos is not in Natural Earth |
+
+The pack grows from 37.7 MB (v2) to 39.1 MB (v3).
+
+**Considered and left out:** museum objects for a "Things people made" shelf. The Art Institute of Chicago (CC0
+images) has Ancestral Pueblo vessels (bowls 205, 213, 223, 239, ladle 201 from an 1880s collector; jars 51144, 51185,
+bowl 51139 from a 1976 dealer; ollas 52784, 52794, 187545, bowl 52127, pitchers 52119, 59999 with no provenance; the
+Mesa Verde-style mug 108753, a private collection by 1980) and the Cleveland Museum of Art (CC0) has water jar 151830
+and jar 155114. None documents where it was found: whole vessels of this period very often come from burials, and some
+carry sacred imagery (the horned serpent on 187545). The kachina 191727 is a sacred object. Per the course's respect
+rules (docs/COURSES.md §1.5): when in doubt, leave it out. No Smithsonian or Met object was added for the same reason.
+
+### Moon views (`moon_views`, `scripts/moon_views_build.py`, `make moon-views`)
+
+An optional asset with the same shape as `nasa_views` and its own NOTICE (`backend/app/moon_views.py`: `GET
+/api/moon-views`, `POST /api/moon-views/want`, `GET /api/moon-views/file/<folder>/<name>`; `MOON_VIEWS_DIR`;
+`frontend/src/media/moon_views.js`). min_app 0.5.3; pinned by sha256 in `scripts/moon_views.pins.json`.
+
+| Item | Source | Licence (class) | Where in the app | Size |
+|---|---|---|---|---|
+| One surface photo per Apollo landing (AS11-40-5903, AS12-48-7133, AS14-66-9306, AS15-86-11603, AS16-113-18339, AS17-140-21496) | NASA Image and Video Library | Public domain (`pd`) | "Real photo here" on every hardware card at that landing site (not the S-IVB impacts) | 2.4 MB |
+| Rock ages (`layers/rock_ages.png`, 2048×1024) | USGS Unified Geologic Map of the Moon 1:5M, 2020 (Fortezzo, Spudis, Harrel), the 64 ppd numerical raster, units grouped by period (two-period units take the younger) | CC0, "please cite authors" (`cc0`) | the Library toolbar's **Rock ages** switch, with its key (`views_wire.js wireLayer`) | 125 KB |
+| Apollo 11 Command Module Columbia (`models/columbia.glb`) | Smithsonian NASM 3D package, exterior 150k/4096, simplified by `scripts/nasa_views_glb.mjs` (50 % triangles, WebP ≤ 1024 px, meshopt, metres) | CC0 (Open Access API + object page) (`cc0`) | the Moon rocks tray, NASA hardware group | 1.8 MB |
+| Sample facts for 15016, 60025, 76535, 70017, 65035 | Lunar Sample Compendium (C. Meyer, NASA JSC); no entry was found for 79115 | Public domain (`pd`) | the Moon rocks tray, under each rock's story | text |
+
+Total 4.3 MB. **Skipped:** LROC NAC crops of the Apollo sites. The PDS RDR mosaics (`NAC_ROI_APOLLO11*`) are 0.2–2 GB
+`.IMG` files at 0.4 m/px (the 5 m/px versions are too coarse to see hardware); cutting crops from them by byte range was
+not practical in this round (QuickMap / website JPGs are not used: not the PDS). Also skipped for licence reasons: JAXA,
+ISRO, CNSA, the UNESCO feed, GVP, Seshat, OSM.
+
+**Checks.** `backend/tests/test_open_data.py` (the gate, chart parsing, the new kinds, the route, the Archaeology data
+and its wording), `backend/tests/test_moon_views.py` (API, paths, licences, manifest), `frontend/tests/open_data.test.js`
+and `moon_views.test.js`. Render check without the app: `node frontend/tests/fixtures/render_open_data.mjs <out.html>`
+writes the real charts into a static page for a headless screenshot.
+
 ## Lesson step (course.json)
 
 ```json

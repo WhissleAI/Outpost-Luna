@@ -129,3 +129,15 @@ svg.chart{display:block;font-size:11px;overflow:visible}
 @media (max-width: 720px) {
   .flv{left:var(--gut);top:calc(var(--gut) + 56px);width:calc(100% - 2 * var(--gut));max-height:46vh}
 }
+
+/* ---------- the Moon Library's layer key (views_wire.js wireLayer: "Rock ages", the moon_views pack) ---------- */
+.mlayer{position:absolute;z-index:var(--z-panel);left:var(--gut);bottom:calc(var(--gut) + 110px);width:min(330px,calc(100% - 2 * var(--gut)));
+  padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);color:var(--color-on-space);background:var(--color-glass);
+  border:1px solid var(--color-glass-line);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.mlayer[hidden]{display:none}
+body:not([data-mode="cadet"]) .mlayer{display:none}
+.ml-head h2{margin:0 0 var(--space-2);font-size:var(--text-sm);font-weight:var(--weight-semibold)}
+.mlayer .flv-legend{gap:4px;font-size:var(--text-xs)}
+.ml-note{margin:0 0 var(--space-1);font-size:11px;line-height:var(--leading-snug);color:var(--color-on-space-2)}
+.ml-credit{margin:0;font-size:11px}
+.ml-credit a{color:var(--color-on-space-2)}
