@@ -476,12 +476,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function ctaFor(sel, nx, n) { return !sel || !open(sel) ? "" : resumeStep(prog, sel) > 0 ? UI.cont : has(sel.badge.id) ? UI.replay2 : sel.ride ? SCHOOL.ride : sel === nx && n > 0 ? UI.cont : UI.start; }   // [0.4.1] a half-done lesson: Continue
 
   // ---------- lesson ----------
-  async function openLesson(id, { prep = false } = {}) {
+  async function openLesson(id, { prep = false, step = null } = {}) {
     const want = lessons().find(l => l.id === id); if (!want) return;
     if (!open(want)) { mapSel = want.id; showMap(true); say(want.unlock_after === "checkride" ? EXPLORER.lockedSayRide : EXPLORER.lockedSay); return; }   // an explorer lesson, still locked
     L = want; booted = true;
     // [0.4.1] a half-done lesson picks up at its step
     view = "lesson"; i = L.ride ? 0 : resumeStep(prog, L); misses = 0; waitingNext = false; feedback = null; nagged = false; stepKey = ""; leaveCatalog(); freshStep();
+    if (!L.ride && Number.isInteger(step) && step > 0 && L.steps[step]) { i = step; freshStep(); }   // [D5] a concept's review opens at its step
     try { dispatchEvent(new CustomEvent("outpost:lesson", { detail: { id } })); } catch (e) { /* tests */ }   // main.js closes a stale answer card
     endRide();
     if (L.ride) {
@@ -1153,6 +1154,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
 
   ui.whatNow = whatNow;
+  /** [D5] A concept's spaced review (brain.js): open its lesson at the step that practises it. */
+  ui.review = (id, step) => { if (!lessons().some(l => l.id === id)) return false; openLesson(id, { step }); return true; };
   // test hook (tests/e2e/answers_e2e.py, robustness_e2e.py; only when the page sets window.__outpostTest): jump the open
   // lesson to step n, fresh, as if the kid had just arrived there
   try { if (window.__outpostTest) (window.__outpost = window.__outpost || {}).academyTest = {

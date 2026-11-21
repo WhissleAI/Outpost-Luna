@@ -208,6 +208,8 @@ async function boot() {
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
   // [brain] My Brain: the top bar's button, the map's call-sign chip, B, voice (docs/BRAIN.md)
   const brain = installBrain({ setMode: m => setMode(m), editCallSign: () => academyUI.editCallSign() });
+  // [D5] a concept's quick review (My Brain, the mission debrief): Flight School, at the step that practises it
+  (window.__outpost = window.__outpost || {}).review = (lessonId, step) => { setMode("academy"); setTimeout(() => academyUI.review && academyUI.review(lessonId, step), 350); };
   // [class] Settings → Class lessons → Preview: the course again (the preview joined it), then the lesson, as a cadet sees it
   addEventListener("outpost:class-open", e => {
     const id = e.detail && e.detail.id; if (!id) return;
