@@ -218,6 +218,8 @@
  },
  "class_packs": true,
  "sources": "courses/archaeology/sources.json",
+ "library": "courses/archaeology/library.json",
+ "videos": "courses/archaeology/videos.json",
  "rings": [
   "courses/archaeology/rings/itrdb_co652.json"
  ],

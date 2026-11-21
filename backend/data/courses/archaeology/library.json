@@ -1,0 +1,263 @@
+{
+ "_note": "The Field Library (Archaeology's Library screen, docs/COURSES.md 'Course library'): real NASA views of Earth blended with real Mesa Verde sites, lidar and NASA videos. Every image is a file in media/ with its credit in media/credits.json; every video an id in videos.json; every place a gazetteer id; every source a sources.json id. backend/app/course_library.py checks all of it and serves it at GET /api/course/library.",
+ "format": "outpost-luna-library",
+ "version": 1,
+ "title": "Field Library",
+ "intro": "Real NASA views of Earth, and the real sites of Mesa Verde. Tap one.",
+ "home": {
+  "lat": 37.0,
+  "lon": -108.6,
+  "dist": 1.08
+ },
+ "overlays": [
+  {
+   "file": "four_corners_region.jpg",
+   "bounds": {
+    "west": -110.2,
+    "south": 35.7,
+    "east": -106.9,
+    "north": 38.0
+   },
+   "label": "Four Corners region, from above"
+  }
+ ],
+ "tour": {
+  "title": "Site tour",
+  "intro": "Six places on the Colorado Plateau, from orbit down to the cliff dwellings.",
+  "stops": [
+   "four_corners",
+   "mesa_verde",
+   "crow_canyon",
+   "hovenweep",
+   "chimney_rock",
+   "chaco"
+  ]
+ },
+ "chips": [
+  {
+   "label": "Tour the sites",
+   "do": "tour"
+  },
+  {
+   "label": "Mesa Verde from orbit",
+   "do": "item:mv_landsat"
+  },
+  {
+   "label": "Watch: lasers from space",
+   "do": "item:v_lidar"
+  }
+ ],
+ "featured": [
+  "mv_landsat",
+  "iss_san_juan",
+  "cliff_palace",
+  "v_lidar"
+ ],
+ "moon": {
+  "say": "The same Moon you can study in the Moon course. Ancestral Pueblo people watched it too.",
+  "place": "chimney_rock",
+  "place_label": "Moonrise at Chimney Rock",
+  "item": "v_landsat_moon"
+ },
+ "shelves": [
+  {
+   "id": "orbit",
+   "title": "Earth from orbit",
+   "by": "NASA",
+   "items": [
+    {
+     "id": "mv_landsat",
+     "kind": "image",
+     "file": "four_corners.jpg",
+     "place": "mesa_verde",
+     "title": "Mesa Verde from Landsat 8",
+     "caption": "15 August 2016. Canyons cut the green tableland where the cliff dwellings hide.",
+     "source": "nasa_media"
+    },
+    {
+     "id": "region",
+     "kind": "image",
+     "file": "four_corners_region.jpg",
+     "title": "The region from above",
+     "caption": "Mesa Verde, Sleeping Ute Mountain and the San Juan River in one view.",
+     "source": "usgs_pd"
+    },
+    {
+     "id": "iss_san_juan",
+     "kind": "image",
+     "file": "iss_pastora_san_juan.jpg",
+     "lat": 36.79,
+     "lon": -109.18,
+     "title": "Astronaut photo: the San Juan River",
+     "caption": "Taken from the space station in November 2025, near the Four Corners.",
+     "source": "nasa_media"
+    },
+    {
+     "id": "iss_wupatki",
+     "kind": "image",
+     "file": "iss_wupatki.jpg",
+     "lat": 35.55,
+     "lon": -111.4,
+     "title": "Astronaut photo: Wupatki",
+     "caption": "A national monument rich in Native American archaeology, on the plateau's southwestern edge.",
+     "source": "nasa_media"
+    },
+    {
+     "id": "blue_marble",
+     "kind": "image",
+     "file": "earth5400.jpg",
+     "title": "Blue Marble",
+     "caption": "The whole Earth in August 2004, stitched from NASA satellite pictures. It is this globe's map.",
+     "source": "nasa_media"
+    }
+   ]
+  },
+  {
+   "id": "sites",
+   "title": "Mesa Verde sites",
+   "by": "National Park Service",
+   "items": [
+    {
+     "id": "cliff_palace",
+     "kind": "image",
+     "file": "photo_cliff_palace.jpg",
+     "place": "mesa_verde",
+     "title": "Cliff Palace",
+     "caption": "Most cliff dwellings were built from the late 1190s to the late 1270s.",
+     "source": "cliff_dwelling_dates"
+    },
+    {
+     "id": "long_house",
+     "kind": "image",
+     "file": "photo_long_house.jpg",
+     "place": "mesa_verde",
+     "title": "Long House",
+     "caption": "A beam cored here came from a tree cut in 1275.",
+     "source": "longhouse_1275"
+    },
+    {
+     "id": "spruce_tree",
+     "kind": "image",
+     "file": "photo_spruce_tree_house.jpg",
+     "place": "mesa_verde",
+     "title": "Spruce Tree House",
+     "caption": "Pueblo people still use kivas like these round rooms today.",
+     "source": "kiva"
+    },
+    {
+     "id": "pithouse",
+     "kind": "image",
+     "file": "photo_pithouse_mesa_top.jpg",
+     "place": "mesa_verde",
+     "title": "A mesa-top pithouse",
+     "caption": "The first farmers here lived in pithouses, from about A.D. 550.",
+     "source": "pithouse"
+    },
+    {
+     "id": "far_view_house",
+     "kind": "image",
+     "file": "photo_far_view_house.jpg",
+     "place": "mesa_verde",
+     "title": "Far View House",
+     "caption": "A mesa-top community of modest homes on Chapin Mesa.",
+     "source": "far_view"
+    },
+    {
+     "id": "far_view_kivas",
+     "kind": "image",
+     "file": "photo_far_view_kivas_tower.jpg",
+     "place": "mesa_verde",
+     "title": "Far View tower and kivas",
+     "caption": "Part of the same Far View community.",
+     "source": "far_view"
+    },
+    {
+     "id": "reservoir",
+     "kind": "image",
+     "file": "photo_far_view_reservoir.jpg",
+     "place": "mesa_verde",
+     "title": "Far View Reservoir",
+     "caption": "Also called Mummy Lake. It is dry today.",
+     "source": "far_view"
+    }
+   ]
+  },
+  {
+   "id": "lidar",
+   "title": "Lidar",
+   "by": "USGS",
+   "items": [
+    {
+     "id": "lidar_low",
+     "kind": "image",
+     "file": "far_view_low_sun.jpg",
+     "place": "mesa_verde",
+     "title": "Lidar, low sun",
+     "caption": "Laser pulses map the bare ground. Low light makes old walls cast shadows.",
+     "source": "lidar_low_sun"
+    },
+    {
+     "id": "lidar_high",
+     "kind": "image",
+     "file": "far_view_high_sun.jpg",
+     "place": "mesa_verde",
+     "title": "Lidar, high sun",
+     "caption": "The same ground under a high sun. The sites almost vanish.",
+     "source": "lidar_how"
+    }
+   ]
+  },
+  {
+   "id": "watch",
+   "title": "Watch",
+   "by": "NASA",
+   "items": [
+    {
+     "id": "v_remote",
+     "kind": "video",
+     "video": "arch_remote_sensing",
+     "caption": "An astronaut shows the sensors that watch Earth from the space station."
+    },
+    {
+     "id": "v_lidar",
+     "kind": "video",
+     "video": "arch_lidar_space",
+     "caption": "Lidar from orbit: timing laser pulses, like the hillshade lesson."
+    },
+    {
+     "id": "v_pushbroom",
+     "kind": "video",
+     "video": "arch_landsat_pushbroom",
+     "caption": "How Landsat builds a picture of the land, one strip at a time."
+    },
+    {
+     "id": "v_drought",
+     "kind": "video",
+     "video": "arch_tree_ring_drought",
+     "caption": "Tree rings record the Southwest's past droughts."
+    }
+   ]
+  },
+  {
+   "id": "moon",
+   "title": "The Moon, from here",
+   "by": "NASA and USDA Forest Service",
+   "items": [
+    {
+     "id": "chimney_rock_moon",
+     "kind": "place",
+     "place": "chimney_rock",
+     "title": "Moonrise at Chimney Rock",
+     "caption": "Every 18.6 years the Moon rises between the two spires.",
+     "source": "chimney_rock"
+    },
+    {
+     "id": "v_landsat_moon",
+     "kind": "video",
+     "video": "arch_landsat_moon",
+     "caption": "Every full Moon, Landsat turns around to check its camera on the Moon."
+    }
+   ]
+  }
+ ]
+}

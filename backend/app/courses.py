@@ -54,7 +54,9 @@ FORMAT, VERSION = "outpost-luna-course", 1
 ID = re.compile(r"^[a-z][a-z0-9-]{1,23}$")
 BODIES = ("moon", "earth", "site")            # a globe (moon, earth) or a flat site map (later)
 STATUSES = ("builtin", "pack", "draft")      # builtin: ships with the app; pack: an asset to download; draft: being written
-FILE_KEYS = ("gazetteer", "entities", "concepts", "voice_pack")   # top-level data-file pointers
+FILE_KEYS = ("gazetteer", "entities", "concepts", "voice_pack", "library", "videos")   # top-level data-file pointers
+# library: the course's Library screen (app/course_library.py); videos: its own NASA videos, merged into the video
+# catalog while the course is active (app/video.py catalog())
 DEFAULT = "moon"
 REGISTERS = ("kid", "teen")
 BUDGET_KEYS = ("prompt", "title", "hint", "success", "fail", "reveal")
@@ -300,8 +302,8 @@ def current() -> dict:
 
 
 def path(key: str, m: dict | None = None) -> Path | None:
-    """The active (or given) course's data file for a manifest key: gazetteer, entities, concepts, voice_pack,
-    ear.vocab, lessons.source, missions.sites. None when the course has none."""
+    """The active (or given) course's data file for a manifest key: gazetteer, entities, concepts, voice_pack, library,
+    videos, ear.vocab, lessons.source, missions.sites. None when the course has none."""
     m = m or current()
     rel = dict(_files(m)).get(key)
     if key == "voice_pack" and rel and root(m) == DATA:   # the built-in pack lives where the app installed it

@@ -43,8 +43,10 @@ import "./academy/field_steps.js";   // [0.5] Field School step renderers (docs/
 import "./academy/arch_steps.js";   // [courses] archaeology step renderers: layers, rings, hillshade, decide (docs/COURSES.md §3.2)
 // ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
 import "./media/video.css";
+import "./field_library.css";   // [courses] a non-Moon course's Library
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
-import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
+import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow, openVideo } from "./media/video.js";
+import { installFieldLibrary } from "./field_library.js";   // [courses] a non-Moon course's Library: real NASA views, sites, videos
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
@@ -138,13 +140,22 @@ async function boot() {
   const TAP_STEPS = ["tap", "intent", "route", "terminator", "compare", "globe_side"];
   const onMiss = () => {
     const m = document.body.dataset.mode, f = m === "academy" ? academyUI.screen() : null;
-    if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice("Tap on the Moon");
+    if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice(`Tap on ${onMoon ? "the Moon" : bodyName}`);
   };
   // [courses] the course's body: the Moon (unchanged, MOON_BODY) or another course's globe (Earth: the pack's Blue Marble)
   const onMoon = courseState.active === "moon" || !courseState.info.globe || courseState.info.globe.body === "moon";
+  const bodyName = onMoon ? "Moon" : (courseState.info.globe.name || courseState.info.title);   // "Earth" (no article)
   const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss, body: onMoon ? undefined : courseState.info.globe });
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   if (onMoon) wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // Moon-only: its real sky, hardware models, rocks, sharp pole   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
+  // [courses] another course's Library (field_library.js): its real pictures, videos, places, tour and chips. The Moon's
+  // Library stays as it was (hardware, crew audio, the NASA views pack).
+  const fieldLib = onMoon ? null : installFieldLibrary({
+    stage: $("stage"), chipsEl: $("chips"), globe, card, places, placeById, say: t => guideSay(t),
+    openVideo: (id, o) => openVideo(id, o), runTour: (ids, intro, o) => runTour(ids, intro, o), goLibrary: () => setMode("cadet"),
+    mapUrl: (courseState.info.globe || {}).map || "",
+  });
+  if (fieldLib) window.__outpost.fieldLib = fieldLib;
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
@@ -434,7 +445,7 @@ async function boot() {
         { label: i < n - 1 ? "Next stop" : "Finish", hot: true, onClick: () => tourStepBy(1, "button") }];
     const extra = { eyebrow: `${tour.paused ? "Paused" : "Tour"} · stop ${i + 1} of ${n}`, actions: acts, transient: true, tour: true,
       note: tour.paused ? tour.why : "" };
-    tour.token = card.show(hw ? artifactEntry(a, extra) : { title: a.name, place: true, say: a.fact, ...extra });
+    tour.token = card.show(hw ? artifactEntry(a, extra) : { title: a.name, place: true, say: a.fact, ...(fieldLib ? fieldLib.placeEntry(a) : {}), ...extra });
     if (tour.paused) requestAnimationFrame(() => { const b = document.querySelector("#cardActions .pill.hot"); if (b && tour.paused) b.focus({ preventScroll: true }); });
   }
   /** Pause where we are (the line stops). source: voice | gesture | keyboard | barge | question | tap | video | crew | button */
@@ -479,7 +490,7 @@ async function boot() {
   }
   /** Something else took over (a tap, a question, a video, a crew clip): the tour pauses, never ends. */
   const cancelTour = source => pauseTour(source || "question", { quiet: true });
-  async function runTour(ids, intro, { asked, arc } = {}) {
+  async function runTour(ids, intro, { asked, arc, title } = {}) {
     const stops = (ids || []).map(placeById).filter(Boolean);
     if (!stops.length) { card.show({ title: "Guide", asked, say: intro, arc }); await guideSay(intro); return; }
     closeTour("restart"); cancelNudge(); ++turn.seq;
@@ -487,7 +498,7 @@ async function boot() {
     $("tourBtn").setAttribute("aria-pressed", "true");
     tourLog("start", "button");
     if (intro) {
-      tour.token = card.show({ title: "Hardware tour", eyebrow: `Tour · ${stops.length} stops`, asked, say: intro, arc, transient: true, tour: true,
+      tour.token = card.show({ title: title || "Hardware tour", eyebrow: `Tour · ${stops.length} stops`, asked, say: intro, arc, transient: true, tour: true,
         actions: [{ label: "Start", hot: true, onClick: () => { if (my === tour.id && tour.active) { stopSpeaking("tour_start"); tourStep(++tour.id, 0); } } }, { label: "Close tour", onClick: () => { closeTour("button"); card.hide(); } }] });
       if (player.active) player.stop(true);
       await guideSay(intro);
@@ -549,6 +560,7 @@ async function boot() {
     if (d < 12) {
       if (f.id !== turn.lastPlace) chime();
       globe.showFeature(f); turn.lastPlace = f.id;
+      if (fieldLib && fieldLib.lib) { fieldLib.openPlace(f); scheduleNudge(); return; }   // [courses] its real photo + sources
       const token = card.show({ title: f.name, place: true, say: f.fact, arc: readoutLine({ source: "tap", action: "fly" }),
         note: f.est ? "Location estimated from the crew's own directions." : "" });
       offerCrew(token, f, null);
@@ -794,14 +806,20 @@ async function boot() {
 
   $("cardClose").addEventListener("click", () => { if (tour.active) { closeTour("button"); card.hide(); } if (isSpeaking()) stopSpeaking("card_close"); if (player.active) player.stop(true); });   // [qa] closing the card ends what it was saying
   $("askForm").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });
-  CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
-  $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
-  $("farBtn").onclick = () => globe.flyTo(0, 180, 3.6);
+  if (onMoon) CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
+  $("nearBtn").onclick = () => (fieldLib ? fieldLib.enter() : globe.flyTo(0, 0, 3.6));
+  $("farBtn").onclick = () => (fieldLib ? globe.flyTo(30, -100, 3.6) : globe.flyTo(0, 180, 3.6));
+  if (!onMoon) {   // [courses] a globe without Moon hardware: no Hardware switch; Near / Far side become the region / the whole globe
+    HELP.library = `Tap a place on ${bodyName}, or ask a question.`;
+    $("hwBtn").hidden = true; $("nearBtn").textContent = "The region"; $("farBtn").textContent = `Whole ${bodyName}`;
+    document.querySelector(".hud").setAttribute("aria-label", `${bodyName} library`);
+  }
   $("pinsBtn").onclick = e => { e.currentTarget.setAttribute("aria-pressed", globe.togglePins()); };
   $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); };
   // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
   $("tourBtn").onclick = () => {
     if (tour.active) { if (tour.paused) resumeTour("button"); else pauseTour("button"); return; }
+    if (fieldLib) { fieldLib.tour(); return; }   // [courses] the course's own site tour
     // [qa] 36 stops was ~4 minutes: a short tour of firsts, oldest first (the rest stay a tap away on the globe)
     const all = places.filter(p => p.kind === "artifact"), pick = TOUR_IDS.map(id => all.find(a => a.id === id)).filter(Boolean);
     const hw = (pick.length >= 4 ? pick : all).sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
@@ -811,7 +829,7 @@ async function boot() {
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
   let lastMode = "academy";
-  const PH = { mission: "Type an order", cadet: "Ask about the Moon", academy: "Type instead" };
+  const PH = { mission: "Type an order", cadet: `Ask about ${onMoon ? "the Moon" : bodyName}`, academy: "Type instead" };
   function setMode(mode) {
     const m = ["cadet", "academy"].includes(mode) ? mode : "mission";
     document.body.dataset.mode = m;
@@ -838,7 +856,8 @@ async function boot() {
     } else {
       $("pinsBtn").setAttribute("aria-pressed", globe.pinsOn !== false); $("hwBtn").setAttribute("aria-pressed", globe.hardwareOn);   // [qa]
       missionUI.exit(); card.hide();
-      if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
+      if (fieldLib && fieldLib.enter()) { /* the course's region, close, with its real picture and named places */ }
+      else if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
     }
     screenInvariant();
     pushScreen(true);          // the router hears about the new screen now, not on the next 400 ms tick
@@ -851,7 +870,7 @@ async function boot() {
     O.help = () => {
       const m = document.body.dataset.mode;
       if (m === "academy") return academyHelp();
-      if (m === "cadet") return "Tap a place on the Moon to hear about it, or ask a question.";
+      if (m === "cadet") return `Tap a place on ${onMoon ? "the Moon" : bodyName} to hear about it, or ask a question.`;
       const own = missionUI.whatNow && missionUI.whatNow();   // the cabin's objective strip, picker, debrief (docs/STORY.md)
       if (own) return own;
       const sc = (missionUI.screen && missionUI.screen()) || {};

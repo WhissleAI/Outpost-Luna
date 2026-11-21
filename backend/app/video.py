@@ -99,14 +99,45 @@ def catalog_path() -> Path:
 _cat: dict = {"key": None, "items": []}
 
 
-def catalog() -> list[dict]:
-    p = catalog_path()
+def course_videos() -> tuple[str | None, Path | None]:
+    """[courses] The active course's own video list (manifest `videos`, e.g. courses/archaeology/videos.json): (course
+    id, path), or (None, None) for a course without one (the Moon: its videos are the base catalog)."""
     try:
-        key = (str(p), p.stat().st_mtime)
+        from . import courses
+        m = courses.current()
+        p = courses.path("videos", m)
+        return (m.get("id"), p) if p is not None else (None, None)
+    except Exception:   # noqa: BLE001  (a broken course never takes the Moon's videos down)
+        return None, None
+
+
+def course_video_dir(v: dict) -> Path | None:
+    """Where an installed course pack carries its pinned videos (<pack>/video/<id>.mp4|.vtt|.jpg), for its own items."""
+    if not v.get("course"):
+        return None
+    cid, p = course_videos()
+    return p.parent / "video" if p is not None and cid == v["course"] else None
+
+
+def catalog() -> list[dict]:
+    """The base catalog (backend/data/video/catalog.json) plus the active course's own videos, each marked
+    {"course": <id>}. A course item whose id the base catalog already has is dropped (validate() reports it)."""
+    p = catalog_path()
+    cid, cp = course_videos()
+    try:
+        key = (str(p), p.stat().st_mtime, cid, str(cp), cp.stat().st_mtime if cp is not None and cp.is_file() else None)
     except OSError:
         return []
     if _cat["key"] != key:
-        _cat["items"], _cat["key"] = json.loads(p.read_text(encoding="utf-8")), key
+        items = json.loads(p.read_text(encoding="utf-8"))
+        if cp is not None and cp.is_file():
+            try:
+                extra = json.loads(cp.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                extra = []
+            have = {v.get("id") for v in items}
+            items = items + [{**v, "course": cid} for v in extra if isinstance(v, dict) and v.get("id") not in have]
+        _cat["items"], _cat["key"] = items, key
     return _cat["items"]
 
 
@@ -529,13 +560,12 @@ def busy() -> bool:
 
 
 def from_pack(v: dict, kind: str, pinned: bool = False) -> bool:
-    """The desktop's installed video asset (settings.video_pack_dir, desktop/main/assets.js) has this file: copy it
-    into the cache instead of downloading it. A video must match the catalog's size and sha256."""
-    if not settings.video_pack_dir:
-        return False
+    """The desktop's installed video asset (settings.video_pack_dir, desktop/main/assets.js), or for a course's own video
+    its installed course pack (<pack>/video), has this file: copy it into the cache instead of downloading it. A video
+    must match the catalog's size and sha256."""
     c, n = cache(), names(v)[kind]
-    src = Path(settings.video_pack_dir) / n
-    if not src.is_file():
+    src = next((d / n for d in pack_dirs(v) if (d / n).is_file()), None)
+    if src is None:
         return False
     if kind == "video" and not pack_copy_ok(v, src):
         return False
@@ -562,8 +592,15 @@ def pack_copy_ok(v: dict, src: Path) -> bool:
     return False
 
 
+def pack_dirs(v: dict) -> list[Path]:
+    """Local folders that may carry v's files: the video pack, then (a course's own video) its course pack."""
+    out = [Path(settings.video_pack_dir)] if settings.video_pack_dir else []
+    cd = course_video_dir(v)
+    return out + ([cd] if cd is not None else [])
+
+
 def pack_has(v: dict) -> bool:
-    return bool(settings.video_pack_dir) and (Path(settings.video_pack_dir) / names(v)["video"]).is_file()
+    return any((d / names(v)["video"]).is_file() for d in pack_dirs(v))
 
 
 def fetch_captions(v: dict, pinned: bool = False, client: httpx.Client | None = None) -> bool:
