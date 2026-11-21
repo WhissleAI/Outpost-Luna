@@ -66,6 +66,31 @@ test("links: the cited sites, our repo and site (https); nothing else", () => {
     assert.equal(H.linkAllowed(u), false, u);
 });
 
+// [0.5.6] owner playtest 0.5.5: the Archaeology course's NPS rack card was "link refused (not on the list)" four times;
+// none of that course's hosts were listed. Every link any course cites must open (or be one of the app's own pages).
+test("links: every web link a course cites is on the list (no dead clicks)", () => {
+  const root = path.join(__dirname, "..", "..", "backend", "data"), bad = [];
+  const files = [];
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) walk(p); else if (e.name.endsWith(".json")) files.push(p);
+  });
+  walk(path.join(root, "courses")); walk(path.join(root, "academy"));
+  for (const f of files) {
+    const t = fs.readFileSync(f, "utf8");
+    for (const m of t.matchAll(/"(https?:\/\/[^"\s]+)"/g)) {
+      const u = m[1];
+      if (G.classifyOpen(u, ORIGIN) === "youtube") continue;   // behind the grown-up gate
+      if (!H.linkAllowed(u)) bad.push(`${path.relative(root, f)}: ${u}`);
+    }
+  }
+  assert.deepEqual(bad, []);
+  assert.equal(H.linkAllowed("https://github.com/people3k/p3k14c#licenses"), true);
+  assert.equal(H.linkAllowed("https://raw.githubusercontent.com/people3k/p3k14c/main/data/p3k14c_data.rda"), true);
+  assert.equal(H.linkAllowed("https://raw.githubusercontent.com/someone/else/main/x"), false);
+  assert.equal(H.linkAllowed("http://github.com/people3k/p3k14c"), false);
+});
+
 test("navigation: our origin stays, YouTube goes behind the gate, allowed links out, the rest refused", () => {
   const nav = (u) => H.navigation(u, ORIGIN, G.classifyOpen);
   assert.equal(nav(ORIGIN + "/?x=1"), "ours");

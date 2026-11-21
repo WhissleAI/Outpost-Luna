@@ -147,3 +147,56 @@ def test_the_pack_manifest_points_at_the_library_and_videos():
     assert pack["library"] == "library.json" and pack["videos"] == "videos.json"
     errs, _ = courses.validate(m)
     assert errs == []
+
+
+# [0.5.6] owner playtest 0.5.5: Lesson 1's NPS rack card ("What If I Find an Artifact?") was a dead link (the shell
+# refused nps.gov, and the app is offline-first). The pack keeps the card (the PDF as it was, plus a picture per page)
+# and the library names it as a document, so any link to its address opens the pages in the app.
+RACK = "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf"
+
+
+def test_the_nps_rack_card_ships_in_the_pack_public_domain_and_credited():
+    cred = {c["file"]: c for c in json.loads((D / "media" / "credits.json").read_text())}
+    (doc,) = LIB["docs"]
+    assert doc["id"] == "nps_rack_artifacts" and doc["url"] == RACK and doc["pdf"] == "nps_rack_artifacts.pdf"
+    assert [p["file"] for p in doc["pages"]] == ["nps_rack_artifacts_p1.jpg", "nps_rack_artifacts_p2.jpg"]
+    for f in [doc["pdf"]] + [p["file"] for p in doc["pages"]]:
+        c, p = cred[f], D / "media" / f
+        assert p.is_file() and p.stat().st_size == c["bytes"] < 400_000, f
+        assert c["licence_class"] == "pd" and c["licence"].startswith("Public domain") and "17 U.S.C. 105" in c["licence"], f
+        assert c["source_url"] == RACK and c["alt"] and cl.licence_problem(c) is None, f
+    assert (D / "media" / doc["pdf"]).read_bytes()[:5] == b"%PDF-"
+    # every lesson that cites the card cites the same address the library maps
+    course = (D / "course.json").read_text()
+    assert course.count(RACK) == 3
+
+
+def test_the_route_serves_the_document_pages_and_validate_guards_them(dev):
+    from app.main import app
+    d = TestClient(app).get("/api/course/library").json()
+    (doc,) = d["docs"]
+    assert doc["url"] == RACK and doc["title"] == "What If I Find an Artifact?" and doc["credit"].startswith("National Park Service")
+    assert [p["url"] for p in doc["pages"]] == [f"/api/courses/archaeology/media/nps_rack_artifacts_p{n}.jpg" for n in (1, 2)]
+    for p in doc["pages"]:
+        r = TestClient(app).get(p["url"])
+        assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and p["alt"]
+    f = _files()
+    bad = copy.deepcopy(LIB)
+    bad["docs"][0]["pages"].append({"file": "nope_p3.jpg"})
+    bad["docs"].append({**copy.deepcopy(LIB["docs"][0]), "id": "again"})   # the same url twice
+    bad["docs"].append({"id": "Bad Id", "url": "http://x", "pages": []})
+    errs = " | ".join(cl.validate(bad, f))
+    for s in ("nope_p3.jpg", "docs[1]: needs the https url", "docs[2]: needs a unique"):
+        assert s in errs, s
+
+
+def test_the_regional_picture_is_the_seamless_rebuild():
+    """[0.5.6] four_corners_region.jpg was four USGS tiles of different years and colour (a seam at 37 N and 109.05 W:
+    "two mismatched squares" on the globe). scripts/arch_region_overlay.py rebuilt it (seam score 31 -> 1.8, its
+    --check); the credit says how, and the file is the one it describes."""
+    import hashlib
+    c = {x["file"]: x for x in json.loads((D / "media" / "credits.json").read_text())}["four_corners_region.jpg"]
+    b = (D / "media" / "four_corners_region.jpg").read_bytes()
+    assert hashlib.sha256(b).hexdigest() == c["sha256"] and len(b) == c["bytes"]
+    assert "arch_region_overlay.py" in c["note"] and c["licence_class"] == "pd"
+    assert c["sha256"] != "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660"   # the seamed 0.5.5 picture

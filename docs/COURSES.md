@@ -619,6 +619,13 @@ folder (no course ids in code):
   needs a `licence_class` (`pd` | `cc0` | `by` | `by-sa` unmodified): docs/MEDIA.md "Open data beyond NASA". A pack
   that uses the new kinds gets `min_app` 0.5.3 and `min_version` = its version (`scripts/asset_pack.py`), so older apps
   keep the previous pack. Archaeology v3 adds the "Clues in the data" shelf and a Sentinel-2 view.
+  From 0.5.6 a library may list `docs`: documents a lesson cites, kept in the pack so they open in the app, offline
+  (`{id, url, title, by, pdf, pages: [{file, alt}]}`: the original PDF unchanged plus a picture per page, every file
+  credited). A link to a doc's `url` anywhere in the app opens its pages in the picture viewer (`frontend/src/links.js`,
+  `media/lightbox.js`); any other link is marked as a web link and opens in the system browser through the desktop
+  allow list (`desktop/main/hardening.js`, whose test reads every course file). Archaeology v7 keeps the NPS rack card
+  "What If I Find an Artifact?" (US federal public domain; `scripts/arch_docs_build.py`) and a seamless Four Corners
+  overlay (`scripts/arch_region_overlay.py`: the USGS export's four state tiles had a seam and a colour jump).
 - `videos.json`: NASA files in the base catalog's schema (`app/video.py validate()`), each marked `course: <id>` and
   merged into `/api/video/catalog` only while that course is active. They stream through the backend on first play
   and are pinned for the background download; an installed course pack may carry them as `video/<id>.mp4|.vtt|.jpg`

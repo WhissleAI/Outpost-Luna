@@ -127,6 +127,18 @@ html[data-contrast="high"] .a-crs-opt{border-color:#fff;background:#000}
 .route-cluster[hidden]{display:none}
 .route-cluster.is-next{box-shadow:0 0 0 3px #8DB2FF,0 0 0 9px rgba(141,178,255,.22),0 8px 24px rgba(0,0,0,.5)}
 .route-cluster:focus-visible{outline:none;box-shadow:0 0 0 3px #8DB2FF,0 6px 18px rgba(0,0,0,.45)}
+/* [0.5.6] a count pin with earned patches wears them (the newest in front, older ones peeking behind) and its count
+   moves to a corner badge: the patch just earned never vanishes into a plain number */
+.route-cluster.has-done{background:transparent;box-shadow:none}
+.route-cluster .rc-patches{position:absolute;inset:0;pointer-events:none}
+.route-cluster .rc-patch{position:absolute;inset:0;display:grid;place-items:center}
+.route-cluster .rc-patch svg{width:44px;height:44px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+.route-cluster .rc-patch:nth-last-child(2){transform:translate(-9px,-5px) scale(.86);opacity:.9}
+.route-cluster .rc-patch:nth-last-child(3){transform:translate(-16px,-9px) scale(.74);opacity:.8}
+.route-cluster.has-done b{position:absolute;top:-7px;right:-9px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;display:grid;place-items:center;
+  background:#0E1420;color:#F3F5F8;box-shadow:0 0 0 2px #F3F5F8;font-size:12px}
+.route-cluster.has-done.is-next b{box-shadow:0 0 0 2px #8DB2FF}
+.route-cluster.has-done:focus-visible{box-shadow:0 0 0 3px #8DB2FF}
 .route-dot{position:absolute;left:0;top:0;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#F3F5F8;box-shadow:0 0 0 2px rgba(5,7,11,.6)}
 .pin{--s:44px;position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);padding:0;border:0;border-radius:50%;
   background:none;pointer-events:auto;cursor:pointer;color:var(--color-on-space)}

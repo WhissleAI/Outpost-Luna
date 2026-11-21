@@ -86,6 +86,15 @@ body[data-mode="academy"]:has(.apanel.is-map:not([hidden])) .flib-ribbon:not([hi
   max-height:calc(100% - 2 * var(--gut) - 56px - 110px);display:flex;flex-direction:column;border-radius:var(--radius-lg);overflow:hidden;
   color:var(--color-on-space);background:var(--color-glass);border:1px solid var(--color-glass-line);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 .flv[hidden]{display:none}
+/* [0.5.6] the item card (styles.css .card: right, 380 px) stays clear of the viewer: side by side when both fit, and
+   at 1280x720 the viewer narrows to the gap and stops above the chips row; narrower than that, the viewer has the
+   floor while it is open (its own title, caption, credit and close) and the card comes back when it closes */
+body:has(#card:not([hidden])) .flv{width:min(620px,calc(100% - 4 * var(--gut) - 352px - 380px))}
+.flv{max-height:calc(100% - 2 * var(--gut) - 56px - 150px)}
+@media (max-width:1179px){
+  body:has(#card:not([hidden])) .flv{width:min(620px,calc(100% - 3 * var(--gut) - 352px))}
+  body:has(.flv:not([hidden])) #card{display:none}
+}
 body:not([data-mode="cadet"]) .flv{display:none}
 .flv-head{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) var(--space-4) 0}
 .flv-head h2{flex:1;margin:0;font-size:var(--text-sm);font-weight:var(--weight-semibold)}

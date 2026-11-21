@@ -47,6 +47,8 @@ import "./media/video.css";
 import "./field_library.css";   // [courses] a non-Moon course's Library
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow, openVideo } from "./media/video.js";
+import { installLinks } from "./links.js";   // [0.5.6] every link opens: a document the course keeps, here; the web, the browser
+import "./media/lightbox.css";   // [0.5.6] the picture viewer (media/lightbox.js): lesson pictures, the lidar map, documents
 import { installFieldLibrary } from "./field_library.js";   // [courses] a non-Moon course's Library: real NASA views, sites, videos
 import { installMapLayers } from "./map_layers.js";   // [open data] the Library's Maps: whole-globe layers (the Moon's USGS age + height maps)
 import { fillCredits } from "./media/video_ui.js";
@@ -159,10 +161,12 @@ async function boot() {
   if (onMoon) wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // Moon-only: its real sky, hardware models, rocks, sharp pole   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
   // [courses] another course's Library (field_library.js): its real pictures, videos, places, tour and chips. The Moon's
   // Library stays as it was (hardware, crew audio, the NASA views pack).
+  const links = installLinks();
   const fieldLib = onMoon ? null : installFieldLibrary({
     stage: $("stage"), chipsEl: $("chips"), globe, card, places, placeById, say: t => guideSay(t),
     openVideo: (id, o) => openVideo(id, o), runTour: (ids, intro, o) => runTour(ids, intro, o), goLibrary: () => setMode("cadet"),
     mapUrl: (courseState.info.globe || {}).map || "",
+    onDocs: d => links.setDocs(d),   // [0.5.6] the pack's documents open in the app (links.js)
   });
   if (fieldLib) window.__outpost.fieldLib = fieldLib;
   // [open data] the Library's Maps button (docs/OPEN_DATA.md): a course's whole-globe layers, the photo back on leaving

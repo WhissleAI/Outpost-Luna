@@ -42,9 +42,18 @@ function csp(origin) {
 }
 
 // The sites the app's sources and credits link to (backend/data, frontend/src), by registrable domain.
+// [0.5.6] and the Archaeology course's (backend/data/courses/archaeology: sources, credits, places). None were listed, so
+// every web source in that course was a dead click ("link refused (not on the list)", owner playtest 0.5.5). The test
+// (hardening.test.js) reads every course file and fails on a cited link that is not here.
 const LINK_HOSTS = ["nasa.gov", "usgs.gov", "noaa.gov", "nih.gov", "doi.org", "wustl.edu", "unh.edu", "ucla.edu", "mit.edu",
-  "dlr.de", "esa.int", "im-ldi.com", "apollojournals.org"];
+  "dlr.de", "esa.int", "im-ldi.com", "apollojournals.org",
+  // Archaeology: US agencies, the law, the data sources and the archaeology sites it cites
+  "nps.gov", "usda.gov", "nationalmap.gov", "achp.gov", "ecfr.gov", "federalregister.gov", "law.cornell.edu",
+  "copernicus.eu", "naturalearthdata.com", "naciscdn.org", "element84.com", "opendata.aws", "p3k14c.org",
+  "crowcanyon.org", "saa.org", "radiocarbon.com", "whoi.edu", "forestresearch.gov.uk"];
 const OUR_REPO = "/whissleai/outpost-luna";
+// [0.5.6] a cited dataset on GitHub that is not ours (p3k14c, the radiocarbon dates): its repo only, never all of GitHub
+const CITED_REPOS = ["/people3k/p3k14c"];
 
 function linkAllowed(url) {
   let u; try { u = new URL(url); } catch { return false; }
@@ -52,7 +61,9 @@ function linkAllowed(url) {
   const h = u.hostname.toLowerCase();
   // a few cited data sources are http only (imbrium.mit.edu); our own pages must be https
   if (u.protocol === "http:" && (h === "github.com" || h === "whissleai.github.io")) return false;
-  if (h === "github.com") return u.pathname.toLowerCase() === OUR_REPO || u.pathname.toLowerCase().startsWith(OUR_REPO + "/");
+  const under = (pth, root) => pth === root || pth.startsWith(root + "/");
+  if (h === "github.com") return u.protocol === "https:" && [OUR_REPO, ...CITED_REPOS].some(r => under(u.pathname.toLowerCase(), r));
+  if (h === "raw.githubusercontent.com") return u.protocol === "https:" && CITED_REPOS.some(r => under(u.pathname.toLowerCase(), r));
   if (h === "whissleai.github.io") return u.pathname === "/Outpost-Luna" || u.pathname.startsWith("/Outpost-Luna/");
   return LINK_HOSTS.some((d) => h === d || h.endsWith("." + d));
 }
@@ -67,4 +78,4 @@ function navigation(url, origin, classify) {
   return linkAllowed(url) ? "external" : "refuse";
 }
 
-module.exports = { WEB_PREFS, CHROMIUM_OFF, csp, linkAllowed, navigation, sameOrigin, LINK_HOSTS };
+module.exports = { WEB_PREFS, CHROMIUM_OFF, csp, linkAllowed, navigation, sameOrigin, LINK_HOSTS, CITED_REPOS };

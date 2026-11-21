@@ -116,6 +116,14 @@ def arch(b, base, out, vw, vh):
     check(until(pg, "() => { const s = document.querySelector('svg.chart'); return !!s && s.getBoundingClientRect().width > 0 && s.querySelectorAll('path, rect').length > 0; }"),
           f"[{tag}] Clues in the data: the interactive drought chart draws")
     pg.wait_for_timeout(600)
+    # [0.5.6] (#208's follow-up) at 1280x720 the chart viewer covered the item card: now side by side, or the card
+    # steps aside while the viewer is open on a narrow window; never one over the other, and both above the chips
+    ov = pg.evaluate("""() => { const r = e => { const b = e && !e.hidden && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect(); return b && b.width ? b : null; };
+      const v = r(document.querySelector('.flv')), c = r(document.getElementById('card'));
+      const chips = [...document.querySelectorAll('#chips > button')].filter(b => !b.hidden && getComputedStyle(b).display !== 'none').map(b => b.getBoundingClientRect());
+      const hit = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+      return { card: hit(v, c), chips: chips.some(x => hit(v, x)) }; }""")
+    check(not ov["card"] and not ov["chips"], f"[{tag}] the chart viewer covers neither the item card nor the chips {ov}")
     pg.screenshot(path=f"{out}/field_library-data-{tag}.png")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(400)
 
