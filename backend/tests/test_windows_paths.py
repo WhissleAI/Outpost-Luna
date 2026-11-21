@@ -107,6 +107,7 @@ def test_per_user_cache_folders_follow_cache_dir_with_windows_paths(monkeypatch)
     appdata = r"C:\Users\Cadet One\AppData\Roaming\Outpost Luna\cache"
     monkeypatch.setattr(settings, "cache_dir", PureWindowsPath(appdata))
     monkeypatch.delenv("LEARN_DIR", raising=False)
+    monkeypatch.delenv("BRAIN_DIR", raising=False)
     for p in (settings.tts_cache(), settings.video_cache(), settings.vector_cache()):
         assert isinstance(p, PureWindowsPath) and ntpath.dirname(str(p)) == appdata, p
     for p in R.targets("all")["all"][1:]:            # [0] is the turn log (TURNLOG_DIR or CACHE_DIR\turnlog)

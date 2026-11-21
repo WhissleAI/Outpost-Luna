@@ -107,6 +107,12 @@ for _k in ("LUNA_LOG_DIR", "LUNA_DATA_DIR"):
 
 
 @pytest.fixture(autouse=True)
+def brain_dir(tmp_path_factory, monkeypatch):
+    """The brain's weekly counts and care flags (app/brain_counts.py, app/care_flags.py): a temp folder per test."""
+    monkeypatch.setenv("BRAIN_DIR", str(tmp_path_factory.mktemp("brain")))
+
+
+@pytest.fixture(autouse=True)
 def learn_dir(tmp_path_factory, monkeypatch):
     """On-device learning (app/learn): every test learns into its own temp folder, never data/, and starts empty."""
     from app import learn

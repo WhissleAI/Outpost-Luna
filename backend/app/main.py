@@ -210,14 +210,36 @@ def turnlog_clear():
 
 
 @app.get("/api/safety/flags")
-def safety_flags(request: Request):
-    """[P0] The parent / teacher side: turns Arc Tagger marked as a crisis or grooming cue (kind, tags, screen, time).
-    Never the words. In memory only, on this device (docs/ARC_FEEDBACK.md, app/safety.py). [D9] The most sensitive
-    read in the app: the local token, like GET /api/brain/summary (diag.authorized), on top of LocalGuard."""
+def safety_flags(request: Request, profile: str | None = None):
+    """[P0] The parent / teacher side: care flags (a self-harm or grooming cue), kind + day + profile only, never the
+    words. [D4] Kept on this computer until a grown-up marks them seen, 30 days at most (app/care_flags.py).
+    [D9] The most sensitive read in the app: the local token (diag.authorized), on top of LocalGuard."""
     if not diag.authorized(request.headers):
         raise HTTPException(401, "missing or wrong local token")
-    from .session import SESSIONS
-    return {"flags": [{"session": sid, **f} for sid, s in SESSIONS.items() for f in s.flags]}
+    from . import care_flags
+    return {"flags": care_flags.open_flags(profile), "words": False}
+
+
+@app.post("/api/safety/flags/{flag_id}/ack")
+def safety_flag_ack(flag_id: str, request: Request):
+    """[D4] A grown-up saw this care flag (Progress → Mark as seen): it is dropped."""
+    if not diag.authorized(request.headers):
+        raise HTTPException(401, "missing or wrong local token")
+    from . import care_flags
+    if not care_flags.ID.match(flag_id or ""):
+        raise HTTPException(400, "bad flag id")
+    return {"acked": care_flags.ack(flag_id=flag_id)}
+
+
+@app.post("/api/safety/flags/ack")
+def safety_flags_ack_all(request: Request, profile: str):
+    """[D4] Every care flag of one cadet marked seen."""
+    if not diag.authorized(request.headers):
+        raise HTTPException(401, "missing or wrong local token")
+    from . import brain_counts, care_flags
+    if not brain_counts.PROFILE.match(profile or ""):
+        raise HTTPException(400, "bad profile")
+    return {"acked": care_flags.ack(profile=profile)}
 
 
 @app.get("/api/director/stats")

@@ -1,7 +1,8 @@
 """Settings → Reset Outpost Luna (docs/RESET.md): erase what this computer remembers about the kid.
 
 Two levels:
-  start  "Start over": the server's per-user state. That is the turn log (on by default since 0.4.3), the TTS cache (spoken lines), and
+  start  "Start over": the server's per-user state. That is the turn log (on by default since 0.4.3), the brain's
+         weekly counts and care flags (app/brain_counts.py, app/care_flags.py), the TTS cache (spoken lines), and
          the in-memory missions, sessions, check rides and standing orders. The downloaded assets (models, the voice
          pack, crew audio, NASA videos) stay, so nothing has to download again.
   all    "Reset everything": the above, plus the NASA video cache and the embedding vector cache, plus the first-run
@@ -78,7 +79,9 @@ def targets(level: str) -> dict[str, list[Path]]:
     """Which folders each level empties (the unit tests read this). The paths come from the settings, never hard-coded."""
     from . import turnlog
     from .learn import store as learn_store
-    start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir()]   # learn: on-device learning
+    from . import brain_counts
+    # learn: on-device learning; brain: the weekly talk / safety counts and the care flags (D1-D4)
+    start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir(), brain_counts.brain_dir()]
     from .academy import classpacks
     # Class lessons (docs/CURRICULUM.md) are a grown-up's work, not progress: only Reset everything removes them
     return {"start": start, "all": start + [settings.video_cache(), settings.vector_cache(), classpacks.class_dir()]}

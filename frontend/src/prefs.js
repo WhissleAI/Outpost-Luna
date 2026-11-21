@@ -57,7 +57,20 @@ const PROFILES = "outpost-profiles";
 export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "atm-academy.v1", "outpost-course", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier", "outpost-brain"];   // [qa] + camera and mission tier; [brain] practice counts; [courses] the cadet's course + the pre-courses save
 
 const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
-function activeProfileId() { try { const s = JSON.parse(get(PROFILES) || "null"); return s && typeof s.active === "string" ? s.active : "p1"; } catch (e) { return "p1"; } }
+function activeProfileId(storage = store) { try { const s = JSON.parse((storage ? storage.getItem(PROFILES) : null) || "null"); return s && typeof s.active === "string" ? s.active : "p1"; } catch (e) { return "p1"; } }
+/** [D3] Crew rotation (crew.js, docs/BRAIN.md §9): a class mode on one computer. The cadets take turns; the one whose
+ *  turn it is gets every turn, count and flag (the session's `profile`), with no reload. Per computer, never synced:
+ *  "outpost-crew" = {on, turn: "p2", listen_was}. No voiceprints: the turn is a tap, never a voice. */
+export const CREW_KEY = "outpost-crew";
+export function crewState(storage = store) {
+  let c = null; try { c = JSON.parse((storage && storage.getItem(CREW_KEY)) || "null"); } catch (e) { c = null; }
+  const ids = (() => { try { const s = JSON.parse((storage && storage.getItem(PROFILES)) || "null"); return s && Array.isArray(s.list) ? s.list.map(p => p && p.id).filter(x => typeof x === "string") : []; } catch (e) { return []; } })();
+  const on = !!(c && c.on === true) && ids.length >= 2;
+  const turn = on && typeof c.turn === "string" && ids.includes(c.turn) ? c.turn : on ? activeProfileId(storage) : null;
+  return { on, turn, ids, listen_was: c && ["handsfree", "ptt"].includes(c.listen_was) ? c.listen_was : null };
+}
+/** The cadet whose turn it is (crew rotation on), else the playing cadet: whose counts, flags and learning apply. */
+export function turnProfileId(storage = store) { const c = crewState(storage); return c.turn || activeProfileId(storage); }
 const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
 const set = (k, v) => { try { if (!store) return; if (v == null) store.removeItem(k); else store.setItem(k, v); } catch (e) { /* private mode */ } };
 
@@ -131,7 +144,7 @@ export function createPrefs({ globe = null } = {}) {
   const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false,
     engine: P.engine === "steer" ? "steer" : "os", steer_voice: P.steer_voice || null, rate: Math.max(0.6, Math.min(1.6, rate)),
     volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true,
-    profile: activeProfileId(), ...roomWire() });   // whose on-device learning applies (backend app/learn; never the call sign)
+    profile: turnProfileId(), ...roomWire() });   // whose learning, counts and flags apply (backend app/learn, app/brain_counts; never the call sign). [D3] crew rotation: the cadet on turn
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
   const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };
