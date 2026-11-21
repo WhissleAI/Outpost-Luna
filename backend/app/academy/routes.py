@@ -246,7 +246,29 @@ def _miss(les: dict, req: AttemptReq, st: dict, extra: dict) -> dict:
         g["got"] = extra.get("got") or []   # the stops still right (the client keeps those taps)
         if st["accept"]["type"] in FIELD_TYPES and extra.get("next"):
             g["next"] = extra["next"]
+    g.setdefault("mixup", mixup_of(extra))
     return _out(les["id"], req.step, "hint", g.pop("say"), **g)
+
+
+MIXUPS = ("pit", "soundalike", "order", "sequence", "pick")
+
+
+def mixup_of(extra: dict | None) -> str | None:
+    """[brain] A miss's misconception kind, an enum (never the kid's words): the intrusive pit named too early, a wrong
+    order, a step out of sequence, a tempting wrong option. The client counts it per lesson step (brain_store.js
+    traps) for the grown-ups' "Common mix-ups". None when the grader said nothing about why."""
+    e = extra or {}
+    if e.get("trap") == "pit":
+        return "pit"
+    if e.get("trap"):
+        return "soundalike"
+    if e.get("heard_order"):
+        return "order"
+    if e.get("wrong"):
+        return "sequence"
+    if e.get("choice"):
+        return "pick"
+    return None
 
 
 def _ignored(lesson_id: str, step: int, **extra) -> dict:
@@ -301,7 +323,8 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
             lead = (st.get("wrong") or {}).get(extra.get("heard_order") or "", st["fail"])
             say = lead + (" " + guide._end(st["hint"]) if status == "hint" else "")
             return _out(les["id"], r["step"], status, say, hint=st["hint"] if status == "hint" else None,
-                        state=rides.hud(r), cue=(st["accept"] or {}).get("expect") if r["misses"] >= 2 else None)
+                        state=rides.hud(r), cue=(st["accept"] or {}).get("expect") if r["misses"] >= 2 else None,
+                        mixup=mixup_of(extra))
         r["missed"].append(True)   # the world doesn't wait: the ride moves on without that order
     evs = rides.advance(r, st.get("advance"))
     r["step"] += 1
@@ -511,7 +534,8 @@ async def _speech_attempt(les: dict, req: AttemptReq, st: dict) -> dict:
     if extra.get("trap"):                             # a sound-alike: what it means, then try again (not a miss)
         it = speech.item_by_id(acc, extra.get("item") or "") or {}
         note = next((t["note"] for t in it.get("traps", []) if t["word"].lower() == extra["trap"].lower()), "")
-        return _out(lid, req.step, "hint", f"Close! {note} Try again.".replace("  ", " "), rung=1, **extra)
+        return _out(lid, req.step, "hint", f"Close! {note} Try again.".replace("  ", " "), rung=1, mixup="soundalike",
+                    **extra)
     if cur and reveal_due(req.misses + 1, req.step_s):   # show this one, then the next goes on (no dead ends)
         label = speech.label_of_answer(acc, cur)
         sa = speech.answer_of(acc, prior, inp.get("plan"))

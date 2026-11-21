@@ -34,6 +34,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
 | Prefs: voice, theme, Mute, expressiveness, the recorded voice, captions, text size, gestures and their calibration, coach marks seen, the tour seen | erased | erased |
 | The voice-guide log (turn log, and any playtest audio) | erased | erased |
 | On-device learning: learned names, speech habits, thresholds, this computer's echo numbers (`docs/ON_DEVICE_LEARNING.md`) | erased | erased |
+| The safety ledger: per cadet and day, how often the safety check acted, and the care note for grown-ups (`backend/app/safety_ledger.py`; no words) | erased | erased |
 | Spoken-line cache (TTS) | erased | erased |
 | Live server state: missions, sessions, check rides, standing orders | erased | erased |
 | Saved NASA videos, embedding vectors, `hf/` | kept | erased |
@@ -65,7 +66,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
    or a configured dev origin, and it must carry that header. A cross-site page can't send the header without a CORS
    preflight, which we refuse. The backend then:
    - empties its per-user folders, taken from the settings, never hard-coded:
-     - `turnlog`, `tts`, `learning` (both levels);
+     - `turnlog`, `tts`, `learning`, `safety` (both levels);
      - `video`, `vectors` (`all` only);
    - clears its in-memory state;
    - calls `reset_downloaded_assets()` for `all`;
@@ -83,7 +84,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
       cleared browser storage (kept Flight School progress and call signs)" or "… cleared browser storage and
       progress";
    4. deletes the level's folders under `app.getPath("userData")`:
-      - `cache/tts`, `cache/turnlog` and `cache/learning` for Start over;
+      - `cache/tts`, `cache/turnlog`, `cache/learning` and `cache/safety` for Start over;
       - `cache/` and `hf/` for Reset everything;
       - joined with `path.win32` / `path.posix`, using `rmSync` with retries;
    5. logs the reset in `logs/main.log` (`logs/` and `metrics/`, the local diagnostics, are kept: `docs/DIAGNOSTICS.md`);

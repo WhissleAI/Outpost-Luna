@@ -8,6 +8,10 @@
 //   - the paused mission on this computer (GET /api/mission/saved);
 //   - each cadet's practice counts (brain.js practiceHtml) and, on the playing cadet's card, this computer's counts
 //     (GET /api/brain/summary: turns, voice vs typing, room, safety catches, what the app adapted; never words);
+//   - [brain-signals] the care banner (GET /api/safety/flags: the safety ledger, per cadet and day, never words; a
+//     grown-up may dismiss it, POST /api/safety/flags/dismiss; the entry itself is deleted after 30 days), and the
+//     grown-up's "Show language and kindness counts" choice (localStorage "outpost-grownup", off by default, this
+//     computer's, cleared by Reset);
 //   - lesson titles and patches from the course (GET /api/academy/course). Class lessons (track "class") are listed
 //     by pack, apart from NASA's: they never count toward "n of 9 patches".
 // "Print" prints the sheet alone (progress.css, imported by main.js so this module loads under node --test, @media print): one cadet per page, light paper, no app chrome.
@@ -17,6 +21,7 @@ import { anyPatch as defaultPatch, registerClassLessons } from "./academy/class_
 import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./explorer.js";
 import { debriefStory } from "./mission/objective.js";
 import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
+import { sensitiveOn, setSensitive } from "./brain_store.js";   // [brain-signals] the grown-up's "Show language and kindness counts" choice
 import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
 import { activeCourse, courseLabel, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
 
@@ -169,7 +174,7 @@ export function speechHtml(speech) {
 
 /** One cadet's card. debriefs: {missionId: debrief|null}; brain: the cadet's practice counts (brain_store.js);
  *  summary: GET /api/brain/summary (shown on the playing cadet's card only: it is this computer's, not one cadet's). */
-export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined } = {}) {
+export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined, sensitive = false } = {}) {
   const s = summarize(cadet, lessons), name = cadet.callsign || COPY.newCadet;
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   const tag = cadet.academy.qualified ? `<span class="set-tag pg-q">${esc(COPY.qualified)}</span>` : "";
@@ -189,16 +194,38 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
     ${brain ? practiceHtml(brain, lessons) : ""}
     ${classes}${speechHtml(cadet.speech)}${missions}
-    ${cadet.active && summary !== undefined ? computerHtml(summary) : ""}
+    ${cadet.active && summary !== undefined ? computerHtml(summary, { sensitive }) : ""}
     ${s.next.length ? `<p class="mx-try pg-try"><b>${esc(COPY.tryTitle)}</b> ${s.next.map(esc).join(" ")}</p>` : ""}</article>`;
 }
 
 /** The whole sheet. saved: GET /api/mission/saved's body (the paused mission on this computer) or null. */
-export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined } = {}) {
+export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined, care = null, sensitive = false } = {}) {
   if (!cadets.length) return `<p class="set-help">${esc(COPY.none)}</p>`;
   const pause = saved && saved.site_name ? `<p class="pg-paused">${esc(COPY.paused(String(saved.site_name).split(" (")[0], saved.day || 1))}</p>` : "";
-  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}${pause}
-    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary })).join("")}</div>`;
+  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}${date ? "" : careHtml(care, cadets)}${pause}
+    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary, sensitive })).join("")}</div>`;
+}
+
+// ---------- [brain-signals] the care banner (the safety ledger: GET /api/safety/flags) ----------
+export const CARE = {
+  title: "A note for grown-ups",
+  line: (who, day) => `${who ? `${who}: ` : ""}The guide suggested a break and a trusted grown-up on ${day}.`,
+  said: line => `What the guide said: “${line}” The app keeps no record of what was said before it.`,
+  resources: "If you're worried, talk with your child. If anyone is in danger, call your local emergency number. In the US, you can call or text 988 (Suicide & Crisis Lifeline) any time.",
+  dismiss: "Dismiss",
+  kept: "Dismissing hides this note. The app deletes the entry itself after 30 days.",
+};
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** The banner (pure). care: GET /api/safety/flags's body; one line per profile and day not yet dismissed. */
+export function careHtml(care, cadets = []) {
+  const rows = ((care && care.flags) || []).filter(f => f && !f.dismissed && DAY_RE.test(f.day || "") && /^[A-Za-z0-9_-]{1,24}$/.test(f.profile || ""));
+  if (!rows.length) return "";
+  const who = pid => { const c = cadets.find(x => x.id === pid); return c ? c.callsign || COPY.newCadet : ""; };
+  return `<section class="pg-care" role="note" aria-label="${esc(CARE.title)}"><h5>${esc(CARE.title)}</h5><ul>
+    ${rows.map(f => `<li><span>${esc(CARE.line(who(f.profile), f.day))}</span>
+      <button type="button" class="btn-quiet" data-pg-care-dismiss data-profile="${esc(f.profile)}" data-day="${esc(f.day)}">${esc(CARE.dismiss)}</button></li>`).join("")}</ul>
+    ${care.line ? `<p class="set-help">${esc(CARE.said(care.line))}</p>` : ""}
+    <p class="pg-cur">${esc(CARE.resources)}</p><p class="set-help">${esc(CARE.kept)}</p></section>`;
 }
 
 /** The part's frame (drawn at once; bind() fills the sheet). */
@@ -223,8 +250,10 @@ export async function loadData({ fetchFn, storage } = {}) {
   // [brain] each cadet's practice counts (on this device), and this computer's counts for the playing cadet's card
   const brains = Object.fromEntries(cadets.map(c => [c.id, brainOf(c.id, storage)]));
   const act = cadets.find(c => c.active), pid = act && /^p\d{1,2}$/.test(act.id) ? act.id : "p1";
-  const summary = await getJson(fetchFn, `/api/brain/summary?profile=${pid}`);
-  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary };
+  const sensitive = sensitiveOn(storage), crs = (() => { try { return playingCourse(storage); } catch (e) { return ""; } })();
+  const summary = await getJson(fetchFn, `/api/brain/summary?profile=${pid}${crs && /^[a-z0-9][a-z0-9-]{0,23}$/.test(crs) ? `&course=${crs}` : ""}${sensitive ? "&sensitive=1" : ""}`);
+  const care = await getJson(fetchFn, "/api/safety/flags");   // [brain-signals] every cadet's care banner on this computer
+  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary, care, sensitive };
 }
 
 /** Print the sheet alone: a copy at the body's top level (#pgPrint), everything else hidden by progress.css. */
@@ -244,7 +273,19 @@ const section = {
     const view = el.querySelector("[data-pg-view]"), pr = el.querySelector("[data-pg-print]");
     if (!view || !fetchFn) return;
     let data = null, alive = true;
-    loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); });
+    const show = () => loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); wire(); });
+    // [brain-signals] the care banner's Dismiss and the sensitive-counts toggle
+    function wire() {
+      view.querySelectorAll("[data-pg-care-dismiss]").forEach(b => {
+        b.onclick = async () => {
+          try { await fetchFn("/api/safety/flags/dismiss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profile: b.dataset.profile, day: b.dataset.day }) }); } catch (e) { /* offline: it shows again next time */ }
+          show();
+        };
+      });
+      const t = view.querySelector("[data-pg-sensitive]");
+      if (t) t.onchange = () => { setSensitive(t.checked, storage); show(); };
+    }
+    show();
     if (pr) pr.onclick = () => {
       const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
       printSheet(sheetHtml({ ...(data || { cadets: readCadets(storage) }), date }));

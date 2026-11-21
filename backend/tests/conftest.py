@@ -114,3 +114,9 @@ def learn_dir(tmp_path_factory, monkeypatch):
     learn.forget_cached()
     yield
     learn.forget_cached()
+
+
+@pytest.fixture(autouse=True)
+def safety_ledger_dir(tmp_path_factory, monkeypatch):
+    """The safety ledger (app/safety_ledger.py): every test writes into its own temp folder, never data/."""
+    monkeypatch.setenv("SAFETY_LEDGER_DIR", str(tmp_path_factory.mktemp("safety")))

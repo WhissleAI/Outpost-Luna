@@ -116,14 +116,17 @@ async def tagger_read(text: str, command_context: bool = False) -> list[dict]:
 
 
 def classify(text: str, safety=None) -> dict:
-    """-> {"mask": bool, "care": bool, "pii": bool, "tags": [...], "words": bool} for a kid's turn."""
+    """-> {"mask": bool, "care": bool, "pii": bool, "tags": [...], "words": bool, "care_src": "tagger"|"phrase"|None}
+    for a kid's turn (care_src: which check caught a care cue, for the safety ledger, app/safety_ledger.py)."""
     tags = tags_on(safety)
     hit = lambda pre: any(t == p or t.startswith(p + ".") for t in tags for p in pre)  # noqa: E731
     words = has_profanity(text)
     low = (text or "").lower().replace("’", "'")
     crisis, grooming = bool(CRISIS.search(low)), bool(GROOMING.search(low))
+    tagged_care = hit(CARE_TAGS)   # before the phrase lists add their own tags
     for on, tag in ((crisis, "safety.crisis.self_harm"), (grooming, "safety.child.grooming_cue")):
         if on and tag not in tags:
             tags = tags + [tag]
-    return {"mask": words or hit(MASK_TAGS), "care": crisis or grooming or hit(CARE_TAGS), "pii": hit(PII_TAGS),
-            "tags": tags, "words": words}
+    care = crisis or grooming or tagged_care
+    return {"mask": words or hit(MASK_TAGS), "care": care, "pii": hit(PII_TAGS), "tags": tags, "words": words,
+            "care_src": ("tagger" if tagged_care else "phrase") if care else None}

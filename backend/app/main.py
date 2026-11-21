@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -211,11 +211,33 @@ def turnlog_clear():
 
 
 @app.get("/api/safety/flags")
-def safety_flags():
-    """[P0] The parent / teacher side: turns Arc Tagger marked as a crisis or grooming cue (kind, tags, screen, time).
-    Never the words. In memory only, on this device (docs/ARC_FEEDBACK.md, app/safety.py)."""
-    from .session import SESSIONS
-    return {"flags": [{"session": sid, **f} for sid, s in SESSIONS.items() for f in s.flags]}
+def safety_flags(request: Request, profile: str | None = None):
+    """[P0] The grown-up side (Settings → For grown-ups): the care banner's data from the safety ledger
+    (app/safety_ledger.py): per cadet profile and day, the guide suggested a break and a trusted grown-up. Never the
+    words. On this device only, kept 30 days, cleared by Reset. The local token, like /api/brain/summary."""
+    from . import diag, safety, safety_ledger
+    if not diag.authorized(request.headers):
+        raise HTTPException(401, "missing or wrong local token")
+    from .learn.store import profile_id
+    rows = safety_ledger.LEDGER.care(profile_id(profile) if profile else None)
+    return {"flags": [{"kind": "care", **r} for r in rows], "line": safety.CARE_LINE,
+            "retain_days": safety_ledger.RETAIN_CARE, "words": False}
+
+
+@app.post("/api/safety/flags/dismiss")
+async def safety_flags_dismiss(request: Request):
+    """Hide one care banner ({profile, day}). The ledger entry itself stays until its 30 days are up."""
+    from . import diag, safety_ledger
+    if not diag.authorized(request.headers):
+        raise HTTPException(401, "missing or wrong local token")
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    body = body if isinstance(body, dict) else {}
+    from .learn.store import profile_id
+    day = body.get("day") if isinstance(body.get("day"), str) else ""
+    return {"dismissed": safety_ledger.LEDGER.dismiss_care(profile_id(body.get("profile")), day)}
 
 
 @app.get("/api/director/stats")

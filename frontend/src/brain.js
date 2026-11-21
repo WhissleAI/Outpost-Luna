@@ -111,7 +111,7 @@ export function hardest(rows) {
 
 /** Totals across lessons (pure). */
 export function totals(rows) {
-  const t = { steps: 0, first: 0, helped: 0, shown: 0, misses: 0, pause: 0, secs: 0 };
+  const t = { steps: 0, first: 0, helped: 0, shown: 0, misses: 0, pause: 0, secs: 0, asks: 0 };
   (rows || []).forEach(r => Object.keys(t).forEach(k => { t[k] += r[k] || 0; }));
   return { ...t, mins: Math.round(t.secs / 60), firstPct: t.steps ? Math.round((100 * t.first) / t.steps) : 0 };
 }
@@ -190,12 +190,54 @@ export function cadetHtml(d) {
       <ul class="bm-legend">${["lit", "practising", "dim"].map(k => `<li class="is-${k}"><i aria-hidden="true"></i>${esc(COPY.legend[k])}</li>`).join("")}</ul></section>
     ${next.length ? `<section class="bm-sec bm-next"><h2>${esc(COPY.tryTitle)}</h2><ul>${next.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
       <button type="button" class="btn-primary" data-bm-go>${esc(COPY.tryGo)}${icon("chevron-right")}</button></section>` : ""}
+    ${cheerHtml(d.brain)}
     <section class="bm-sec"><h2>${esc(COPY.voiceTitle)}</h2>
       ${voice.length ? `<ul class="bm-voice">${voice.map(t => `<li>${icon("hear", { size: 18 })}<span>${esc(t)}</span></li>`).join("")}</ul>` : `<p class="bm-line">${esc(COPY.voiceEmpty)}</p>`}</section>
     <section class="bm-sec"><h2>${esc(COPY.thinkTitle)}</h2>
       <ol class="bm-think">${COPY.think.map(([ic, t, s]) => `<li><span class="bm-ic" aria-hidden="true">${icon(ic, { size: 20 })}</span><div><b>${esc(t)}</b><p>${esc(s)}</p></div></li>`).join("")}</ol></section>
     <p class="foot">${esc(COPY.foot)}</p>`;
 }
+
+// ---------- [brain-signals] mix-ups, help-seeking and persistence (pure; docs/BRAIN.md "Signals → Brain") ----------
+/** No rate or mix-up is shown on fewer than this many events (a single slip is not a pattern). */
+export const MIN_N = 3;
+export const MIXUP_LABEL = {
+  pit: "named the pit before the layers it cuts",
+  soundalike: "mixed up two words that sound alike",
+  order: "gave a different order than the one asked for",
+  sequence: "put the steps in a different order",
+  pick: "picked a tempting answer that wasn't the best one",
+};
+/** The most common mix-ups across lessons: [{lesson, title, kind, step, n}] with n >= 2, most first, up to 3 (pure). */
+export function mixups(brain, lessons = []) {
+  const b = store.clean(brain), out = [];
+  (lessons || []).forEach(l => {
+    const c = l && l.id && b.lessons[lessonKey(l.id)];
+    if (!c || !c.traps) return;
+    Object.entries(c.traps).forEach(([k, n]) => { const [kind, step] = k.split("@"); if (n >= 2 && MIXUP_LABEL[kind]) out.push({ lesson: l.id, title: l.title || l.id, kind, step: +step, n }); });
+  });
+  return out.sort((a, b) => b.n - a.n).slice(0, 3);
+}
+/** Kept going after a hint vs. was shown the answer (pure). rate only when there are MIN_N or more such steps. */
+export function persistence(t) {
+  const helped = (t && t.helped) || 0, shown = (t && t.shown) || 0, n = helped + shown;
+  return { helped, shown, n, rate: n >= MIN_N ? Math.round((100 * helped) / n) : null };
+}
+/** The cadet's page: one or two gentle lines, only when it is good news (pure). Never a deficit, never a comparison. */
+export const CHEER = {
+  persist: n => `You kept going after a hint ${n} time${n === 1 ? "" : "s"}. That's how brains grow.`,
+  asks: n => `You asked for help ${n} time${n === 1 ? "" : "s"}. Good pilots ask.`,
+  mixup: "You worked through a tricky mix-up. Nice thinking.",
+};
+export function cheerLines(brain) {
+  const b = store.clean(brain), rows = Object.values(b.lessons), sum = k => rows.reduce((a, r) => a + (r[k] || 0), 0);
+  const out = [], helped = sum("helped"), asks = sum("asks");
+  if (helped >= 1) out.push(CHEER.persist(helped));
+  if (asks >= 1) out.push(CHEER.asks(asks));
+  if (rows.some(r => r.traps && r.helped > 0)) out.push(CHEER.mixup);
+  return out.slice(0, 2);
+}
+const cheerHtml = brain => { const ls = cheerLines(brain); return ls.length ? `<section class="bm-sec bm-cheer"><ul>${ls.map(t => `<li>${icon("sparkle", { size: 16 })}<span>${esc(t)}</span></li>`).join("")}</ul></section>` : ""; };
 
 // ---------- the grown-ups' practice block (Settings → For grown-ups → Progress) ----------
 export const GROWN = {
@@ -208,10 +250,15 @@ export const GROWN = {
   totals: t => `${t.steps} steps answered, ${t.firstPct}% on the first try, about ${t.mins} min on lessons.`,
   hints: (m, p) => `${m} tries weren't right yet.${p ? ` The app gave ${p} hint${p === 1 ? "" : "s"} early, after a long pause.` : ""}`,
   days: n => `Practised on ${n} day${n === 1 ? "" : "s"} (last 60 days).`,
+  mixTitle: "Common mix-ups",
+  mix: m => `${m.title}, step ${m.step + 1}: ${MIXUP_LABEL[m.kind]} (${m.n} times).`,
+  mixNote: "These are ideas many learners mix up. The lesson explains why each time.",
+  asks: n => `Asked for help ${n} time${n === 1 ? "" : "s"}.`,
+  persist: p => (p.rate == null ? "" : `After a hint, solved it ${p.helped} time${p.helped === 1 ? "" : "s"}; the app showed the answer ${p.shown} time${p.shown === 1 ? "" : "s"} (${p.rate}% solved after help).`),
 };
 /** The practice block for one cadet (pure): totals, the hardest lessons, the table with NGSS hooks. */
 export function practiceHtml(brain, lessons) {
-  const rows = practice(brain, lessons), t = totals(rows), hard = hardest(rows), days = store.clean(brain).days.length;
+  const rows = practice(brain, lessons), t = totals(rows), hard = hardest(rows), days = store.clean(brain).days.length, mix = mixups(brain, lessons);
   if (!rows.length) return `<section class="pg-block"><h5>${esc(GROWN.title)}</h5><p class="set-help">${esc(GROWN.none)}</p></section>`;
   const tr = r => `<tr><td>${esc(r.title)}</td><td>${esc(r.idea)}${r.ngss.length ? `<small class="bm-ngss">${esc(r.ngss.join(", "))}</small>` : ""}</td>
     <td>${r.steps}</td><td>${r.first}${r.steps ? `<small> (${r.firstPct}%)</small>` : ""}</td><td>${r.helped}</td><td>${r.shown}</td><td>${r.mins}</td></tr>`;
@@ -219,6 +266,8 @@ export function practiceHtml(brain, lessons) {
     <p class="pg-cur">${esc(GROWN.totals(t))} ${esc(GROWN.days(days))}</p>
     <p class="pg-cur">${esc(GROWN.hints(t.misses, t.pause))}</p>
     ${hard.length ? `<p class="pg-cur">${esc(GROWN.hard(hard.map(r => r.title).join(", ")))}</p>` : ""}
+    ${t.asks ? `<p class="pg-cur">${esc(GROWN.asks(t.asks))}</p>` : ""}${persistence(t).rate != null ? `<p class="pg-cur">${esc(GROWN.persist(persistence(t)))}</p>` : ""}
+    ${mix.length ? `<div class="pg-mix"><h6>${esc(GROWN.mixTitle)}</h6><ul>${mix.map(m => `<li>${esc(GROWN.mix(m))}</li>`).join("")}</ul><p class="set-help">${esc(GROWN.mixNote)}</p></div>` : ""}
     <div class="tbl pg-tbl"><table><thead><tr>${GROWN.th.map(h => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(tr).join("")}</tbody></table></div>
     <p class="foot">${esc(GROWN.ngss)}: ${esc(GROWN.ngssNote)}</p></section>`;
 }
@@ -226,14 +275,21 @@ export function practiceHtml(brain, lessons) {
 // ---------- this computer's numbers (GET /api/brain/summary), on the playing cadet's card ----------
 export const COMPUTER = {
   title: "Talking with the app",
-  note: "Every cadet on this computer, last 30 days. From the voice-guide log, when it's on. Counts only, never words.",
+  note: "This cadet in this course, last 30 days. From the voice-guide log, when it's on. Counts only, never words.",
   off: "The voice-guide log is off, so there are no talk counts. Turn it on in Settings, Voice log and playtest.",
   talk: c => `${c.turns} turns on ${c.days} day${c.days === 1 ? "" : "s"}: ${c.voice} by voice, ${c.typed} typed.`,
   heard: c => `The app answered ${c.answered}, and let ${c.passed_by} pass that weren't meant for it.`,
   room: r => `Room: calm ${r.calm}, busy ${r.busy}, too loud ${r.loud}.`,
+  retried: (c, rate) => `The app had to try again ${c.retried} time${c.retried === 1 ? "" : "s"}${rate ? ` (${Math.round((100 * c.retried) / c.turns)}% of turns)` : ""}: the cadet said it again, said "no", undid an order or tapped twice. That is the app's miss, not the cadet's.`,
+  hints: c => `In lessons, ${c.signals.pass} spoken answer${c.signals.pass === 1 ? "" : "s"} passed and ${c.signals.hint} led to a hint.`,
   safetyTitle: "Safety",
   safety: s => `${s.guarded} turn${s.guarded === 1 ? "" : "s"} kept private by the privacy guard or the word filter. Nothing leaves this computer.`,
-  care: n => (n ? `${n} time${n === 1 ? "" : "s"} since the app opened, CAPCOM suggested a break and talking to a grown-up.` : ""),
+  guard: g => `Kept private: ${g.pii || 0} with personal information, ${g.name || 0} with a name.`,
+  care: n => (n ? `In the last 30 days, the guide suggested a break and a trusted grown-up ${n} time${n === 1 ? "" : "s"}.` : ""),
+  sensitiveToggle: "Show language and kindness counts",
+  sensitiveHelp: "Off by default. Turns the app kept private for rude or unkind words, counted by week. Never the words. Echoes and talk not meant for the app are left out.",
+  week: (w, x) => `Week ${w}: ${x.language} for language, ${x.unkind} unkind.`,
+  noWeeks: "None in the last 30 days.",
   adaptTitle: "What the app adapted",
   adapt: a => `Learned ${a.names} name${a.names === 1 ? "" : "s"} the way this cadet says them. Waits ${a.wait_s} s before answering${a.waits_longer ? " (a little longer, so the cadet can finish)" : ""}.`,
   adaptMore: "See or reset it in What the app has learned, below.",
@@ -241,13 +297,19 @@ export const COMPUTER = {
   controls: ["Voice log and playtest: turn the log on or off, delete it, or export a playtest.", "What the app has learned: remove a name or reset learning.", "Reset Outpost Luna: start over, and erase progress if you want."],
 };
 /** The computer block (pure). s: GET /api/brain/summary's body or null. */
-export function computerHtml(s) {
+export function computerHtml(s, { sensitive = false } = {}) {
   const c = (s && s.talk) || null, sf = (s && s.safety) || { guarded: 0, care: 0 }, a = s && s.adapted;
+  const minN = (c && c.min_n) || 10, sig = (c && c.signals) || {};
+  const weekly = sf.weekly && typeof sf.weekly === "object" ? Object.entries(sf.weekly).sort() : null;
   return `<section class="pg-block pg-computer"><h5>${esc(COMPUTER.title)}</h5>
       <p class="set-help">${esc(COMPUTER.note)}</p>
-      ${c && c.turns ? `<p class="pg-cur">${esc(COMPUTER.talk(c))}</p><p class="pg-cur">${esc(COMPUTER.heard(c))}</p><p class="pg-cur">${esc(COMPUTER.room(c.room))}</p>`
+      ${c && c.turns ? `<p class="pg-cur">${esc(COMPUTER.talk(c))}</p><p class="pg-cur">${esc(COMPUTER.heard(c))}</p><p class="pg-cur">${esc(COMPUTER.room(c.room))}</p>
+        ${c.retried ? `<p class="pg-cur">${esc(COMPUTER.retried(c, c.turns >= minN))}</p>` : ""}${(sig.pass || 0) + (sig.hint || 0) ? `<p class="pg-cur">${esc(COMPUTER.hints(c))}</p>` : ""}`
         : `<p class="pg-cur">${esc(COMPUTER.off)}</p>`}</section>
-    <section class="pg-block"><h5>${esc(COMPUTER.safetyTitle)}</h5><p class="pg-cur">${esc(COMPUTER.safety(sf))}</p>${sf.care ? `<p class="pg-cur">${esc(COMPUTER.care(sf.care))}</p>` : ""}</section>
+    <section class="pg-block"><h5>${esc(COMPUTER.safetyTitle)}</h5><p class="pg-cur">${esc(COMPUTER.safety(sf))}</p>${sf.guard && (sf.guard.pii || sf.guard.name) ? `<p class="pg-cur">${esc(COMPUTER.guard(sf.guard))}</p>` : ""}${sf.care ? `<p class="pg-cur">${esc(COMPUTER.care(sf.care))}</p>` : ""}
+      <label class="set-row pg-sensitive"><input type="checkbox" data-pg-sensitive ${sensitive ? "checked" : ""}><span>${esc(COMPUTER.sensitiveToggle)}</span></label>
+      <p class="set-help">${esc(COMPUTER.sensitiveHelp)}</p>
+      ${sensitive && weekly ? (weekly.length ? `<ul class="pg-weeks">${weekly.map(([w, x]) => `<li>${esc(COMPUTER.week(w, x))}</li>`).join("")}</ul>` : `<p class="pg-cur">${esc(COMPUTER.noWeeks)}</p>`) : ""}</section>
     ${a ? `<section class="pg-block"><h5>${esc(COMPUTER.adaptTitle)}</h5><p class="pg-cur">${esc(COMPUTER.adapt(a))} ${esc(COMPUTER.adaptMore)}</p></section>` : ""}
     <section class="pg-block"><h5>${esc(COMPUTER.controlsTitle)}</h5><ul class="pg-ctl">${COMPUTER.controls.map(t => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
 }

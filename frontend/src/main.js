@@ -127,6 +127,7 @@ async function boot() {
   const placeById = id => byId[id] || null;
   (window.__outpost = window.__outpost || {}).placeById = placeById;   // [learning-v3] globe step directives
 
+  const EMOTION_INPUT = false;   // [quarantine] see onEmotion below
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const tour = { id: 0, active: false, paused: false, held: false, why: "", stops: [], i: -1, timer: null, token: 0, heldT: 0 };
@@ -164,7 +165,9 @@ async function boot() {
     onTurn: (text, o = {}) => ask(text, "voice", o),
     onBargeIn: o => onBarge(o),
     onKidDone: () => onKidDone(),
-    onEmotion: label => { turn.emotion = label; },
+    // [quarantine] the ear has no emotion head (model_server/app/arcmeta.py), so nothing sends "emotion": EMOTION_INPUT
+    // keeps a stray label from steering the voice (backend session.EMOTION_INPUT, docs/BRAIN.md). turn.emotion stays null.
+    onEmotion: label => { if (EMOTION_INPUT) turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
     screen: () => screenFrame(),          // the pending offer / open step: their reply is never an echo of the tail
   });
