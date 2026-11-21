@@ -17,7 +17,9 @@
 //     pause   extra-early hints the app gave after a long pause (the app's action, not a trait: docs/BRAIN.md §6)
 //     secs    seconds on graded steps (each step capped at 5 minutes, so a walk away doesn't count)
 //   days: ["2026-11-19", ...]   the days with a graded step, newest last, at most 60
-//   course: "moon"               which course the lesson ids belong to (default "moon"; ready for more courses)
+//   course: "moon"               the course last practised (default "moon"). The lesson ids carry their own course
+//                                (brain.js lessonKey: bare on the Moon, "<course>:<id>" elsewhere), so one store holds
+//                                every course's counts; this field only says which course was played last.
 //   speech: { c: { <course>: {read, questions, aloud, aloud_words, summaries, points, words: {<glossary word>:
 //            {box, due: YYYY-MM-DD, n}}} } }   reading / vocab / summary counts and the vocab spaced repetition
 //            (academy/speech_store.js; docs/SPEECH_LEARNING.md). Counts and glossary words only, never what was said.
@@ -33,7 +35,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const UNGRADED = new Set(["video", "predict"]);
 const FIELDS = ["steps", "first", "helped", "shown", "misses", "pause", "secs"];
 
-export const COURSE = "moon";   // the course these counts belong to (a future course switcher adds others)
+export const COURSE = "moon";   // the default course (the field is the course last practised; ids carry their own)
 const COURSE_ID = /^[a-z0-9][a-z0-9-]{0,23}$/;
 export const blank = (course = COURSE) => ({ v: 1, course, lessons: {}, days: [] });
 const n = x => (Number.isFinite(+x) && +x > 0 ? Math.min(1e6, Math.floor(+x)) : 0);
@@ -58,7 +60,7 @@ export const dayOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth
 
 /**
  * Add one graded attempt (pure; returns a new store).
- * ev: {lesson, type, status, shown, misses, helped, hes, step_s, ride}
+ * ev: {lesson, type, status, shown, misses, helped, hes, step_s, ride, course?}  (course: the course being played)
  *   status "hint"   a try that wasn't right (the server's miss)        → misses (+ pause when the app hinted early)
  *   status "passed" the step is done                                   → first | helped | shown, secs
  *   status "missed" a check-ride order the world moved past            → shown
@@ -69,6 +71,7 @@ export function record(store, ev, today = dayOf()) {
   if (!ev || !ID.test(String(ev.lesson || "")) || UNGRADED.has(ev.type)) return s;
   const st = ev.status;
   if (!["hint", "passed", "missed"].includes(st)) return s;
+  if (typeof ev.course === "string" && COURSE_ID.test(ev.course)) s.course = ev.course;   // [courses] was stuck at "moon"
   const L = s.lessons[ev.lesson] || Object.fromEntries(FIELDS.map(f => [f, 0]));
   if (st === "hint") { L.misses++; if (ev.hes) L.pause++; }
   else {

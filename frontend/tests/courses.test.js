@@ -90,7 +90,7 @@ const res = (body, ok = true) => ({ ok, json: async () => body });
 const COURSES = { active: "moon", courses: [{ id: "moon", title: "The Moon", status: "builtin", labels: { patches: "NASA patches" } },
   { id: "archaeology", title: "Archaeology", status: "pack", labels: { course: "Archaeology", school: "Field School" } }] };
 
-test("syncCourse: tells the backend this cadet's course; a removed course falls back to the Moon", async () => {
+test("syncCourse: tells the backend this cadet's course; a missing course plays the Moon and keeps the choice", async () => {
   const calls = [];
   const fetchFn = async (url, o) => { calls.push([url, o && o.body]); return url === "/api/courses" ? res(COURSES) : res({ active: "archaeology" }); };
   const st = mem({ "outpost-course": "archaeology" });
@@ -99,7 +99,11 @@ test("syncCourse: tells the backend this cadet's course; a removed course falls 
   assert.deepEqual(calls[1], ["/api/courses/active", JSON.stringify({ id: "archaeology" })]);
   const gone = mem({ "outpost-course": "geology" }); calls.length = 0;
   const s2 = await C.syncCourse({ fetchFn, storage: gone });
-  assert.equal(s2.active, "moon"); assert.equal(gone.d["outpost-course"], undefined); assert.equal(calls.length, 1);   // already the Moon: no POST
+  assert.equal(s2.active, "moon"); assert.equal(calls.length, 1);   // already the Moon: no POST
+  // [arch-patches] the choice survives a launch where the pack is missing (it used to be erased: the owner's
+  // archaeology patches "disappeared" behind a Moon map), and the Moon's progress is what this launch reads and writes
+  assert.equal(gone.d["outpost-course"], "geology");
+  assert.equal(C.playingCourse(gone), "moon");
   assert.equal(C.courseLabel("patches"), "NASA patches");
 });
 
@@ -148,4 +152,50 @@ test("the Moon manifest's big ideas equal the Brain's table", async () => {
   const m = JSON.parse(readFileSync(new URL("../../backend/data/courses/moon.json", import.meta.url), "utf8"));
   for (const [id, s] of Object.entries(B.SKILLS)) assert.deepEqual({ star: m.big_ideas[id].star, idea: m.big_ideas[id].idea, ngss: m.big_ideas[id].codes }, s, id);
   assert.deepEqual(Object.keys(m.big_ideas).sort(), Object.keys(B.SKILLS).sort());
+});
+
+test("[arch-patches] progress follows the course being played, not just the stored key", async () => {
+  const fetchFn = async url => (url === "/api/courses" ? res({ ...COURSES, active: "archaeology" }) : res({ active: "archaeology" }));
+  const st = mem({ "outpost-course": "archaeology" });
+  await C.syncCourse({ fetchFn, storage: st });
+  assert.equal(C.playingCourse(st), "archaeology");
+  // the stored key goes away mid-session (another tab, a profile tool): the lessons on screen are still Archaeology's
+  delete st.d["outpost-course"];
+  assert.equal(C.playingCourse(st), "archaeology");
+  // the backend refuses the switch: the course it plays is the one progress uses
+  const refusing = async (url, o) => (url === "/api/courses" ? res({ ...COURSES, active: "moon" }) : res({}, false));
+  const st2 = mem({ "outpost-course": "archaeology" });
+  const s = await C.syncCourse({ fetchFn: refusing, storage: st2 });
+  assert.equal(s.active, "moon"); assert.equal(C.playingCourse(st2), "moon");
+});
+
+test("[arch-patches] three Archaeology lessons in a row: every patch stays in the store and in the view", () => {
+  let store = C.migrateAcademy(null);
+  const ids = ["archaeology:field_scout", "archaeology:sky_surveyor", "archaeology:layer_reader"];
+  ids.forEach((b, k) => {
+    const v = C.courseView(store, "archaeology");
+    assert.deepEqual(v.badges, ids.slice(0, k), `before lesson ${k + 1}`);
+    v.badges.push(b);
+    store = C.mergeView(store, "archaeology", v);
+  });
+  assert.deepEqual(C.courseView(store, "archaeology").badges, ids);
+  assert.deepEqual(store.badges, ids, "prefixed once, never 'archaeology:archaeology:…' or 'moon:archaeology:…'");
+  assert.deepEqual(C.courseView(store, "moon").badges, []);
+});
+
+test("[arch-patches] the lesson loop's Moon-only lines stay on the Moon (map credit, patch count, facts, patch word)", async () => {
+  const S = await import("../src/story.js");
+  const { readFileSync } = await import("node:fs");
+  const ui = readFileSync(new URL("../src/academy/ui.js", import.meta.url), "utf8");
+  assert.equal(S.COURSE_DONE.progress(2, 10), "2 of 10 lessons done. 8 to go.");
+  assert.equal(S.COURSE_DONE.progress(9, 10), "9 of 10 lessons done. One to go.");
+  assert.equal(S.COURSE_DONE.progress(10, 10), "10 of 10 lessons done. That's every lesson.");
+  assert.ok(!/check ride|NASA|Moon/.test(S.COURSE_DONE.progress(3, 10) + S.COURSE_DONE.title(10, "Field patches") + S.COURSE_DONE.sub));
+  assert.equal(S.COURSE_DONE.title(10, "Field patches"), "All 10 field patches earned");
+  assert.match(S.COURSE_CREDIT.earth, /Blue Marble/); assert.ok(!/Artemis|Moon Base/.test(S.COURSE_CREDIT.earth));
+  // the patch screen: "then your check ride" only when the course has one; the map credit by globe; the facts label
+  assert.match(ui, /lessons\(\)\.some\(l => l\.ride\) \? TRANSITION\.patchProgress\(c\.n, c\.of\) : COURSE_DONE\.progress\(c\.n, c\.of\)/);
+  assert.match(ui, /moonGlobe\(\) \? `\$\{CREDIT\} \$\{PRETEND_BASE\}` : \(COURSE_CREDIT\[/);
+  assert.match(ui, /moonCourse\(\) \? "NASA facts" : "Facts"/);
+  assert.ok(!/Loading Flight School…|Can&rsquo;t reach Flight School/.test(ui), "loading lines use the course's school name");
 });

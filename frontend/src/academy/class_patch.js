@@ -21,14 +21,14 @@ export function registerClassLessons(lessons) {
   (lessons || []).filter(l => l && (l.track === "class" || String(l.id || "").includes(":")) && l.badge).forEach(l => {
     const course = l.track !== "class";
     const v = { name: l.badge.name || l.title, glyph: String(l.badge.glyph || l.title || "C").slice(0, 1).toUpperCase(),
-      field: course ? EARTH[hash(l.id) % EARTH.length] : FIELDS[hash((l.pack && l.pack.id) || l.id) % FIELDS.length] };
+      field: course ? EARTH[hash(l.id) % EARTH.length] : FIELDS[hash((l.pack && l.pack.id) || l.id) % FIELDS.length], sun: course };   // a course patch: a sun, not the Moon's crescent
     REG.set(l.id, v); REG.set(l.badge.id, v);
   });
 }
 export const isClassPatch = id => REG.has(id);
 
 /** The SVG of one Class patch. */
-export function classPatchSvg({ name = "Class", glyph = "C", field = FIELDS[0] } = {}, { earned = true, size = 64, title, className = "" } = {}) {
+export function classPatchSvg({ name = "Class", glyph = "C", field = FIELDS[0], sun = false } = {}, { earned = true, size = 64, title, className = "" } = {}) {
   const label = title === true ? name + (earned ? " patch" : " patch, not yet earned") : title;
   const a11y = label ? `role="img" aria-label="${esc(label)}"` : `aria-hidden="true"`;
   const g = esc(glyph);
@@ -36,7 +36,7 @@ export function classPatchSvg({ name = "Class", glyph = "C", field = FIELDS[0] }
     ? `<circle cx="80" cy="80" r="68" fill="${field}"/>`
       + `<circle cx="80" cy="80" r="63.5" fill="none" stroke="${PAL.white}" stroke-width="1.6" stroke-dasharray="3.5 3" opacity=".55"/>`
       + `<path d="M28 104a56 56 0 0 0 104 0Z" fill="${PAL.deep}" opacity=".28"/>`
-      + `<circle cx="112" cy="48" r="9" fill="${PAL.white}" opacity=".9"/><circle cx="116" cy="45" r="7" fill="${field}"/>`
+      + (sun ? `<circle cx="112" cy="48" r="7" fill="${PAL.gold}" opacity=".95"/>` : `<circle cx="112" cy="48" r="9" fill="${PAL.white}" opacity=".9"/><circle cx="116" cy="45" r="7" fill="${field}"/>`)
       + `<text x="80" y="98" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="58" fill="${PAL.white}">${g}</text>`
       + `<circle cx="80" cy="80" r="72" fill="none" stroke="${PAL.navy}" stroke-width="8"/>`
       + `<circle cx="80" cy="80" r="72" fill="none" stroke="${PAL.gold}" stroke-width="7" stroke-dasharray="1 1.8" opacity=".55"/>`

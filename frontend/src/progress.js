@@ -18,7 +18,7 @@ import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./expl
 import { debriefStory } from "./mission/objective.js";
 import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
 import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
-import { activeCourse, courseLabel, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
+import { activeCourse, courseLabel, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -86,7 +86,7 @@ export function readCadets(storage = typeof localStorage !== "undefined" ? local
     const read = k => (live ? get(storage, k) : (d[k] ?? null));
     const callsign = String(read("outpost-callsign") || "").slice(0, 18);
     const fl = parse(get(storage, flownKey(callsign)));
-    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy"), activeCourse(storage)), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [],
+    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy"), live ? playingCourse(storage) : validCourse(read("outpost-course")) ? read("outpost-course") : "moon"), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [],
       speech: speechSummary(parseSpeech((parse(read("outpost-brain")) || {}).speech)) };   // the Brain's speech section
   });
 }

@@ -253,7 +253,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     rstops.forEach(s => {
       const f = s.p.clone().normalize().dot(cam);
       s.f = f; s.on = f > 0.3; tmp.copy(s.p).project(camera);
-      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 42 : 8);   // the next pin keeps room for its label (playtest #28: it covered the pin below)
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x + ((s.nudge && s.nudge[0]) || 0); s.by = s.y + ((s.nudge && s.nudge[1]) || 0);   // nudge: a fixed slot round a shared spot (academy/pins.js clusterNudges)
+      s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 42 : 8);   // the next pin keeps room for its label (playtest #28: it covered the pin below)
     });
     const vis = rstops.filter(s => s.on);
     for (let it = 0; it < 12; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {

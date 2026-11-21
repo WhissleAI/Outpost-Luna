@@ -3,8 +3,11 @@
 //
 // - The active course is per call sign: "outpost-course" is a profile key (prefs.js PROFILE_KEYS), so it moves with
 //   the cadet's profile. Default "moon". At launch syncCourse() tells the backend (POST /api/courses/active) so the
-//   lessons, places, names list and keyterms it serves are this cadet's course. A course that is not installed any
-//   more (a pack removed) falls back to the Moon.
+//   lessons, places, names list and keyterms it serves are this cadet's course. A course that is not installed (a pack
+//   missing at this launch) plays the Moon, but the cadet's choice is kept: it comes back once the pack is there again.
+//   Removing a pack in Course storage clears the choice itself (course_store_ui.js).
+// - Progress follows the course actually being played (playingCourse(): the synced course, else the stored choice), so
+//   a Moon lesson can never be saved under another course's ids or the other way round.
 // - Ids are course-prefixed: "<course>:<id>" (moon:phases, moon:scout). The progress store ("atm-academy") keeps
 //   every course's patches, the qualified flag and the half-done lesson under prefixed ids (v2). A v1 save (bare ids,
 //   from before courses) migrates losslessly: every bare id is the Moon's, and the original is kept untouched under
@@ -102,6 +105,12 @@ export function activeCourse(storage = ls()) {
   return validCourse(c) ? c : DEFAULT_COURSE;
 }
 
+/** The course being played: the one syncCourse() settled on with the backend (whose lessons the app shows), else the
+ *  stored choice (before the sync, or with no backend). Progress reads and writes under this course. */
+export function playingCourse(storage = ls()) {
+  return courseState.synced && validCourse(courseState.active) ? courseState.active : activeCourse(storage);
+}
+
 /** The v2 store, migrating a v1 save in place once (the original kept under ACADEMY_BACKUP). */
 export function readStore(storage = ls()) {
   const raw = sget(storage, ACADEMY_KEY);
@@ -140,7 +149,7 @@ export async function syncCourse({ fetchFn = typeof fetch === "function" ? fetch
     const d = await r.json();
     const list = Array.isArray(d.courses) && d.courses.length ? d.courses : [MOON_INFO];
     let want = activeCourse(storage);
-    if (!list.some(c => c.id === want)) { want = DEFAULT_COURSE; sset(storage, COURSE_KEY, null); }
+    if (!list.some(c => c.id === want)) want = DEFAULT_COURSE;   // not installed this launch: the Moon, choice kept
     if (d.active !== want) {
       const p = await fetchFn("/api/courses/active", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: want }) });
       if (!p.ok) want = d.active || DEFAULT_COURSE;

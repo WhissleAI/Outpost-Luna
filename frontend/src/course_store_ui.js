@@ -4,7 +4,7 @@
 // course being played switches to the Moon first. School network mode blocks a download and says so; so does a full
 // disk. Behind the grown-up hold, so a kid can switch courses (the top-bar chip) but not download or delete one; the
 // one exception is the first-run course pick (course_pick.js): a new cadet may download one catalog course, once.
-import { courseState, setCourse, syncCourse } from "./courses.js";
+import { COURSE_KEY, courseState, setCourse, syncCourse } from "./courses.js";
 import { size } from "./storage_ui.js";
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
@@ -93,7 +93,8 @@ const section = {
         if (!r.ok) { msg.textContent = d.detail || COPY.offline; b.disabled = false; return; }
         if (act === "remove") {
           msg.textContent = COPY.removed;
-          if (courseState.active === id) { location.reload(); return; }   // it was being played: the Moon now
+          // it was being played: the Moon now (its patches stay; the choice goes, so it doesn't come back with a re-download)
+          if (courseState.active === id) { try { localStorage.removeItem(COURSE_KEY); } catch (e) { /* */ } location.reload(); return; }
         }
         paint(await load(fetchFn));
         if (act === "get" && d.state !== "installed") watch();

@@ -46,3 +46,32 @@ test("showMap renders the strip from the saved badges and a strip patch acts lik
   assert.match(ui, /b\.onclick = \(\) => pickPin\(l, sel\);/);
   assert.match(src("../src/school.css"), /\.mp-patchbtn\{/);
 });
+
+// [arch-patches] Archaeology (course #2) puts nine of its ten lessons at Mesa Verde. The route layer's push-apart alone
+// flung nine pins on one point across the continent, differently after every lesson (the next pin is bigger), so an
+// earned patch seemed to disappear. Shared spots now get fixed slots (academy/pins.js clusterNudges).
+test("[arch-patches] lessons on one spot get distinct, stable slots; a lone stop gets none", async () => {
+  const { clusterNudges } = await import("../src/academy/pins.js");
+  const ARCH = JSON.parse(src("../../backend/data/courses/archaeology/course.json"));
+  const PLACES = Object.fromEntries(JSON.parse(src("../../backend/data/courses/archaeology/places.json")).places.map(p => [p.id, p]));
+  const stops = ARCH.lessons.map(l => PLACES[l.place]);
+  assert.ok(stops.every(Boolean), "every lesson's place is in the gazetteer");
+  const nd = clusterNudges(stops);
+  assert.equal(nd.length, stops.length);
+  const slots = nd.filter(Boolean).map(([x, y]) => `${x},${y}`);
+  assert.equal(new Set(slots).size, slots.length, "no two pins share a slot");
+  // far enough apart for a 44 px pin, close enough to read as one place (within ~140 px)
+  const pts = nd.filter(Boolean);
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) assert.ok(Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) >= 44, `slots ${i} and ${j} overlap`);
+  assert.ok(pts.every(([x, y]) => Math.hypot(x, y) <= 140));
+  // stable: earning lessons doesn't move anyone (the slots depend on route order only)
+  assert.deepEqual(clusterNudges(stops), nd);
+  assert.deepEqual(clusterNudges([{ lat: 0, lon: 0 }, { lat: 40, lon: 40 }]), [null, null]);
+  assert.deepEqual(clusterNudges([null, { lat: 1, lon: 1 }]), [null, null]);
+});
+
+test("[arch-patches] the map lays out shared spots off the Moon only, and the route layer honours the slot", () => {
+  const ui = src("../src/academy/ui.js"), globe = src("../src/globe.js");
+  assert.match(ui, /if \(!moonGlobe\(\)\) clusterNudges\(stops\)/);
+  assert.match(globe, /s\.bx = s\.x \+ \(\(s\.nudge && s\.nudge\[0\]\) \|\| 0\)/);
+});

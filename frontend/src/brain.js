@@ -15,13 +15,13 @@ import { callSign } from "./story.js";
 import { isClass, isExplorer, isField } from "./explorer.js";
 import { readCadets, summarize } from "./progress.js";
 import { activeProfile } from "./learning_ui.js";
-import { courseState, qid, splitQid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
+import { courseLabel, courseState, qid, splitQid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // Every lesson step the Academy grades lands in the practice counts (ids and counts only; brain_store.js).
-if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) store.add({ ...e.detail, lesson: lessonKey(e.detail.lesson) }); });
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) store.add({ ...e.detail, lesson: lessonKey(e.detail.lesson), course: courseState.active || store.COURSE }); });
 
 export const COPY = {
   title: "My Brain",
@@ -34,9 +34,9 @@ export const COPY = {
   mapLine: "Each star is a big idea. Earn its patch and it lights up.",
   legend: { lit: "Learned", practising: "Practising", dim: "Not yet" },
   tryTitle: "Try next",
-  tryGo: "Go to Flight School",
+  get tryGo() { return `Go to ${courseLabel("school", "Flight School")}`; },   // [courses] Field School in Archaeology
   voiceTitle: "How the outpost knows your voice",
-  voiceEmpty: "Talk to CAPCOM. The outpost learns how you say Moon names.",
+  get voiceEmpty() { return !courseState.active || courseState.active === "moon" ? "Talk to CAPCOM. The outpost learns how you say Moon names." : "Talk to your guide. The outpost learns how you say place names."; },
   alias: (heard, name) => `You say “${heard}”. The outpost knows you mean ${name}.`,
   waits: "You take a moment before you answer. The outpost waits for you.",
   quick: "You answer quickly. The outpost answers quickly too.",
@@ -74,7 +74,10 @@ export const lessonKey = (id, course = courseState.active) => (!course || course
 /** [courses] The course's own big ideas (manifest big_ideas, docs/COURSES.md §4.8), else the table above (the Moon's). */
 const courseSkill = l => { const b = l && ((courseState.info && courseState.info.big_ideas) || {})[splitQid(l.id).id];
   return b && b.star ? { star: b.star, idea: b.idea || "", ngss: Array.isArray(b.codes) ? b.codes : [] } : null; };
-export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
+// [courses] another course's lesson with no big idea in its manifest: the star is its patch's name ("Layer Reader"),
+// not the first two words of its title ("Clues, not" / "Moonrise at" read as cut off)
+const courseStar = l => (l && l.badge && l.badge.name && splitQid(l.id).course !== "moon" ? l.badge.name : "");
+export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: courseStar(l) || String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
 
 const trackOf = l => (l.ride || (!isClass(l) && !isExplorer(l) && !isField(l)) ? "core" : isField(l) ? "field" : isExplorer(l) ? "explorer" : "class");
 const badgeId = l => (l && l.badge && l.badge.id) || "";

@@ -1,5 +1,5 @@
 // Academy API client + on-device progress (localStorage, no names: a kids' app). See backend/app/academy/routes.py.
-import { activeCourse, courseView, mergeView, readStore, writeStore, ACADEMY_KEY } from "../courses.js";
+import { playingCourse, courseView, mergeView, readStore, writeStore, ACADEMY_KEY } from "../courses.js";
 async function j(url, opts) {
   const r = await fetch(url, opts);
   if (!r.ok) { const e = new Error(url + " " + r.status); e.status = r.status; throw e; }
@@ -18,15 +18,16 @@ export const academyApi = {
 };
 
 // Progress is stored per course under course-prefixed ids (courses.js: "atm-academy" v2, a v1 save migrates once and
-// is kept as "atm-academy.v1"). The lesson UI sees the active course's progress with bare ids, as it always has.
+// is kept as "atm-academy.v1"). The lesson UI sees the progress of the course being played (courses.js playingCourse:
+// the course whose lessons the backend serves), with the ids those lessons use.
 const blank = () => ({ badges: [], qualified: false });
 
 export const progress = {
   load() {
-    try { return { ...blank(), ...courseView(readStore(), activeCourse()) }; }
+    try { return { ...blank(), ...courseView(readStore(), playingCourse()) }; }
     catch (e) { return blank(); }
   },
-  save(p) { try { writeStore(mergeView(readStore(), activeCourse(), p)); } catch (e) { /* private mode: progress lasts this visit */ } },
+  save(p) { try { writeStore(mergeView(readStore(), playingCourse(), p)); } catch (e) { /* private mode: progress lasts this visit */ } },
   reset() { try { localStorage.removeItem(ACADEMY_KEY); } catch (e) { /* none */ } },
 };
 

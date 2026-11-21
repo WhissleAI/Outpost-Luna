@@ -45,3 +45,30 @@ export function classTrackHtml({ lessons, has, copy, esc, patch }) {
       <small>${esc(copy.track(done, p.lessons.length))}</small></button>`;
   }).join("");
 }
+
+/** [courses] Fixed screen slots for pins that share a spot (academy/ui.js showMap; globe.js route stop `nudge`).
+ *  The Archaeology course puts nine of its ten lessons at Mesa Verde. Left to the route layer's push-apart alone, nine
+ *  pins on one point were flung across the continent, and to different places every time the next lesson changed, so
+ *  an earned patch seemed to vanish after each lesson. Stops within `deg` degrees of a cluster's first stop share that
+ *  cluster; its k-th stop (in route order) gets slot k of a sunflower round the spot, so a pin keeps its place as
+ *  lessons are earned. A stop alone gets null (no nudge). Pure. stops: [{lat, lon}] -> [[dx, dy] | null]. */
+export function clusterNudges(stops, { deg = 3, gap = 34 } = {}) {
+  const rad = Math.PI / 180;
+  const apart = (a, b) => {   // great-circle distance in degrees
+    const h = Math.sin((b.lat - a.lat) * rad / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin((b.lon - a.lon) * rad / 2) ** 2;
+    return 2 * Math.asin(Math.min(1, Math.sqrt(h))) / rad;
+  };
+  const groups = [];
+  const of = (stops || []).map(s => {
+    if (!s || !Number.isFinite(+s.lat) || !Number.isFinite(+s.lon)) return null;
+    let g = groups.find(x => apart(x.at, s) <= deg);
+    if (!g) groups.push(g = { at: s, n: 0 });
+    return { g, k: g.n++ };
+  });
+  const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+  return of.map(o => {
+    if (!o || o.g.n < 2) return null;
+    const r = gap * Math.sqrt(o.k + 0.5), t = o.k * GOLDEN - Math.PI / 2;
+    return [Math.round(r * Math.cos(t)), Math.round(r * Math.sin(t))];
+  });
+}

@@ -12,6 +12,14 @@ export const CREDIT = "Inspired by NASA's Artemis program. Uses NASA open data; 
 /** Beside CREDIT (home, map, About): NASA now has a real Moon Base plan near the south pole, so say plainly ours is not
  *  it (docs/ACCURACY_AUDIT.md). The address is shown as text; About links it. */
 export const PRETEND_BASE = "Outpost Luna is a pretend outpost for learning. NASA's real Moon Base plans: nasa.gov/moon-base.";
+/** [courses] The map's small print on another globe (the Moon keeps CREDIT + PRETEND_BASE): its imagery, by body. */
+export const COURSE_CREDIT = { earth: "Earth imagery: NASA Blue Marble (public domain). Not endorsed by NASA." };
+/** [courses] A course with no check ride (Archaeology): the patch screen's count and the map once every lesson is done. */
+export const COURSE_DONE = {
+  progress: (n, total) => `${n} of ${total} lessons done.${total - n === 1 ? " One to go." : total - n > 1 ? ` ${total - n} to go.` : " That's every lesson."}`,
+  title: (n, patches) => `All ${n} ${patches.toLowerCase()} earned`,
+  sub: "Tap any pin to replay its lesson.",
+};
 
 /** Honest sourcing line (About, Debrief). Never claim that everything comes from NASA (docs/COPY.md, Accuracy). */
 export const SOURCES_LINE = "Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it.";
