@@ -27,6 +27,7 @@ def _left(c: Path) -> dict:
 
 def test_targets_come_from_settings_not_hard_coded(tmp_cache, monkeypatch):
     monkeypatch.delenv("LEARN_DIR", raising=False)     # conftest points learning at a temp folder; here: the settings
+    monkeypatch.delenv("BRAIN_DIR", raising=False)     # the same for the brain's counts
     t = R.targets("all")
     assert all(str(p).startswith(str(tmp_cache)) for p in t["all"])
     assert set(t["start"]) < set(t["all"])

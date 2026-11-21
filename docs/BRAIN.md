@@ -37,7 +37,7 @@ what it keeps.
 |---|---|
 | **The ear: Arc Transcriber Space, libarc ABI 2** (`model_server/app/arc_ear.py`, `docs/ARC_ABI2.md`, `docs/LOCAL_EAR.md`) | Gives words and partials, name links with p (`link_view`), almost-matches (`almost_view`), disfluency, quantities, word confidence, leak and barge-in. `device_directed` drives the router gates. Speaker is always None, and the ear's act/intent are None (`docs/SPEECH_SIGNALS_AUDIT.md` §2). The v2 room read-outs are shadow only (`arc_room.py`). Per turn and in memory (`backend/app/session.py` `EAR_ABI2`). Never stores words. |
 | **Entity layer** (`docs/ENTITY_LAYER.md` §3) | `EntityMemory` is per session and in memory only. |
-| **Arc Tagger** (`model_server/app/arctag.py`, `backend/app/readout.py`, `backend/app/safety.py`) | Uses domain `kids` for safety and `assistant` for the Director read-out. Finds act, intent, mentions, numbers, PII and `hard_pii` (address, phone, email, card, ID, date of birth, handle). `safety.classify` gives `mask` (the turn is ignored), `care` (CAPCOM's "Let's take a break. Talk to a grown-up you trust."; a flag held in memory, `GET /api/safety/flags`) and `pii` (kept out of the log). |
+| **Arc Tagger** (`model_server/app/arctag.py`, `backend/app/readout.py`, `backend/app/safety.py`) | Uses domain `kids` for safety and `assistant` for the Director read-out. Finds act, intent, mentions, numbers, PII and `hard_pii` (address, phone, email, card, ID, date of birth, handle). `safety.classify` gives `mask` (the turn is ignored), `care` (CAPCOM's "Let's take a break. Talk to a grown-up you trust."; a care flag kept by kind and day until a grown-up marks it seen, §9.2) and `pii` (kept out of the log). |
 | **Privacy guard** (`backend/app/director.py` `_hard_pii`, `NAME_GIVEN`) | Says "Let's keep names and addresses private." Highest floor priority (`docs/SESSION_CONTRACT.md` §3). A guarded turn is logged as `"text":"<private>"` with `guard: true` and never a clip (`backend/app/turnlog.py` `finish`). |
 | **Screen masking** (`frontend/src/profanity.js` `maskProfanity`) | Masks rude words in on-screen kid text. Stores nothing. |
 | **Session Director** (`docs/SESSION_CONTRACT.md`) | Streams in, typed decisions out, under the floor rules: one voice at a time, the kid always wins, never talk over the kid, silence is fine. The learned model (`backend/app/director_model/runtime.py`) runs in `guarded` mode: r12 xl on "quiet", r10 on hot and echo (`director_model/RESULTS.md` round 12). The privacy guard always wins. |
@@ -58,7 +58,7 @@ memory and gone when the lesson ended. So §5 adds one small on-device aggregate
 | No profiling by default. No nudges to share more. | UK AADC "profiling" and "nudge techniques" | No personality, ability or emotion inference. There is no "slow", "anxious" or "struggling". The app reports its own actions ("gave 2 hints early after a long pause") and outcomes ("first try"), not traits. |
 | Be open with the child, in words they understand. | UK AADC "transparency"; AI-transparency norms for minors | "How the outpost thinks" explains the listen → check → keep private → take turns loop in four lines. The cadet sees what was learned about their voice. |
 | School records belong to the school and the family. | FERPA (US schools) | The printable report stays on the device. A teacher prints it; nothing goes to us. There are no accounts, and call signs aren't real names (story.js `CALLSIGNS`). |
-| Safety without surveillance | Duty of care; AADC "best interests" | Grown-ups see how many turns were kept private or filtered, never the words. Care flags show as a count, in memory only. |
+| Safety without surveillance | Duty of care; AADC "best interests" | Grown-ups see how many turns were kept private or filtered, never the words. Care flags are kept by kind and day until a grown-up marks them seen (30 days at most, §9.2). |
 | Audio only with consent | `docs/DIRECTOR_LOOP.md` §1b, `frontend/src/playtest_ui.js` | Playtest audio needs a grown-up's tick ("I'm the parent or guardian, or I have their permission."), turns itself off after 3 h, and has its own export and delete. My Brain never reads audio. |
 
 These are design rules, not legal advice. A school's own policy still applies.
@@ -89,9 +89,9 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 | Hardest lessons | `brain.js` `hardest` (3+ steps, most help) | "Needed the most help: …" (up to 2) | Grown-ups | Where to sit with them | No ranking of children |
 | Hint use and pauses | `misses`, `pause` | "N tries weren't right yet. The app gave N hints early, after a long pause." | Grown-ups | Shows that hesitation-aware hints are working | Counts the app's action. The pause itself is never stored |
 | Practice days | `days` (60 at most) | "Practised on N days" | Grown-ups | Regularity | Dates only |
-| Speaking participation | `GET /api/brain/summary` `talk` (turn log, when on) | Turns, voice vs typed, answered vs let pass, room calm/busy/loud | Grown-ups, on the playing cadet's card (it's this computer's, not one cadet's) | Voice confidence, and whether a busy room pushes to typing | Never reads the log's text |
+| Speaking participation | `GET /api/brain/summary` `talk` (the weekly counts store, §9; the turn log before it) | Turns, voice vs typed, answered vs let pass, room calm/busy/loud | Grown-ups, on each cadet's own card | Voice confidence, and whether a busy room pushes to typing | Counts only; works with the turn log off |
 | Mission decisions | debriefs (`GET /api/mission/{id}/debrief`) | Stars, grade, objectives, Try next (unchanged from #165) | Grown-ups | Applying science to safety calls | Live only, not kept |
-| Safety summary | turn log router reason `safety` (filtered) and `guard` (privacy), `Session.flags` | Rude words filtered, and turns kept private by the privacy guard, as two counts (split since D9). Care suggestions as a count | Grown-ups | Reassurance that the guard works | Never the words |
+| Safety summary | the weekly counts store and care flags (§9) | Rude words and other filtered words by channel, kept private by the privacy guard, the last 4 weeks, the open-mic caveat. Care flags by kind and day, with Mark as seen | Grown-ups, behind the hold | Reassurance that the guard works; a duty-of-care prompt | Never the words |
 | What the app adapted | `learn` `describe(include_aliases=False)` | Names learned (count), the end-of-turn wait | Grown-ups | Explains why the app feels different for this cadet | The names themselves are in What the app has learned (remove or reset, one tap each) |
 | Data controls | existing sections | Pointers: Voice log and playtest (on/off, delete, export), What the app has learned (remove/reset), Reset (erase progress too) | Grown-ups | — | Every stored item has a delete |
 
@@ -172,23 +172,88 @@ education). A school that files a printout still owns that record (FERPA); the s
 
 - **Loopback only:** the `LocalGuard` middleware on every route (`backend/app/main.py`), plus the local token like
   `GET /api/learn` (`diag.authorized`).
-- **Returns** `{days, talk:{turns, voice, typed, answered, passed_by, days, room:{calm,busy,loud}, signals:{hint,pass,repeat,negate,undo}}, safety:{guarded, filtered, privacy, care}, adapted:{names, wait_s, turns, waits_longer}, log:{turns, bytes}, words:false}`.
+- **Returns** `{days, scope, talk:{turns, voice, typed, answered, passed_by, days, room:{calm,busy,loud}, signals}, safety:{guarded, filtered, privacy, care, care_flags:[{id, kind, day, n}], by_kind?:{profanity:{typed, ptt, directed, room}, mask:{…}}, weeks?:[{week, profanity, mask, pii, care}]}, adapted:{names, wait_s, turns, waits_longer}, log:{turns, bytes}, words:false}`.
+- **`scope: "cadet"`** (since D2): this cadet's weekly counts and care flags (§9), whether the turn log is on or off.
+  **`scope: "computer"`**: the store holds nothing for this cadet in the window yet (an install from before the
+  store), so the counts come from the turn log, every cadet on this computer, as before.
 - **Day window:** turns and outcome signals both honour `days` (signal lines carry their `day` since D9; an older
-  signal line without one counts only without a window).
-- **Reads only** the turn log's `k`, `src`, `day`, `router.outcome`, `router.reason`, `room.state`, `guard` and the signal `sig`. Never
-  `text`, alias heard forms or call signs (`backend/tests/test_brain.py`
-  `test_summary_has_no_words_names_or_call_signs`).
+  signal line without one counts only without a window). The store is weekly, so it counts every week that overlaps
+  the window.
+- **Reads only** the turn log's `k`, `src`, `day`, `router.outcome`, `router.reason`, `room.state`, `guard` and the
+  signal `sig`, and the store's numbers. Never `text`, alias heard forms or call signs
+  (`backend/tests/test_brain.py`, `backend/tests/test_brain_counts.py`).
+- **Also:** `GET /api/safety/flags` (open care flags), `POST /api/safety/flags/{id}/ack` and
+  `POST /api/safety/flags/ack?profile=` (a grown-up saw them), `DELETE /api/brain/counts?profile=` (Clear this
+  cadet's safety counts), `GET /api/brain/class?profiles=p1,p2` (every cadet's counts in one read). All take the local
+  token.
 
 ## 8. What's left
 
-- **Per-cadet talk counts.** The turn log is per computer. Tagging turns with the profile id would split them by cadet.
 - **Per-concept mastery below the lesson.** Lessons cite `concepts.json` facts but steps don't name a concept. A
   `concept` field on steps would give a finer table.
 - **Mission decisions as counts** (shelter on time, readbacks). Debriefs are live only, so a small aggregate like §5
   would keep them.
 - **A teacher roll-up across computers.** Out of scope: nothing leaves the device.
 
-## 9. Screenshots
+## 9. Safety counts, care flags and crew rotation (D1-D4)
+
+The owner approved decisions D1-D4 of `docs/BRAIN_SIGNALS_AUDIT.md`. The data protection impact assessment for them
+is `docs/DPIA.md`.
+
+### 9.1 The weekly counts store (D1, D2, D3: `backend/app/brain_counts.py`)
+
+- **File:** `<cache_dir>/brain/counts.json` (`BRAIN_DIR` in tests and dev), mode 0600, written atomically.
+- **Shape:** `{v:1, weeks:{"2026-W47":{"p1":{talk:{turns, voice, typed, answered, passed_by, room:{calm,busy,loud},
+  days:[YYYY-MM-DD]}, safety:{profanity|mask|pii|care:{typed, ptt, directed, room}}}}}}`.
+- **Kinds:** `profanity` (the word list or a profanity tag masked the turn), `mask` (another filtered turn: toxicity,
+  child.inappropriate), `pii` (the privacy guard said "Let's keep names and addresses private"), `care` (a self-harm
+  or grooming cue).
+- **Channels:** `typed`, `ptt` (Space or the mic held), `directed` (open mic, the ear rated it said to the app:
+  dd ≥ the room's `dd_strong`), `room` (open mic, anything else).
+- **Written by** `Session._turn` and `_routed` for a client session (one that sent its profile). Tools and the
+  generator never write it. It does not need the turn log: **D2**, the turn log stays on by default, and turning it
+  off costs the grown-ups nothing.
+- **Holds** whole numbers, ISO weeks, days, profile ids and the fixed enums; `clean()` on every read and write. Never
+  a word, the text, a tag's p, the screen or a time of day.
+- **Kept** 12 weeks. **Erased** by Reset (Start over and Reset everything), and by "Clear this cadet's safety counts"
+  on the grown-ups' page.
+- **The turn log** now carries `profile` on every turn line (an id, never a call sign), and `Session.flags` too.
+
+### 9.2 Care flags (D4: `backend/app/care_flags.py`)
+
+- **File:** `<cache_dir>/brain/care.json`: `{v:1, flags:[{id, kind: self_harm|grooming, day, profile, n}]}`. One flag
+  per cadet, kind and day (`n` counts repeats).
+- **Kept** until a grown-up marks it seen, and 30 days at most. Never the words, the screen or a time.
+- **Shown:** a count on the For grown-ups gate ("1 safety note in Progress"), and on the Progress page, by kind and
+  day, with "Mark as seen" and the advice to check in with the cadet. The caveat travels with it: the cues have high
+  precision but miss about half of indirect phrasings, so no note does not mean all clear.
+
+### 9.3 What the grown-ups see, and the honest caveat
+
+- Rude words and other filtered words, each by channel: "1 typed, 1 push-to-talk, 0 said to the app, 2 heard in the
+  room". Kept private by the privacy guard, as its own number. The last 4 weeks' filtered totals, oldest first, with
+  no "rising" wording: the grown-up reads the numbers.
+- **Only typed and push-to-talk are put on a cadet.** "Said to the app" and "heard in the room" mean heard near the
+  app: on a shared computer it may have been someone else (the owner's own "shit shit oh" was room talk, dd 0.91).
+- **The kid's page shows no counts.** "How the outpost thinks" tells the cadet: "Names stay secret. Rude words get
+  hidden. Grown-ups see how many, never the word." (AADC standard 11: tell the child when a parent can see.)
+
+### 9.4 Crew rotation (D3: `frontend/src/crew.js`)
+
+- **Settings → Cadets → Crew rotation** (two cadets or more). A crew bar under the top bar names the cadets; the one
+  whose turn it is is lit. A tap (or Enter / A on the focused name) passes the turn with no reload, and CAPCOM says
+  "Nova, your turn."
+- **Whose turn it is decides** the session's `profile` (`prefs.js` `turnProfileId`): every count, care flag, turn-log
+  line and on-device learning lands on that cadet. Her practice counts go to her saved profile (`brain.js`
+  `recordFor`), and My Brain opens on her page. The flight progress (patches, the half-done lesson) stays the
+  playing cadet's: the crew flies one outpost together.
+- **Push-to-talk per cadet:** while crew rotation is on, listening is Hold to talk, so a voice turn belongs to the
+  cadet on turn exactly; the old choice comes back when it is turned off.
+- **No voiceprints.** The turn is a tap, never a voice: no speaker recognition, enrolled or not (a voiceprint is a
+  biometric identifier under COPPA 2025, GDPR Art 9, BIPA and CUBI).
+- **State:** `localStorage["outpost-crew"]` `{on, turn, listen_was}`, per computer, cleared by Start over.
+
+## 10. Screenshots
 
 These are the cadet's side and the grown-ups' side at 1440x900 and 1280x720. `frontend/tests/e2e/brain_e2e.py --out`
 makes them again.

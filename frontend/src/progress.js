@@ -174,7 +174,7 @@ export function speechHtml(speech) {
 
 /** One cadet's card. debriefs: {missionId: debrief|null}; brain: the cadet's practice counts (brain_store.js);
  *  summary: GET /api/brain/summary (shown on the playing cadet's card only: it is this computer's, not one cadet's). */
-export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined } = {}) {
+export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined, own = undefined } = {}) {
   const s = summarize(cadet, lessons), name = cadet.callsign || COPY.newCadet;
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   const tag = cadet.academy.qualified ? `<span class="set-tag pg-q">${esc(COPY.qualified)}</span>` : "";
@@ -194,16 +194,16 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
     ${brain ? practiceHtml(brain, lessons) : ""}
     ${classes}${speechHtml(cadet.speech)}${missions}
-    ${cadet.active && summary !== undefined ? computerHtml(summary) : ""}
+    ${own !== undefined && own && own.scope === "cadet" ? computerHtml(own, cadet.id) : cadet.active && summary !== undefined ? computerHtml(summary, summary && summary.scope === "cadet" ? cadet.id : "") : ""}
     ${s.next.length ? `<p class="mx-try pg-try"><b>${esc(COPY.tryTitle)}</b> ${s.next.map(esc).join(" ")}</p>` : ""}</article>`;
 }
 
 /** The whole sheet. saved: GET /api/mission/saved's body (the paused mission on this computer) or null. */
-export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined } = {}) {
+export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined, summaries = {} } = {}) {
   if (!cadets.length) return `<p class="set-help">${esc(COPY.none)}</p>`;
   const pause = saved && saved.site_name ? `<p class="pg-paused">${esc(COPY.paused(String(saved.site_name).split(" (")[0], saved.day || 1))}</p>` : "";
   return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}<p class="pg-practice-only" data-pg-not-grading>${esc(COPY.practiceOnly)}</p>${pause}
-    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary })).join("")}</div>`;
+    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary, own: summaries[c.id] })).join("")}</div>`;
 }
 
 /** The part's frame (drawn at once; bind() fills the sheet). */
@@ -229,7 +229,10 @@ export async function loadData({ fetchFn, storage } = {}) {
   const brains = Object.fromEntries(cadets.map(c => [c.id, brainOf(c.id, storage)]));
   const act = cadets.find(c => c.active), pid = act && /^p\d{1,2}$/.test(act.id) ? act.id : "p1";
   const summary = await getJson(fetchFn, `/api/brain/summary?profile=${pid}`);
-  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary };
+  // [D2-D4] the counts are per cadet now (backend app/brain_counts.py): every other cadet's own summary too
+  const summaries = { [pid]: summary };
+  await Promise.all(cadets.filter(c => c.id !== pid && /^p\d{1,2}$/.test(c.id)).map(async c => { summaries[c.id] = await getJson(fetchFn, `/api/brain/summary?profile=${c.id}`); }));
+  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary, summaries };
 }
 
 /** Print the sheet alone: a copy at the body's top level (#pgPrint), everything else hidden by progress.css. */
@@ -249,7 +252,14 @@ const section = {
     const view = el.querySelector("[data-pg-view]"), pr = el.querySelector("[data-pg-print]");
     if (!view || !fetchFn) return;
     let data = null, alive = true;
-    loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); });
+    const load = () => loadData({ fetchFn, storage }).then(d => { if (!alive) return; data = d; view.innerHTML = sheetHtml(d); try { dispatchEvent(new CustomEvent("outpost:safety-notes")); } catch (e) { /* */ } });
+    load();
+    // [D4] "Mark as seen" on a care flag; [D1] "Clear this cadet's safety counts" (both POST/DELETE to this computer's backend)
+    view.addEventListener("click", e => {
+      const ack = e.target.closest("[data-care-ack]"), clr = e.target.closest("[data-safety-clear]");
+      if (ack && /^[0-9a-f]{8}$/.test(ack.dataset.careAck)) { ack.disabled = true; Promise.resolve(fetchFn(`/api/safety/flags/${ack.dataset.careAck}/ack`, { method: "POST" })).catch(() => null).then(load); }
+      if (clr && /^p\d{1,2}$/.test(clr.dataset.safetyClear)) { clr.disabled = true; Promise.resolve(fetchFn(`/api/brain/counts?profile=${clr.dataset.safetyClear}`, { method: "DELETE" })).catch(() => null).then(load); }
+    });
     if (pr) pr.onclick = () => {
       const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
       printSheet(sheetHtml({ ...(data || { cadets: readCadets(storage) }), date }));

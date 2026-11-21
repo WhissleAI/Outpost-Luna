@@ -355,6 +355,7 @@ class SessionLog:
         return {
             "k": "turn", "v": VERSION, "s": self.sid, "id": f"{self.sid}-{self.n}", "t": self._t(),
             "day": _dt.date.today().isoformat(),
+            "profile": (getattr(self.sess, "prefs", None) or {}).get("profile"),   # [D3] whose turn (an id, never a name)
             "text": redact(text, self._names()), "nw": len(ws), "src": source,
             "arc": {"dd": _r(arc.get("device_directed")), "cc": _r(arc.get("command_complete")),
                     "act": list(arc.get("act") or [])[:4]},
