@@ -5691,7 +5691,7 @@
    "title": "Course: Archaeology",
    "required": false,
    "file": "outpost-luna-v2-course_archaeology-2.tar",
-   "url": "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-2.tar",
+   "url": "https://www.dropbox.com/scl/fi/fe0c9jwv6712mnp0bv4ws/outpost-luna-v2-course_archaeology-2.tar?rlkey=67i0h7rjn553n9wsnqalklbbc&dl=1",
    "sha256": "60f22967640ea3644499e7cfa218e0cea0637c13e2a6db23233049f3a21258ce",
    "size": 37713920,
    "unpacked_size": 37682056,
@@ -6025,6 +6025,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T02:05:15Z",
- "version": "2026.11.21.0205"
+ "published_at": "2026-11-21T03:49:59Z",
+ "version": "2026.11.21.0349"
 }
