@@ -736,6 +736,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!ui.active || view !== "lesson" || L !== at.L || i !== at.i || waitingNext) return "";   // moved on meanwhile
     if (!r || !r.say) { feedback = { kind: "help", text: fallback }; render(); return fallback; }
     if (!L.ride) gs = climb(gs, r);
+    if (!L.preview) try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: "asked", lesson: L.id } })); } catch (e) { /* [brain] help-seeking count (brain_store.js asks) */ }
     feedback = { kind: "help", text: r.say };
     render();
     if (r.show) showOnGlobe(); else if (r.focus) turnToFocus(r.focus);
@@ -803,7 +804,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // [brain] and the cadet's own practice counts (brain_store.js: ids and counts only, on this device; docs/BRAIN.md)
     try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type,
       lesson: L.id, shown: !!r.shown, misses, helped: !L.ride && (gs.rung || 0) > baseRung, hes: hes && r.status === "hint", step_s, ride: !!L.ride,
-      lesson_id: L.id, reply: r, input, preview: !!L.preview } })); } catch (e) { /* no window */ }   // + speech steps' counts (academy/speech_steps.js)
+      lesson_id: L.id, reply: r, input, preview: !!L.preview, mixup: r.mixup, step: i } })); } catch (e) { /* no window */ }   // + speech steps' counts (academy/speech_steps.js)
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
     if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }

@@ -24,7 +24,7 @@ test("record: first try, with help, shown, misses and early pause hints", () => 
   s = S.record(s, { lesson: "moon", type: "tap", status: "passed", misses: 1, step_s: 30 }, "2026-11-18");
   s = S.record(s, { lesson: "moon", type: "choice", status: "passed", misses: 0, helped: true, step_s: 9 }, "2026-11-19");
   s = S.record(s, { lesson: "moon", type: "route", status: "passed", shown: true, misses: 3, step_s: 4000 }, "2026-11-19");
-  assert.deepEqual(s.lessons.moon, { steps: 4, first: 1, helped: 2, shown: 1, misses: 1, pause: 1, secs: 12 + 30 + 9 + S.STEP_CAP_S });
+  assert.deepEqual(s.lessons.moon, { steps: 4, first: 1, helped: 2, shown: 1, misses: 1, pause: 1, secs: 12 + 30 + 9 + S.STEP_CAP_S, asks: 0 });
   assert.deepEqual(s.days, ["2026-11-18", "2026-11-19"]);
 });
 
@@ -49,7 +49,7 @@ test("clean: no words, names or call signs survive, whatever is stored", () => {
   const c = S.clean(dirty), raw = JSON.stringify(c);
   for (const w of ["Comet", "Alex", "shackleton", "script", "Tuesday", "said", "heard", "callsign", "text"]) assert.ok(!raw.includes(w), w);
   assert.deepEqual(Object.keys(c.lessons), ["moon"]);
-  assert.deepEqual(c.lessons.moon, { steps: 2, first: 1, helped: 0, shown: 0, misses: 0, pause: 0, secs: 0 });
+  assert.deepEqual(c.lessons.moon, { steps: 2, first: 1, helped: 0, shown: 0, misses: 0, pause: 0, secs: 0, asks: 0 });
   assert.deepEqual(c.days, ["2026-11-19"]);
   assert.equal(c.course, "moon", "the default course");
   assert.equal(S.clean({ course: "archaeology" }).course, "archaeology");
@@ -175,7 +175,7 @@ test("loadData asks for the playing cadet's summary by profile id only (no call 
   const fetchFn = async u => { urls.push(u); return { ok: true, json: async () => (u.includes("course") ? { lessons: LESSONS } : {}) }; };
   const STORE = mem({ "outpost-profiles": JSON.stringify({ active: "p2", list: [{ id: "p1", data: null }, { id: "p2", data: null }] }), "outpost-callsign": "Comet" });
   const d = await P.loadData({ fetchFn, storage: STORE });
-  assert.ok(urls.includes("/api/brain/summary?profile=p2"));
+  assert.ok(urls.some(u => /^\/api\/brain\/summary\?profile=p2(&course=[a-z0-9-]+)?$/.test(u)), urls.join(" "));
   assert.ok(urls.every(u => !u.includes("Comet")));
   assert.ok(d.brains.p1 && d.brains.p2);
 });
