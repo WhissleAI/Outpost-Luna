@@ -659,10 +659,11 @@ Builds on the playtest round (#197: regional map, course-own words, typed non-an
   playing course says so on the Moon map after the reload.
 - **Progress for grown-ups.** "What it teaches" comes from the manifest's `big_ideas` (an older pack without them: the
   lesson's `unit`, never its title again); the footer lists the course's standards frameworks and codes.
-- **Pack v5** (`outpost-luna-v2-course_archaeology-5.tar`, built with `COURSE_PACK_VIDEOS=1`): course.json (the two
-  describe steps' pictures). Not uploaded yet: both manifests still ship v4 (Dropbox primary, GitHub mirror), so an
-  installed app gets every code fix above but the two describe pictures only once v5 is uploaded and the manifests
-  point at it. `min_version` stays 4 until then (RELEASING.md "First-run assets: upload to both").
+- **Pack v5** (`outpost-luna-v2-course_archaeology-5.tar`, built with `COURSE_PACK_VIDEOS=1`, sha256 `0fbef938…`):
+  course.json (the two describe steps' pictures). Shipped in 0.5.5 with `min_version: 5`, so installed copies update.
+  It is on the GitHub `assets-v2` pre-release only (the manifests' `url`) for now; v4 (Dropbox, GitHub mirror) is its
+  `pack` fallback. When v5 goes up on Dropbox too, `scripts/upload_assets.py` makes Dropbox the `url` and
+  `scripts/upload_assets_github.py` puts GitHub back in `mirrors` (RELEASING.md "First-run assets: upload to both").
 - Tests: `backend/tests/test_arch_qa_tries.py`, `frontend/tests/arch_qa.test.js`, end to end
   `frontend/tests/e2e/arch_qa_e2e.py` (+ `arch_patches_e2e.py`).
 
