@@ -39,7 +39,7 @@ export const LEVELS = {
   start: {
     title: "Start over", hold: "Hold to start over", done: "Starting over…",
     lead: "This erases on this computer:",
-    erases: ["Settings: voice, theme, sound, gestures, captions", "Mission debriefs and the tour", "The saved voice-guide log"],
+    erases: ["Settings: voice, theme, sound, gestures, captions", "Mission debriefs and the tour", "The saved voice-guide log", "Talk and safety counts, and safety notes"],
     keeps: "Lessons, patches and call signs stay. So do downloaded voices, crew audio, videos and models.",
   },
   all: {

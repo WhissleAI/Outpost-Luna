@@ -25,7 +25,13 @@ export const GROWNUPS = {
   // School network (network_ui.js, docs/SCHOOL_IT.md): voice opens it; only a grown-up's hold and tap change it
   sayNetLocked: "Here's School network, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
   sayNetOpen: "Here's School network. A grown-up can switch it.",
+  // [D4] care flags waiting for a grown-up (GET /api/safety/flags): a count on the gate, the details behind the hold
+  notes: n => `${n} safety note${n === 1 ? "" : "s"} in Progress`,
 };
+/** [D4] How many care flags wait for a grown-up (0 when the backend can't say). */
+export async function safetyNotes(fetchFn = typeof fetch === "function" ? fetch : null) {
+  try { const r = fetchFn ? await fetchFn("/api/safety/flags") : null; const b = r && r.ok ? await r.json() : null; return b && Array.isArray(b.flags) ? b.flags.length : 0; } catch (e) { return 0; }
+}
 /** Settings → Listening: the turn log switch (prefs.improve, on by default since 0.4.3; docs/DIRECTOR_LOOP.md §1). */
 export const IMPROVE = {
   label: "Help improve the voice guide",
@@ -37,6 +43,7 @@ export function grownupsHtml({ open = false, parts = [], esc = x => String(x) } 
   if (!open) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">
       <p class="set-help">${esc(GROWNUPS.gate)}</p>
       <ul class="gu-list">${GROWNUPS.inside.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="gu-notes" data-gu-notes role="status" hidden></p>
       ${holdButtonHtml(GROWNUPS.hold, "data-gu-open")}</div>`;
   return parts.map(p => `<section class="gu-part" data-gu="${esc(p.id)}" aria-label="${esc(p.title)}"><h4>${esc(p.title)}</h4>${p.html}</section>`).join("");
 }
@@ -227,6 +234,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of ${O.patchTotal || 9} patches`}</small></span>
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
+        ${O.crew ? `<label class="a11y-sw"><input type="checkbox" data-crew-sw ${O.crew.state.on ? "checked" : ""} ${PA.listProfiles().length < 2 ? "disabled" : ""}><span><b>Crew rotation</b><small>${PA.listProfiles().length < 2 ? "Add a second cadet to take turns." : "Cadets on this computer take turns. Tap a name to pass the turn. Hold Space or the mic to talk."}</small></span></label>` : ""}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"], ["engineer", "Engineer · real units"]])}
         <p class="set-help rs-link">Reset the app or erase progress? <button type="button" class="btn-link" data-sec-go="grownups">${escH(GROWNUPS.title)}</button></p>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
@@ -271,6 +279,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const undo = [];
     if (section === "grownups") {
       const gate = panel.querySelector("[data-gu-open]");
+      // [D4] the safety notes waiting for a grown-up: a count on the gate (never what they are, until the hold)
+      if (gate) safetyNotes().then(n => { const el = panel.querySelector("[data-gu-notes]"); if (el && n) { el.textContent = GROWNUPS.notes(n); el.hidden = false; } });
       // the grown-up gate: the shared 3-second hold (a click or a tap does nothing); open until Settings closes
       if (gate) { const h = bindHold(gate, { onFire: () => { guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
       // "Reset my patches": its own 3-second hold too
@@ -378,6 +388,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   });
   panel.addEventListener("change", e => {
     const t = e.target;
+    if ("crewSw" in t.dataset && O.crew) { O.crew.set(t.checked); renderPanel(); const again = panel.querySelector("[data-crew-sw]"); if (again) again.focus(); return; }   // [D3] crew rotation
     if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); if (t.dataset.pb === "improve") { renderPanel(); const again = panel.querySelector(`[data-pb="improve"]`); if (again) again.focus(); } return; }   // a boolean pref
     if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;

@@ -24,7 +24,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import barge as barge_
-from . import director, hesitation, models_client, steering, turnlog
+from . import brain_counts, care_flags, director, hesitation, models_client, steering, turnlog
 from . import safety as safety_
 from . import turn_router as router_
 from .director_model import runtime as dmodel
@@ -730,10 +730,18 @@ class Session:
             tags = await safety_.tagger_read(text, safety_.command_context(self.screen_name()))
         sf = safety_.classify(text, tags)
         ctx_r.unsafe = sf["mask"]
+        chan = self._channel(source, ctx_r)
+        if sf["mask"]:   # [D1] a filtered turn: counted by kind and channel, never the word (app/brain_counts.py)
+            prof = sf["words"] or any(t.startswith("safety.profanity") for t in sf["tags"])
+            self._count_safety("profanity" if prof else "mask", chan)
         if sf["care"]:
             self.flags.append({"kind": "care", "tags": [t for t in sf["tags"] if t.startswith(safety_.CARE_TAGS)],
-                               "screen": self.screen_name(), "ts": self.clock()})   # never the words themselves
+                               "screen": self.screen_name(), "ts": self.clock(),
+                               "profile": self.prefs.get("profile")})   # never the words themselves
             del self.flags[:-50]
+            self._count_safety("care", chan)
+            if self.prefs.get("profile"):   # [D4] kept until a grown-up marks it seen, 30 days at most (app/care_flags.py)
+                care_flags.add(self.prefs["profile"], care_flags.kind_of(sf["tags"]))
             k["open"] = False
             await self._note({"outcome": "care", "reason": "safety"}, text, safety=True)
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
@@ -741,6 +749,8 @@ class Session:
         rt = router_.route(text, ctx_r, act=k.get("act"))
         if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear"), self.playback_threshold()):
             rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)
+        if self.prefs.get("profile") and rt.get("reason") != "echo":   # [D2] talk counts without the turn log
+            brain_counts.record_turn(self.prefs["profile"], source, rt.get("outcome"), self.prefs.get("room"))
         with contextlib.suppress(Exception):           # on-device learning: leak labels, pace, cut-offs (app/learn)
             self.learning.on_routed(text, source, rt, k.get("ear") if source in OPEN_MIC else None,
                                     rt.get("reason") == "echo" or ear_playback(k.get("ear"), self.playback_threshold()))
@@ -767,6 +777,17 @@ class Session:
             if self._tl is not None:
                 self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=bool(self._tl.pop("_guard", False)))
             self._tl = None
+
+    def _channel(self, source: str, ctx_r) -> str:
+        """[D1] typed / ptt / directed / room: only typed and push-to-talk are put on a cadet (app/brain_counts.py)."""
+        dd = self.belief["kid"].get("device_directed") if source in OPEN_MIC else None
+        return brain_counts.channel(source, dd, getattr(ctx_r, "dd_strong", router_.DD_STRONG))
+
+    def _count_safety(self, kind: str, chan: str):
+        """[D1] One safety count for the cadet playing (or on turn, crew rotation). Only for a client session (it sends
+        its profile): tools and the generator never write counts."""
+        if self.prefs.get("profile"):
+            brain_counts.record_safety(self.prefs["profile"], kind, chan)
 
     def _log_dir(self, **d):
         """The turn log's `director` (what the rules, the model and the runtime decided) and, v2, `seen`: what the
@@ -1005,6 +1026,8 @@ class Session:
                     self.learning.on_offer(r, k.get("ear"), self._echoish(text, source))
         if self.dm is not None:
             self.dm.turn_result(r)
+        if r.get("action") == "guard":   # [D1] the privacy guard kept a name or an address private: counted, never the words
+            self._count_safety("pii", self._channel(source, ctx_r))
         if self._tl is not None:
             from .director_model import features as _fx
             ma, mp = self.dm.model_act(out) if (self.dm is not None and out is not None) else (None, None)

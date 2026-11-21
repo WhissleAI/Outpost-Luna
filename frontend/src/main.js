@@ -52,6 +52,8 @@ import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./progress.css";
+import "./crew.css";   // [D3] crew rotation's bar
+import { installCrew } from "./crew.js";   // [D3] crew rotation: cadets take turns on one computer (docs/BRAIN.md §9)
 import "./brain.css";
 import { installBrain, COPY as BRAIN_COPY } from "./brain.js";   // [brain] My Brain (docs/BRAIN.md)
 import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
@@ -240,6 +242,9 @@ async function boot() {
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
   addEventListener("outpost:room", () => sendPrefs());   // the automatic room state (room.js): the server's dd gates follow it
+  // [D3] crew rotation: a tap passes the turn; the session gets the cadet on turn (prefs.wire `profile`) at once
+  installCrew({ prefsApi: prefs, say: t => guideSay(t, { voice: CAPCOM_VOICE, priority: 2 }) });
+  addEventListener("outpost:crew", () => sendPrefs());
   // the turn log (prefs.improve, or a grown-up's Playtest session): the Academy's grade of a step, so the server can mark
   // a step that passed or went to hint (the server ignores it when the log is off)
   addEventListener("outpost:lesson-result", e => { if (useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
