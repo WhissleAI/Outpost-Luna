@@ -516,3 +516,6 @@ body:not([data-mode="cadet"]) .mcard{display:none}
 .pt-glue{white-space:nowrap}
 .pt-mark{display:inline-flex;align-items:center;margin-left:.25em;vertical-align:-.12em;line-height:0;color:var(--color-warning);opacity:.85;cursor:help}
 .pt-mark svg{width:.95em;height:.95em;min-width:12px;min-height:12px}
+
+/* [arch QA] a Field Library marker label with no room on its right sits on its left (globe.js tickMarks) */
+.cmark.is-left .cm-label{position:absolute;right:10px;top:-14px;margin-top:0}
