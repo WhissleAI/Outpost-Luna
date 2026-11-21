@@ -26,6 +26,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from . import barge as barge_
 from . import director, hesitation, models_client, steering, turnlog
 from . import safety as safety_
+from . import safety_ledger
 from . import turn_router as router_
 from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
@@ -50,6 +51,11 @@ REF_LOAD = {"dose": "shields", "life_support": "life support", "power": None}  #
 PRONOUN = re.compile(r"\b(it|that|this one|that one)\b", re.I)
 NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shields?|greenhouse|science|rover|comms?|"
                    r"radio|heaters?)\b", re.I)
+# [quarantine] Kid emotion. The ear has NO emotion head (model_server/app/arcmeta.py: "Emotion: none"), so nothing sends
+# {"t": "emotion"} today and every emotion branch below is dead code. It stays behind EMOTION_INPUT (off) rather than
+# being deleted so a future, reviewed emotion source can be wired in one place; until then a stray "emotion" message is
+# dropped at intake. The Brain never infers or stores emotion (docs/BRAIN.md "Design principles").
+EMOTION_INPUT = False
 ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
 # Story beats CAPCOM speaks from the session (docs/GAMEPLAY.md). The others ride on a sim event that already has a line
 # (forecast = storm_warning, crisis = solar_storm, recovery = storm_end, earthrise = comm_open), or the client says them
@@ -485,7 +491,7 @@ class Session:
                 k["act"] = m["act"] if isinstance(m["act"], list) else [m["act"]]
             if isinstance(m.get("safety"), list):   # [P0] Arc Tagger's safety tags for this turn (safety.py)
                 k["safety"] = m["safety"]
-        elif t == "emotion" and m.get("label"):
+        elif t == "emotion" and m.get("label") and EMOTION_INPUT:   # quarantined: see EMOTION_INPUT
             k["emotion"] = m["label"]
         elif t == "echo_delay":    # this computer's speaker -> mic delay for one line (numbers only; app/learn/echo.py)
             with contextlib.suppress(Exception):
@@ -710,6 +716,23 @@ class Session:
             return router_.echo(text, self.route_ctx(source))
         return False
 
+    def _ledger(self, sf: dict, text: str, source: str) -> None:
+        """The safety ledger (app/safety_ledger.py): what the safety path acted on, per profile and day, never the words.
+        A care cue is always counted. Every other kind is a behaviour count, so it skips an echo turn (our own voice, a
+        video heard back) and a heard turn Arc says was not meant for the app (device_directed under the filter)."""
+        kinds = safety_ledger.kinds_of(sf)
+        if not kinds:
+            return
+        if any(k != "care" for k, _ in kinds):
+            dd = self.belief["kid"].get("device_directed") if source in OPEN_MIC else None
+            low = isinstance(dd, (int, float)) and dd < self.filter_thresholds()[0]
+            if low or self._echoish(text, source):
+                kinds = [(k, s) for k, s in kinds if k == "care"]
+        prof = (self.prefs or {}).get("profile")
+        for kind, src in kinds:
+            with contextlib.suppress(Exception):
+                safety_ledger.LEDGER.record(prof, kind, src, self.screen_name(), turnlog._course())
+
     async def _turn(self, text: str, source: str):
         k = self.belief["kid"]
         if self.learning.offer is not None:      # the answer to "Did you mean X?" teaches the learner (never an echo)
@@ -726,6 +749,7 @@ class Session:
             tags = await safety_.tagger_read(text, safety_.command_context(self.screen_name()))
         sf = safety_.classify(text, tags)
         ctx_r.unsafe = sf["mask"]
+        self._ledger(sf, text, source)
         if sf["care"]:
             self.flags.append({"kind": "care", "tags": [t for t in sf["tags"] if t.startswith(safety_.CARE_TAGS)],
                                "screen": self.screen_name(), "ts": self.clock()})   # never the words themselves
@@ -756,12 +780,12 @@ class Session:
         if self._tl is not None and ents:   # entity ids + how they were heard (no words)
             self._tl["entities"] = [{"id": e["id"], "how": e["how"], "p": e["p"], "state": e["state"]} for e in ents]
         if self._tl is not None and (sf["pii"] or sf["mask"]):
-            self._tl["_guard"] = True
+            self._tl["_guard"] = turnlog.guard_kind(sf)   # pii | language | unkind (the category, never the words)
         try:
             await self._routed(text, source, ctx_r, rt)
         finally:
             if self._tl is not None:
-                self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=bool(self._tl.pop("_guard", False)))
+                self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=self._tl.pop("_guard", False) or False)
             self._tl = None
 
     def _log_dir(self, **d):
@@ -1022,7 +1046,8 @@ class Session:
                           source=r.get("source"), _cmd=fc,
                           confirm=bool(r.get("needs_confirm")) or any(d.get("t") == "ask_confirm"
                                                                        for d in r.get("decisions") or []))
-            self._tl["_guard"] = guard or r.get("action") == "guard"
+            # the safety path's category stays (a later name guard never overwrites "language" with a bare flag)
+            self._tl["_guard"] = self._tl.get("_guard") or ("name" if guard or r.get("action") == "guard" else False)
         if r.get("action") == "none":
             await self.emit(pre)
             return

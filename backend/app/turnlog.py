@@ -33,7 +33,16 @@ Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on i
     confirm_cancel  a confirm we asked for was answered "no"
     confirm_yes     ... answered "yes" (a positive signal)
 
+Brain fields (feat/brain-signals; docs/BRAIN.md "Signals → Brain"):
+    profile     the cadet profile ("p1".."p6") on every turn and signal, so the grown-up view is per cadet
+    course      the course id on every turn (already) and now every signal
+    day         every signal line carries its day too, so a "last 30 days" window counts signals by date
+    guard_kind  a private turn's category: pii | name | language | unkind (the category, never the words); `guard` stays
+                True on such a turn for older readers
+
 Storage: <dir>/turns.jsonl, rotated to turns.1.jsonl at CAP_BYTES / 2, so the folder never holds more than ~CAP_BYTES.
+Retention (docs/SECURITY.md "Retention"): lines older than RETAIN_DAYS (30) are dropped once a day on the next write or
+read, and Playtest clips older than that are deleted; "Delete what's saved" and Reset delete it all at once.
 <dir> = $TURNLOG_DIR, else <cache_dir>/turnlog (the desktop app's per-user data folder), else <data_dir>/turnlog.
 """
 from __future__ import annotations
@@ -57,6 +66,8 @@ RETAP_S = 6.0
 UNDO_S = 20.0                  # v2: an order reversed this soon after it ran
 AFTER_TURN_S = 15.0            # a tap / lesson result this soon after a turn is about that turn
 REPEAT_SHARE = 0.6
+RETAIN_DAYS = 30               # docs/SECURITY.md "Retention": the turn log keeps 30 days, whatever its size
+GUARD_KINDS = ("pii", "name", "language", "unkind")
 
 NEG = re.compile(r"^(?:no|nope|no no|stop|stop it|stop that|back|go back|cancel|cancel that|not that|not that one|"
                  r"wrong|that s wrong|that s not it|no wait|wait no|never mind|nevermind|undo|i didn t say that|"
@@ -79,6 +90,23 @@ def _course() -> str:
         return "moon"
 
 
+def _profile(sess) -> str:
+    """The cadet profile the session's prefs name (app/learn/store.profile_id), "p1" by default."""
+    p = (getattr(sess, "prefs", None) or {}).get("profile")
+    return p if isinstance(p, str) and _ENUM_ID.match(p) else "p1"
+
+
+def guard_kind(sf: dict) -> str:
+    """safety.classify's result -> the turn log's guard category: pii, else language (the word list or the tagger's
+    profanity tag), else unkind (toxicity / inappropriate). Never the words."""
+    if sf.get("pii"):
+        return "pii"
+    tags = sf.get("tags") or []
+    if sf.get("words") or any(t == "safety.profanity" or t.startswith("safety.profanity.") for t in tags):
+        return "language"
+    return "unkind"
+
+
 def redact(text: str, names: list[str] | tuple = ()) -> str:
     """Lowercased, punctuation-free words with call signs, names, addresses and phone-like numbers replaced."""
     q = norm(text or "")
@@ -93,6 +121,7 @@ def redact(text: str, names: list[str] | tuple = ()) -> str:
 
 
 _ENUM = re.compile(r"^[a-z_]{1,24}$")
+_ENUM_ID = re.compile(r"^[A-Za-z0-9_-]{1,24}$")
 
 
 def _enum(x) -> str | None:
@@ -249,10 +278,12 @@ def log_dir() -> Path:
 class Store:
     """Append-only JSONL with one rotation (turns.jsonl -> turns.1.jsonl). Thread-safe; failures never reach the kid."""
 
-    def __init__(self, d: Path | None = None, cap: int = CAP_BYTES):
+    def __init__(self, d: Path | None = None, cap: int = CAP_BYTES, retain_days: int = RETAIN_DAYS):
         self.dir = d
         self.cap = cap
+        self.retain_days = retain_days
         self.lock = threading.Lock()
+        self._pruned: str | None = None    # the day prune() last ran
 
     @property
     def path(self) -> Path:
@@ -260,6 +291,7 @@ class Store:
 
     def append(self, obj: dict) -> bool:
         line = json.dumps(obj, separators=(",", ":"), default=str) + "\n"
+        self.prune()
         try:
             with self.lock:
                 p = self.path
@@ -272,6 +304,50 @@ class Store:
         except OSError:
             return False
 
+    def prune(self, today: str | None = None, force: bool = False) -> int:
+        """Time-based retention: drop lines whose `day` is RETAIN_DAYS or more days old (a line with no day, from an older
+        app, goes once its file is that old), and Playtest clips older than that. Runs at most once a day unless forced.
+        Returns the lines + clips removed."""
+        today = today or _dt.date.today().isoformat()
+        if self._pruned == today and not force:
+            return 0
+        try:
+            cut = (_dt.date.fromisoformat(today) - _dt.timedelta(days=self.retain_days - 1)).isoformat()
+        except ValueError:
+            return 0
+        n = 0
+        with self.lock:
+            self._pruned = today
+            for f in self.files():
+                try:
+                    old_file = _dt.date.fromtimestamp(f.stat().st_mtime).isoformat() < cut
+                    keep, drop = [], 0
+                    with open(f, encoding="utf-8") as fh:
+                        for ln in fh:
+                            m = _DAY_RE.search(ln)
+                            if (m and m.group(1) < cut) or (not m and old_file):
+                                drop += 1
+                            else:
+                                keep.append(ln)
+                    if drop:
+                        tmp = f.with_name(f.name + ".tmp")
+                        with open(tmp, "w", encoding="utf-8") as fh:
+                            fh.writelines(keep)
+                        os.replace(tmp, f)
+                        n += drop
+                        if not keep:
+                            f.unlink(missing_ok=True)
+                except OSError:
+                    continue
+            for c in self.clips():
+                try:
+                    if _dt.date.fromtimestamp(c.stat().st_mtime).isoformat() < cut:
+                        c.unlink(missing_ok=True)
+                        n += 1
+                except OSError:
+                    continue
+        return n
+
     def files(self) -> list[Path]:
         p = self.path
         return [x for x in (p.with_name("turns.1.jsonl"), p) if x.exists()]
@@ -282,6 +358,7 @@ class Store:
         return sorted(d.glob("*.wav")) if d.is_dir() else []
 
     def stats(self) -> dict:
+        self.prune()
         fs = self.files()
         n = 0
         for f in fs:
@@ -289,7 +366,8 @@ class Store:
                 n += sum(1 for line in fh if '"k":"turn"' in line)
         cl = self.clips()
         return {"dir": str(self.path.parent), "bytes": sum(f.stat().st_size for f in fs), "turns": n,
-                "cap_bytes": self.cap, "clips": len(cl), "clip_bytes": sum(f.stat().st_size for f in cl)}
+                "cap_bytes": self.cap, "clips": len(cl), "clip_bytes": sum(f.stat().st_size for f in cl),
+                "retain_days": self.retain_days}
 
     def clear(self) -> int:
         """Settings "Delete what's saved": the text log and any playtest audio."""
@@ -302,6 +380,7 @@ class Store:
 
 
 STORE = Store()
+_DAY_RE = re.compile(r'"day":"(\d{4}-\d{2}-\d{2})"')
 
 
 def _overlap(a: list[str], b: list[str]) -> float:
@@ -353,7 +432,7 @@ class SessionLog:
         arc = arc or {}
         return {
             "k": "turn", "v": VERSION, "s": self.sid, "id": f"{self.sid}-{self.n}", "t": self._t(),
-            "day": _dt.date.today().isoformat(),
+            "day": _dt.date.today().isoformat(), "profile": _profile(self.sess),
             "text": redact(text, self._names()), "nw": len(ws), "src": source,
             "arc": {"dd": _r(arc.get("device_directed")), "cc": _r(arc.get("command_complete")),
                     "act": list(arc.get("act") or [])[:4]},
@@ -377,7 +456,7 @@ class SessionLog:
             "room": _room(self.sess),
         }
 
-    def finish(self, rec: dict | None, director: dict | None = None, guard: bool = False):
+    def finish(self, rec: dict | None, director: dict | None = None, guard: bool | str = False):
         """Write the turn (after the decision), and score the previous turn against this one (repeat / negate /
         confirm). `director` = {"rules", "rules_cmd", "model", "p", "override", "final", "source", "confirm"}."""
         if rec is None or not self.on():
@@ -391,6 +470,8 @@ class SessionLog:
         pcm = rec.pop("_pcm", None)
         if guard:
             rec["text"], rec["guard"] = "<private>", True
+            if guard in GUARD_KINDS:      # the category (pii / name / language / unkind), never the words
+                rec["guard_kind"] = guard
         elif pcm:            # a grown-up's Playtest session: the turn's audio next to the log (never a private turn)
             from . import playtest
             wav = playtest.save_clip(rec["id"], pcm)
@@ -447,7 +528,8 @@ class SessionLog:
 
     def _signal(self, prev: dict, sig: str, dt: float, **k):
         self.store.append({"k": "signal", "v": VERSION, "s": self.sid, "ref": prev["id"], "sig": sig,
-                           "dt": round(dt, 2), **{a: b for a, b in k.items() if b is not None}})
+                           "dt": round(dt, 2), "day": _dt.date.today().isoformat(), "profile": _profile(self.sess),
+                           "course": _course(), **{a: b for a, b in k.items() if b is not None}})
 
 
 def _room(sess) -> dict | None:

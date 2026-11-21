@@ -7,9 +7,11 @@ from fastapi.testclient import TestClient
 from app import brain, learn, turnlog
 
 
-def _turn(src="listen", day=None, outcome="answer", room="calm", guard=False, text="<callsign> fly to tycho"):
+def _turn(src="listen", day=None, outcome="answer", room="calm", guard=False, text="<callsign> fly to tycho",
+          profile="p1", course="moon"):
     r = {"k": "turn", "v": 2, "s": "ab12", "id": "ab12-1", "day": day or dt.date.today().isoformat(), "text": text,
-         "src": src, "router": {"outcome": outcome}, "room": {"state": room, "listen": "open"}}
+         "src": src, "router": {"outcome": outcome}, "room": {"state": room, "listen": "open"}, "profile": profile,
+         "course": course}
     if guard:
         r["text"], r["guard"] = "<private>", True
     return json.dumps(r)

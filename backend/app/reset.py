@@ -1,7 +1,7 @@
 """Settings → Reset Outpost Luna (docs/RESET.md): erase what this computer remembers about the kid.
 
 Two levels:
-  start  "Start over": the server's per-user state. That is the opt-in turn log, the TTS cache (spoken lines), and
+  start  "Start over": the server's per-user state. That is the turn log, the safety ledger, the TTS cache, and
          the in-memory missions, sessions, check rides and standing orders. The downloaded assets (models, the voice
          pack, crew audio, NASA videos) stay, so nothing has to download again.
   all    "Reset everything": the above, plus the NASA video cache and the embedding vector cache, plus the first-run
@@ -78,7 +78,9 @@ def targets(level: str) -> dict[str, list[Path]]:
     """Which folders each level empties (the unit tests read this). The paths come from the settings, never hard-coded."""
     from . import turnlog
     from .learn import store as learn_store
-    start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir()]   # learn: on-device learning
+    from . import safety_ledger
+    # learn: on-device learning; safety: the safety ledger (care entries, per-profile safety counts; no words)
+    start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir(), safety_ledger.ledger_dir()]
     from .academy import classpacks
     # Class lessons (docs/CURRICULUM.md) are a grown-up's work, not progress: only Reset everything removes them
     return {"start": start, "all": start + [settings.video_cache(), settings.vector_cache(), classpacks.class_dir()]}
@@ -90,6 +92,8 @@ def reset(level: str) -> dict:
     from . import turnlog
     cleared: dict[str, int] = {}
     turnlog.STORE.clear()
+    from . import safety_ledger
+    safety_ledger.LEDGER.clear()
     from . import learn
     learn.forget_cached()
     for d in targets(level)[level]:

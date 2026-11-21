@@ -79,6 +79,8 @@ SITUATIONS: dict[str, dict] = {
 }
 
 # Kid affect (Arc / emotion) -> overrides. Applied on top of the situation, except it never speeds up a calming line.
+# [quarantine] No live caller passes an emotion today: the ear has no emotion head and session.EMOTION_INPUT /
+# main.js EMOTION_INPUT drop the stream at intake (docs/BRAIN.md). Kept, pure and tested, for a reviewed future source.
 AFFECT: dict[str, dict] = {
     "frustrated": {"tag": "sympathy", "controls": {"rate": -0.7, "pause": 0.8, "loud": -0.2}},
     "confused":   {"tag": "serenity", "controls": {"rate": -0.7, "pause": 0.8}},

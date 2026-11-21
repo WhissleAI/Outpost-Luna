@@ -211,7 +211,15 @@ def test_chatter_gets_no_response(sess):
     assert [d for d in sess.outbox if d["t"] not in ("floor",)] == []
 
 
-def test_upset_kid_during_alarm_gets_calm_short_lines(sess):
+def test_emotion_is_quarantined_by_default(sess):
+    """The ear has no emotion head: a stray emotion message is dropped at intake (session.EMOTION_INPUT off)."""
+    assert sessions.EMOTION_INPUT is False
+    run(sess.handle({"t": "emotion", "label": "frustrated"}))
+    assert not sess.belief["kid"].get("emotion")
+
+
+def test_upset_kid_during_alarm_gets_calm_short_lines(sess, monkeypatch):
+    monkeypatch.setattr(sessions, "EMOTION_INPUT", True)   # the quarantined path, as it would run if re-enabled
     _storm_event(sess)
     run(sess.poll())
     sess.outbox.clear()
