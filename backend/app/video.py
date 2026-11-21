@@ -17,11 +17,12 @@ file is streamed through the backend on its first play and cached at the same ti
 
 Routes
   GET    /api/video/catalog                  the catalog, each entry + {cached, play_url, captions_src, poster_src}
-  GET    /api/video/{id}/available           {"status": "cached" | "online" | "offline"}
+  GET    /api/video/{id}/available           {"status": "cached" | "online" | "offline" | "downloading"}
   GET    /api/video/{id}/file                the video (Range requests work; cached file, else streamed from NASA)
   GET    /api/video/{id}/captions.vtt        WebVTT captions (converted from SRT once, cached)
   GET    /api/video/{id}/poster              the poster still (cached; a YouTube item uses its NASA fallback's)
   GET    /api/video/cache                    {bytes, cap_bytes, files, pinned_ready, pinned_total, prefetch}
+  GET    /api/video/course                   the active course's own videos: {total, ready, progress, state}
   DELETE /api/video/cache                    Settings → Videos → Clear (pinned files download again next launch)
 """
 from __future__ import annotations
@@ -542,6 +543,8 @@ def availability(v: dict) -> str:
     # offline and before the background copy got to it
     if is_cached(v) or (v.get("source") in LOCAL_SOURCES and pack_has(v)):
         return "cached"
+    if downloading(v):
+        return "downloading"      # [course switch] on its way after a switch: wait for it rather than stream it
     if v.get("source") == "pack_file":
         return "offline"          # not installed: nothing to download it from
     return "online" if online("youtube" if v.get("source") == "youtube" else "nasa") else "offline"
@@ -673,13 +676,51 @@ def _pace(stop: threading.Event | None = None, sleep_s: float = 0.02):
     return pace
 
 
-def prefetch_all(stop: threading.Event | None = None, pace=None) -> dict:
-    """Download every pinned (prefetch) file not cached yet. Blocking: run it in a thread."""
-    todo = [v for v in catalog() if v.get("prefetch") and reachable(v)]
-    STATE.update(state="running", total=len(todo), done=0, error=None)
+_run = threading.Lock()        # one download run at a time (the launch prefetch, a course switch's kick)
+_q_lock = threading.Lock()
+_front: list[dict] = []        # items a course switch asked for while a run was going: the run fetches them next
+_WANT: set[str] = set()        # [course switch] course video ids on their way (queued, or being fetched right now)
+
+
+def prefetch_all(stop: threading.Event | None = None, pace=None, items: list[dict] | None = None) -> dict:
+    """Download every pinned (prefetch) file not cached yet (or just `items`). Blocking: run it in a thread.
+    [course switch] One run at a time: a second call while one runs hands its items to that run, which fetches them
+    next (before the rest of its list), and answers {"state": "busy"}."""
+    todo = list(items) if items is not None else [v for v in catalog() if v.get("prefetch") and reachable(v)]
+    while True:
+        if not _run.acquire(blocking=False):
+            with _q_lock:
+                have = {v["id"] for v in _front}
+                _front.extend(v for v in todo if v["id"] not in have)
+            return {**STATE, "state": "busy"}
+        try:
+            out = _drain(todo, stop, pace)
+        finally:
+            _run.release()
+        with _q_lock:
+            if out["state"] == "stopped" or not _front:
+                if out["state"] == "stopped":
+                    _front.clear()
+                    _WANT.clear()
+                return out
+        todo = []          # a switch asked for more just as the run ended: one more pass picks them up
+
+
+def _drain(todo: list[dict], stop, pace) -> dict:
+    queue = list(todo)
+    STATE.update(state="running", total=len(queue), done=0, error=None)
     pace = pace or _pace(stop)
     with _client() as client:
-        for v in todo:
+        while True:
+            with _q_lock:
+                if _front:   # a course switch: its videos first
+                    ids = {v["id"] for v in _front}
+                    STATE["total"] += sum(1 for v in _front if v["id"] not in {q["id"] for q in queue})
+                    queue = list(_front) + [v for v in queue if v["id"] not in ids]
+                    _front.clear()
+            if not queue:
+                break
+            v = queue.pop(0)
             try:
                 fetch_video(v, pace=pace, client=client)
                 STATE["done"] += 1
@@ -688,8 +729,116 @@ def prefetch_all(stop: threading.Event | None = None, pace=None) -> dict:
                 return dict(STATE)
             except (DownloadError, OSError) as e:
                 STATE["error"] = str(e)[:200]
+            finally:
+                with _q_lock:
+                    _WANT.discard(v["id"])
     STATE["state"] = "done" if STATE["done"] == STATE["total"] else "incomplete"
     return dict(STATE)
+
+
+# ---------------------------------------------------------------- course switch ---------------------------------------
+def course_todo() -> list[dict]:
+    """The active course's own pinned videos that are not in the cache yet (the Moon has none: [])."""
+    return [v for v in catalog() if v.get("course") and v.get("prefetch") and reachable(v) and not is_cached(v)]
+
+
+def kick(wait: bool = False) -> bool:
+    """[course switch] Start fetching the active course's own videos now, in the background (a course switch calls this
+    through courses.on_change; before, they only downloaded at launch, so after a switch they streamed on first play).
+    The same rules as the launch prefetch: a copy the installed course pack carries is copied (no network); a NASA file
+    downloads only with VIDEO_PREFETCH on and NASA reachable (School network mode: online() says no, and app/netgate.py
+    blocks the request itself); same size + sha256 checks, low priority, paused while a mission runs or a video streams.
+    -> True when something was started. wait=True runs it in this thread (the tests)."""
+    todo = course_todo()
+    local = [v for v in todo if pack_has(v)]
+    net_ok = bool(settings.video_prefetch) and not settings.video_offline
+    want = todo if net_ok else local
+    if not want:
+        return False
+    with _q_lock:
+        _WANT.update(v["id"] for v in want)
+    if not _run.locked():
+        STATE.update(state="starting", error=None)
+
+    def run():
+        try:
+            net = net_ok and any(v not in local for v in want) and online("nasa")
+            got = local + ([v for v in want if v not in local and v.get("source") == "nasa_file"] if net else [])
+            with _q_lock:
+                _WANT.difference_update({v["id"] for v in want} - {v["id"] for v in got})
+            if not got:
+                if not _run.locked():
+                    STATE["state"] = "offline"
+                return
+            prefetch_all(_stop, items=got)
+        except Exception as e:  # noqa: BLE001  (a background nicety: never take the app down)
+            with _q_lock:
+                _WANT.clear()
+            STATE.update(state="error", error=str(e)[:200])
+    if wait:
+        run()
+    else:
+        threading.Thread(target=run, name="video-course-kick", daemon=True).start()
+    return True
+
+
+def on_course_change() -> None:
+    """courses.on_change hook (main.py): a switch fetches the new course's videos at once."""
+    kick()
+
+
+def downloading(v: dict) -> bool:
+    """A course's own video that a run is fetching right now (or will next): it shows "downloading", not a stream."""
+    if not v.get("course") or is_cached(v):
+        return False
+    with _q_lock:
+        return v["id"] in _WANT
+
+
+def _reason() -> str:
+    """Why the active course's missing videos are not downloading: school | off | offline | failed."""
+    try:
+        from . import netgate
+        if netgate.policy().get("school_network") and not netgate.url_allowed(PROBE["nasa"]):
+            return "school"
+    except Exception:  # noqa: BLE001
+        pass
+    if not settings.video_prefetch or settings.video_offline:
+        return "off"
+    if STATE.get("state") == "offline":
+        return "offline"
+    return "failed" if STATE.get("error") else "offline"
+
+
+def course_progress() -> dict:
+    """[course switch] The active course's own pinned videos: {course, total, ready, bytes, bytes_ready, progress,
+    state: none | done | downloading | paused | waiting, reason?}. none: the course has no videos (the Moon)."""
+    cid, _ = course_videos()
+    items = [v for v in catalog() if v.get("course") and v.get("prefetch") and reachable(v)]
+    out = {"course": cid, "total": len(items), "ready": 0, "bytes": 0, "bytes_ready": 0, "progress": 1.0, "state": "none"}
+    if not items:
+        return out
+    c = cache()
+    for v in items:
+        b = int(v.get("bytes") or 0)
+        out["bytes"] += b
+        if is_cached(v):
+            out["ready"] += 1
+            out["bytes_ready"] += b
+        else:
+            try:
+                part = c.path(names(v)["video"]).with_name(names(v)["video"] + ".part")
+                out["bytes_ready"] += min(b, part.stat().st_size) if part.exists() else 0
+            except (OSError, ValueError):
+                pass
+    out["progress"] = round(out["bytes_ready"] / out["bytes"], 3) if out["bytes"] else round(out["ready"] / len(items), 3)
+    if out["ready"] == len(items):
+        out["state"], out["progress"] = "done", 1.0
+    elif any(downloading(v) for v in items):
+        out["state"] = "paused" if STATE.get("state") == "paused" else "downloading"
+    else:
+        out["state"], out["reason"] = "waiting", _reason()
+    return out
 
 
 _stop = threading.Event()
@@ -711,7 +860,7 @@ async def prefetch_task(delay_s: float = 15.0, retry_s: float = 300.0) -> None:
                 return
             if all(pack_has(v) for v in todo) or (settings.video_prefetch and await asyncio.to_thread(online, "nasa")):
                 out = await asyncio.to_thread(prefetch_all, _stop)
-                if out["state"] in ("done", "stopped"):
+                if out["state"] in ("done", "stopped", "busy"):
                     return
             else:
                 STATE["state"] = "offline"
@@ -754,6 +903,12 @@ def video_cache_stats():
     pinned = [v for v in catalog() if v.get("prefetch") and reachable(v)]
     return {**cache().stats(), "pinned_ready": sum(is_cached(v) for v in pinned), "pinned_total": len(pinned),
             "prefetch": dict(STATE)}
+
+
+@router.get("/api/video/course")
+def video_course():
+    """[course switch] The active course's own videos: how many are saved, and whether they are on their way."""
+    return course_progress()
 
 
 @router.delete("/api/video/cache")

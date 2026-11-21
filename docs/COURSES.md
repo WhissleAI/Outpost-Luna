@@ -607,6 +607,16 @@ folder (no course ids in code):
     written to `VIDEO_LOCAL_SRC/pack/<id>.mp4`). `app/video.py pack_copy_ok` accepts the NASA file or that copy.
     Captions and posters are NASA's own; the re-encode keeps the timing. Archaeology v2 (`course_archaeology` version
     2): H.264 CRF 28, 640x360, AAC copied, 147 MB of video down to 32 MB, a 38 MB pack.
+  - A course switch starts getting them at once (`courses.on_change` → `app/video.py kick`), not only at launch: the
+    pack's copies are copied (no network); otherwise they download with the launch prefetch's rules (`VIDEO_PREFETCH`,
+    NASA reachable, School network mode = nothing, size + sha256, paused while a mission runs or a video streams). A
+    course video on its way answers `/available` with `downloading`: the player shows a calm "still downloading" card
+    and plays it once saved, instead of streaming. An installed pack older than the catalog's `min_version` is asked
+    for again on the switch (`course_packs.ensure_active`, the desktop's `.want` flag; the old copy plays meanwhile).
+    `GET /api/courses/active/progress` says how far; the course chip shows a thin progress line and Course storage a
+    note + bar ("Getting its videos… 2 of 5 (40%)"). The Moon never shows any of it. Tests:
+    `backend/tests/test_course_switch_prefetch.py`, `frontend/tests/course_switch_prefetch.test.js`,
+    `frontend/tests/e2e/course_switch_prefetch_e2e.py`.
 
 Archaeology's library: Earth from orbit (Landsat 8 Mesa Verde, two ISS astronaut photos of the Colorado Plateau, the
 Blue Marble), Mesa Verde sites (seven NPS photos), lidar (two USGS 3DEP hillshades), Watch (NASA: remote sensing from the

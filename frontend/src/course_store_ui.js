@@ -27,7 +27,27 @@ export const COPY = {
   free: s => `Free space: ${s}.`,
   none: "No other courses yet.",
   offline: "Couldn't reach the app. Try again.",
+  // [course switch] the playing course's own videos and an outdated pack's update download in the background
+  updating: n => (n != null ? `Getting the new course files… ${n}%` : "Getting the new course files…"),
+  videos: (r, t, n) => `Getting its videos… ${r} of ${t}${n != null ? ` (${n}%)` : ""}`,
+  videosWait: { offline: k => `${k} ${k === 1 ? "video" : "videos"} still to get. They download when you're online.`,
+    failed: k => `${k} ${k === 1 ? "video" : "videos"} didn't download yet. They try again next time.`,
+    school: k => `${k} ${k === 1 ? "video is" : "videos are"} off on the school network.`,
+    off: k => `${k} ${k === 1 ? "video plays" : "videos play"} from the internet.` },
+  videosDone: t => `All ${t} videos saved.`,
 };
+const pct = x => (typeof x === "number" && isFinite(x) ? Math.max(0, Math.min(100, Math.round(100 * x))) : null);
+
+/** The playing course's downloads, as a row note (pure): {note, bar (0-100 | null), busy}. */
+export function dlNote(p) {
+  if (!p || p.state !== "installed") return { note: "", bar: null, busy: false };
+  if (p.updating) return { note: COPY.updating(pct(p.progress)), bar: pct(p.progress) ?? 0, busy: true };
+  const v = p.videos;
+  if (!v || !v.total || v.state === "none") return { note: "", bar: null, busy: false };
+  if (v.state === "downloading" || v.state === "paused") return { note: COPY.videos(v.ready, v.total, pct(v.progress)), bar: pct(v.progress) ?? 0, busy: true };
+  if (v.state === "waiting") return { note: (COPY.videosWait[v.reason] || COPY.videosWait.offline)(v.total - v.ready), bar: null, busy: false };
+  return { note: COPY.videosDone(v.total), bar: null, busy: false };
+}
 
 /** One row's view (pure): {id, title, sub, actions: [{act, label}], note}. */
 export function rowOf(p, { moon = false } = {}) {
@@ -35,7 +55,11 @@ export function rowOf(p, { moon = false } = {}) {
     actions: courseState.active === "moon" ? [] : [{ act: "play", label: COPY.play }], note: "" };
   const sub = [size(p.size), p.version ? `v${p.version}` : "", p.active ? COPY.playing : ""].filter(Boolean).join(" · ");
   const r = { id: p.id, title: p.title.replace(/^Course:\s*/, ""), sub, actions: [], note: "" };
-  if (p.state === "installed") r.actions = [...(p.active ? [] : [{ act: "play", label: COPY.play }]), { act: "remove", label: COPY.remove }];
+  if (p.state === "installed") {
+    r.actions = [...(p.active ? [] : [{ act: "play", label: COPY.play }]), { act: "remove", label: COPY.remove }];
+    const d = dlNote(p);
+    r.note = d.note; r.bar = d.bar; r.busy = d.busy;
+  }
   else if (p.state === "downloading") r.note = COPY.downloading;
   else if (p.state === "queued") r.note = COPY.queued;
   else if (p.blocked) r.note = COPY.school;
@@ -49,10 +73,14 @@ export function listHtml(d) {
   const rows = [rowOf(null, { moon: true }), ...packs.map(p => rowOf(p))];
   return `<ul class="crs-store">${rows.map(r => `<li data-crs-row="${esc(r.id)}"><span class="crs-name"><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></span>
     <span class="crs-acts">${r.actions.map(a => `<button type="button" class="btn${a.act === "get" ? "" : " btn-quiet"}" data-crs-act="${a.act}" data-id="${esc(r.id)}">${esc(a.label)}</button>`).join("")}</span>
-    ${r.note ? `<small class="crs-note" role="status">${esc(r.note)}</small>` : ""}</li>`).join("")}</ul>
+    ${r.note ? `<small class="crs-note${r.busy ? " is-dl" : ""}" role="status">${esc(r.note)}</small>` : ""}
+    ${r.bar != null ? `<span class="crs-bar" role="progressbar" aria-label="${esc(r.note)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${r.bar}"><i style="width:${Math.max(4, r.bar)}%"></i></span>` : ""}</li>`).join("")}</ul>
     ${packs.length ? "" : `<p class="set-help">${esc(COPY.none)}</p>`}
     ${d && d.free_bytes != null ? `<p class="set-help">${esc(COPY.free(size(d.free_bytes)))}</p>` : ""}`;
 }
+
+/** Something is on its way (a pack download, an update, the playing course's videos): Course storage keeps polling. */
+export const busy = d => !!(d && (d.packs || []).some(p => p.state === "queued" || p.state === "downloading" || dlNote(p).busy));
 
 /** A course arrived or left: the registry again, and the top-bar chip (it shows once two courses are installed). */
 const refreshChip = fetchFn => syncCourse({ fetchFn }).then(() => { if (O.courseSwitch) O.courseSwitch.paint(); }).catch(() => {});
@@ -76,10 +104,10 @@ const section = {
       clearInterval(poll);
       poll = setInterval(async () => {
         const d = await load(fetchFn); paint(d);
-        if (!d || !(d.packs || []).some(p => p.state === "queued" || p.state === "downloading")) { clearInterval(poll); refreshChip(fetchFn); }
+        if (!busy(d)) { clearInterval(poll); refreshChip(fetchFn); }
       }, 2000);
     };
-    load(fetchFn).then(d => { paint(d); if (d && (d.packs || []).some(p => p.state === "queued" || p.state === "downloading")) watch(); });
+    load(fetchFn).then(d => { paint(d); if (busy(d)) watch(); });
     box.addEventListener("click", async e => {
       const b = e.target.closest("[data-crs-act]"); if (!b) return;
       const id = b.dataset.id, act = b.dataset.crsAct;
