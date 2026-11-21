@@ -145,6 +145,10 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .gu-list{margin:0;padding-left:1.2em;color:var(--color-text-2);font-size:var(--text-sm)}
 .gu-notes{margin:0;padding:var(--space-1) var(--space-3);border-radius:999px;background:var(--color-warn-bg, rgba(255,184,0,.16));color:var(--color-text);font-weight:var(--weight-semibold, 600);font-size:var(--text-sm)}
 .gu-notes[hidden]{display:none}
+.gu-pin,.tp-form{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:flex-end}
+.gu-pin label,.tp-form label{display:flex;flex-direction:column;gap:var(--space-1)}
+.gu-pin input,.tp-form input{font:inherit;font-size:var(--text-lg, 20px);letter-spacing:.3em;width:10ch;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm, 8px);border:1px solid var(--color-border, #444);background:var(--color-surface-2, transparent);color:inherit}
+.gu-pin p{flex-basis:100%;margin:0}
 .gu-part{display:flex;flex-direction:column;gap:var(--space-2);padding-top:var(--space-4);border-top:1px solid var(--color-line)}
 .gu-part:first-child{padding-top:0;border-top:0}
 .gu-part>h4{margin:0;font-size:var(--text-base);font-weight:var(--weight-semibold);color:var(--color-text)}

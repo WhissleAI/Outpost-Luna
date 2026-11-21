@@ -18,6 +18,7 @@
 .pg-cur b{color:var(--color-text);margin-right:var(--space-1)}
 .pg-block{display:flex;flex-direction:column;gap:var(--space-2)}
 .pg-concepts tr.is-due td:last-child{font-weight:var(--weight-semibold, 600)}
+.cs-table th[scope=row]{text-align:left;font-weight:var(--weight-semibold, 600)}
 .pg-care{padding:var(--space-3);border-radius:var(--radius-md, 12px);border:1px solid var(--color-warn, #ffb800);background:var(--color-warn-bg, rgba(255,184,0,.08))}
 .pg-care-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2)}
 .pg-care-list li{display:flex;gap:var(--space-3);align-items:center;justify-content:space-between;flex-wrap:wrap}
