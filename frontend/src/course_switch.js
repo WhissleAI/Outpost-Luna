@@ -27,6 +27,8 @@ export const COPY = {
 };
 
 /** The chip's progress (pure): the progress answer -> {show, pct, label} (label: the chip's aria-label and tooltip). */
+/** [0.5.6] Is the playing course's pack being replaced (asked for, downloading or installing)? Pure. */
+export const packUpdating = p => !!(p && p.pack && (p.pack.updating || p.pack.outdated || p.pack.state === "downloading" || p.pack.state === "queued"));
 export function chipProgress(p, name) {
   const v = progressView(p);
   return v.busy ? { show: true, pct: v.pct, label: `${COPY.chip(name)}. ${v.label}` } : { show: false, pct: null, label: COPY.chip(name) };
@@ -53,7 +55,7 @@ export function confirmHtml(to, from) {
 /** Wire the chip and its dialog. -> {open, close, paint, isOpen}. */
 export function installCourseSwitch({ chip = document.getElementById("courseChip"), doc = document, onMore = null, more = () => false, set = setCourse,
   fetchFn = typeof window !== "undefined" && typeof window.fetch === "function" ? window.fetch.bind(window) : null, pollMs = POLL_MS } = {}) {
-  let box = null, back = null, dl = null, timer = 0, idle = 0;
+  let box = null, back = null, dl = null, timer = 0, idle = 0, updating = false;
   const visible = () => installed().length > 1 || (!!onMore && !!more());
   function paint() {
     if (!chip) return;
@@ -82,6 +84,12 @@ export function installCourseSwitch({ chip = document.getElementById("courseChip
     if (!fetchFn || courseState.active === "moon") { if (dl) { dl = null; paintProgress(); } return null; }
     dl = await courseProgress({ fetchFn });
     paintProgress();
+    // [0.5.6] the playing course's pack is replaced under the running page (an outdated pack, min_version: the owner's
+    // v6 -> v7 at the first 0.5.6 launch): once it is in, the page takes its new library (its docs) without a relaunch
+    const upd = packUpdating(dl);
+    if (updating && !upd && dl) { try { dispatchEvent(new CustomEvent("outpost:course-pack-updated", { detail: { course: dl.course } })); } catch (e) { /* */ } }
+    updating = upd;
+    if (upd && !(dl && dl.busy)) { timer = setTimeout(watch, pollMs); return dl; }   // queued, not started yet: keep asking
     const v = dl && dl.videos;
     // keep asking while busy; videos still to get but not on their way yet (the launch download starts a few seconds
     // after the app): ask twice more, slowly, then stop

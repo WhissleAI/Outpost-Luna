@@ -328,6 +328,12 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
     return lib;
   });
 
+  // [0.5.6] the course pack was replaced while the app ran (course_switch.js): its documents may be new (the NPS rack
+  // card arrived with Archaeology v7), so links to them open here at once, not after a relaunch
+  try {
+    addEventListener("outpost:course-pack-updated", () => Promise.resolve().then(() => fetchFn(LIBRARY_API)).then(r => (r && r.ok ? r.json() : null))
+      .then(raw => { if (!raw || !lib) return; lib.docs = normalizeDocs(raw.docs); if (onDocs) onDocs(lib.docs); }).catch(() => {}));
+  } catch (e) { /* tests */ }
   return {
     ready,
     get lib() { return lib; },

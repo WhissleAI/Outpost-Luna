@@ -132,3 +132,26 @@ test("video: a course video on its way is 'downloading' (Getting ready…), neve
     assert.equal(await M.isAvailable("x"), "offline");
   } finally { globalThis.fetch = real; }
 });
+
+// [0.5.6] the real 0.5.6 app on a v6 install: the pack was replaced by v7 under the running page and its library's
+// documents (the NPS rack card) stayed unknown until a relaunch. Asked-for (outdated) counts as on its way, and the
+// page hears when it is in.
+test("a pack replaced under the page: polled while asked for, then outpost:course-pack-updated", async () => {
+  assert.equal(S.packUpdating({ pack: { state: "installed", outdated: true } }), true);
+  assert.equal(S.packUpdating({ pack: { state: "installed", updating: true } }), true);
+  assert.equal(S.packUpdating({ pack: { state: "installed" } }), false);
+  assert.equal(S.packUpdating(null), false);
+  C.courseState.courses = [MOON, ARCH]; C.courseState.info = ARCH; C.courseState.active = "archaeology";
+  globalThis.document = { documentElement: { dataset: {} } };
+  const heard = [];
+  globalThis.dispatchEvent = e => { heard.push(e.type); return true; };
+  globalThis.CustomEvent = globalThis.CustomEvent || class { constructor(t, o) { this.type = t; this.detail = o && o.detail; } };
+  let step = 0;
+  const done = { busy: false, pack: { state: "installed" }, videos: vids({ ready: 5, progress: 1, state: "done" }) };
+  const replies = [{ busy: false, pack: { state: "installed", outdated: true }, videos: done.videos },
+                   { busy: true, pack: { state: "installed", updating: true, progress: 0.5 }, videos: done.videos }, done];
+  const sw = S.installCourseSwitch({ chip: fakeChip(), doc: {}, fetchFn: answer(() => replies[Math.min(step++, 2)]), pollMs: 3 });
+  await new Promise(r => setTimeout(r, 40));
+  assert.deepEqual(heard, ["outpost:course-pack-updated"], "once, when the new pack is in");
+  sw.stop();
+});
