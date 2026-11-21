@@ -16,7 +16,7 @@
 
 | Time | What you do | What she sees and hears | The point |
 |---|---|---|---|
-| 0:00 | Open the app on the Moon map. Say "switch course". Pick Archaeology. | The Moon turns into Earth and flies to south-west Colorado. | One app, many courses. Each course downloads once and works offline. |
+| 0:00 | Open the app on the Moon map. Say "switch course". Pick Archaeology. | The Moon turns into Earth and flies to south-west Colorado: the ten lesson pins fan out round Mesa Verde (zoom out and they fold into one "10" pin). | One app, many courses. Each course downloads once and works offline. |
 | 1:00 | Open the explorer lesson *Moonrise at Chimney Rock*. | The Moon, then Earth, then Chimney Rock. "Every 18.6 years…" | The Moon course and the Archaeology course meet at a real Colorado site. |
 | 2:00 | Lesson 4 *Dating the past*, by voice only. | Predict, then the tree-ring match (`rings`), then "1275", then the Long House beam fact with its NPS source. | Real data (the ITRDB Mesa Verde series), real dates, a source on every fact. |
 | 5:00 | Lesson 3 *Layers tell time*: the dig. | Order the layers; the intrusive-pit question. A wrong answer gets a hint, not a buzzer. | Inquiry: evidence, then claim. Hints after two misses. |

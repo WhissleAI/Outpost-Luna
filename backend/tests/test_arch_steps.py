@@ -79,7 +79,7 @@ def test_layers_trap_hint_explains_cutting_never_wrong():
     h = guide.ladder(st, 0, {}, {"got": ["rock", "floor"], "trap": "pit", "cuts": ["collapse", "ash"]})
     assert h["trap"] == "pit" and "cuts through the roof fall and ash" in h["say"] and "wrong" not in h["say"].lower()
     h2 = guide.ladder(st, 1, {}, {"got": ["rock"]})
-    assert h2["answer"] == "floor" and h2["phrase"] == "Floor"
+    assert h2["answer"] == "floor" and "phrase" not in h2   # [arch QA] it glows; its name is not handed over
 
 
 def test_layers_plausible_and_room_talk():

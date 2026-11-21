@@ -210,3 +210,18 @@ Lead · (explorer) Moon Watcher.
   the P4 mission replaces it.
 - **Not found with a clean licence:** an NPS mano/metate photo, a tree-ring photo, a Chimney Rock photo (USFS pages
   credit named photographers). The lessons use text there.
+
+## QA 0.5.2 fixes (pack v3, `fix/arch-flow`)
+
+- **Describe steps show what they ask about.** L2 step 5 shows the low-sun lidar map and names the reservoir ("the
+  round ring near the top of this map"). L5 step 5 asked to describe a potsherd with no picture; the pack has no
+  potsherd photo with a clean licence, so it now describes the stone walls in the lesson's own NPS photo (step `photo`).
+- **Big ideas.** The manifest's `big_ideas` give each lesson one factual "what it teaches" line (from the tables
+  above) and its standards codes (the lesson's `standards`), for Progress and My Brain.
+- **Chimney Rock's bridge** is built: the lesson opens on the Moon (the sphere wears the Moon map for ~2.4 s), then
+  Earth, then flies to Chimney Rock (`bridge: "moon"`, academy/ui.js + globe.js `bridgeFrom`).
+- **Decide steps:** every call still gets its own reason and moves on (the design above: "Every option gets a reason").
+  A call that is not the best one now also offers **Try again** next to Next, so a student can reconsider before the
+  lesson moves on; nothing is counted against them.
+- **Wrong guesses** on predict steps are acknowledged first ("You guessed: Treasure to collect. Clues. …"), and a
+  shown answer after three misses no longer opens with praise ("Here it is. …", never "Here it is. Right. …").
