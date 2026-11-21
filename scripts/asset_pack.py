@@ -368,6 +368,14 @@ def src_course(f: Path):
     errs, _ = validate(pack, data=folder)
     if errs:
         sys.exit(f"{f.name}: the pack would not load: {errs[0]['at']}: {errs[0]['msg']}")
+    # the licence gate (app/course_library.py licence_problems): every credited file must be pd | cc0 | by | by-sa
+    # (by-sa unmodified); nc, nd, unknown or a missing licence_class stops the build
+    from app.course_library import licence_problems
+    cred = folder / "media" / "credits.json"
+    if cred.is_file():
+        bad = licence_problems(json.loads(cred.read_text(encoding="utf-8")))
+        if bad:
+            sys.exit(f"{f.name}: " + "; ".join(bad[:5]))
     if "course.manifest.json" in have:
         sys.exit(f"{f.name}: course.manifest.json is the pack's own name; rename that file in {folder}")
     files.append(("course.manifest.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))

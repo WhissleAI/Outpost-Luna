@@ -92,7 +92,7 @@ def test_the_route_serves_the_active_courses_library(dev):
     from app.main import app
     d = TestClient(app).get("/api/course/library").json()
     assert d["course"] == "archaeology" and "problems" not in d
-    assert [s["id"] for s in d["shelves"]] == ["orbit", "sites", "lidar", "watch", "moon"]
+    assert [s["id"] for s in d["shelves"]] == ["orbit", "sites", "lidar", "watch", "moon", "data"]
     it = next(i for s in d["shelves"] for i in s["items"] if i["id"] == "iss_san_juan")
     assert it["url"] == "/api/courses/archaeology/media/iss_pastora_san_juan.jpg" and it["image_credit"].startswith("NASA")
     v = next(i for s in d["shelves"] for i in s["items"] if i["id"] == "v_lidar")

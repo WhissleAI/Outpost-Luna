@@ -541,13 +541,14 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   const overlays = [];
   /** Drape `url` (an equirectangular picture) between bounds {west, south, east, north} (degrees). Allows a closer zoom,
    *  since the picture is far sharper than the whole-globe map there. */
-  function setOverlay({ url, bounds: b, minDistance = 1.05 } = {}) {
+  // lift: how far above the surface (a map layer sits above the course's picture); opacity: a see-through layer
+  function setOverlay({ url, bounds: b, minDistance = 1.05, lift = 1.0006, opacity = 1 } = {}) {
     if (!url || !b) return null;
     const t = new THREE.TextureLoader().load(url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
     const D = Math.PI / 180;
     // three's sphere: phi = azimuth = (lon + 180)°, theta = polar = (90 - lat)° (the same frame as ll2v)
-    const g = new THREE.SphereGeometry(R * 1.0006, 64, 48, (b.west + 180) * D, (b.east - b.west) * D, (90 - b.north) * D, (b.north - b.south) * D);
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0, transparent: true, opacity: 1 }));
+    const g = new THREE.SphereGeometry(R * lift, 64, 48, (b.west + 180) * D, (b.east - b.west) * D, (90 - b.north) * D, (b.north - b.south) * D);
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0, transparent: true, opacity, depthWrite: opacity >= 1 }));
     scene.add(m); overlays.push(m);
     controls.minDistance = Math.min(controls.minDistance, minDistance);
     return m;

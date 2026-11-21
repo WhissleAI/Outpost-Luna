@@ -9,7 +9,8 @@
   "width": 5400,
   "height": 2700,
   "bytes": 1616254,
-  "sha256": "2048023ccc62250c677c0f4b03d4362f997b130eb0154a6cad00aa1b27c390b9"
+  "sha256": "2048023ccc62250c677c0f4b03d4362f997b130eb0154a6cad00aa1b27c390b9",
+  "licence_class": "pd"
  },
  {
   "file": "four_corners.jpg",
@@ -21,7 +22,8 @@
   "width": 1600,
   "height": 1600,
   "bytes": 596599,
-  "sha256": "bc44c6ad749b92a824bb89a9bf2906856e5ef81351292434af79302d7ad94256"
+  "sha256": "bc44c6ad749b92a824bb89a9bf2906856e5ef81351292434af79302d7ad94256",
+  "licence_class": "pd"
  },
  {
   "file": "far_view_low_sun.jpg",
@@ -33,7 +35,8 @@
   "width": 1400,
   "height": 1000,
   "bytes": 226952,
-  "sha256": "497f7854d000e8bc4587d53b89600599a5d491b47ed7d6620d63c1cdb4796e73"
+  "sha256": "497f7854d000e8bc4587d53b89600599a5d491b47ed7d6620d63c1cdb4796e73",
+  "licence_class": "pd"
  },
  {
   "file": "far_view_high_sun.jpg",
@@ -45,7 +48,8 @@
   "width": 1400,
   "height": 1000,
   "bytes": 195820,
-  "sha256": "0229448000973f90ce6995a7f0ca099ebae76a37acf0eb18780b742ef5a5f48d"
+  "sha256": "0229448000973f90ce6995a7f0ca099ebae76a37acf0eb18780b742ef5a5f48d",
+  "licence_class": "pd"
  },
  {
   "file": "photo_cliff_palace.jpg",
@@ -57,7 +61,8 @@
   "width": 1200,
   "height": 900,
   "bytes": 230491,
-  "sha256": "6bc7a1462b5a65e9d7eb772acca8c0048f235b3a23513f4dc688ad68c3e40bc9"
+  "sha256": "6bc7a1462b5a65e9d7eb772acca8c0048f235b3a23513f4dc688ad68c3e40bc9",
+  "licence_class": "pd"
  },
  {
   "file": "photo_long_house.jpg",
@@ -69,7 +74,8 @@
   "width": 1200,
   "height": 900,
   "bytes": 236910,
-  "sha256": "96e788e500217dc9f80571e08b83d369551710a74b07fafb334270243d81c699"
+  "sha256": "96e788e500217dc9f80571e08b83d369551710a74b07fafb334270243d81c699",
+  "licence_class": "pd"
  },
  {
   "file": "photo_spruce_tree_house.jpg",
@@ -81,7 +87,8 @@
   "width": 1200,
   "height": 900,
   "bytes": 243826,
-  "sha256": "6c1f39cfb112e7f0f2c2491a0c38095537598e2be7440338a89f4eca99ac1d37"
+  "sha256": "6c1f39cfb112e7f0f2c2491a0c38095537598e2be7440338a89f4eca99ac1d37",
+  "licence_class": "pd"
  },
  {
   "file": "photo_far_view_kivas_tower.jpg",
@@ -93,7 +100,8 @@
   "width": 1200,
   "height": 798,
   "bytes": 300626,
-  "sha256": "6775873499df487fb00693cbd6a6de1e31f22c69539712f8817128d67bd25134"
+  "sha256": "6775873499df487fb00693cbd6a6de1e31f22c69539712f8817128d67bd25134",
+  "licence_class": "pd"
  },
  {
   "file": "photo_pithouse_mesa_top.jpg",
@@ -105,7 +113,8 @@
   "width": 1200,
   "height": 801,
   "bytes": 269273,
-  "sha256": "09d630d88e69cfa7d34bb93df9554962a6a258d4a44647fe3d1ebfac38152236"
+  "sha256": "09d630d88e69cfa7d34bb93df9554962a6a258d4a44647fe3d1ebfac38152236",
+  "licence_class": "pd"
  },
  {
   "file": "photo_far_view_house.jpg",
@@ -117,7 +126,8 @@
   "width": 1200,
   "height": 900,
   "bytes": 170069,
-  "sha256": "54105a612f07d52cc3eb1e6f07aefa6cbd82974c5b42c7da6e3bd6a02e4cad6f"
+  "sha256": "54105a612f07d52cc3eb1e6f07aefa6cbd82974c5b42c7da6e3bd6a02e4cad6f",
+  "licence_class": "pd"
  },
  {
   "file": "photo_far_view_reservoir.jpg",
@@ -129,7 +139,8 @@
   "width": 1200,
   "height": 800,
   "bytes": 342618,
-  "sha256": "e19a84f0b3f37e131d61c46ac471b7844a4972818490c464f66fd40cca00ec9a"
+  "sha256": "e19a84f0b3f37e131d61c46ac471b7844a4972818490c464f66fd40cca00ec9a",
+  "licence_class": "pd"
  },
  {
   "file": "four_corners_region.jpg",
@@ -141,7 +152,8 @@
   "width": 2000,
   "height": 1394,
   "bytes": 916159,
-  "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660"
+  "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660",
+  "licence_class": "pd"
  },
  {
   "file": "iss_wupatki.jpg",
@@ -153,7 +165,8 @@
   "width": 1200,
   "height": 800,
   "bytes": 214662,
-  "sha256": "281fb954487914a8487cbc47d5568406d7fa3f6ac5ceaab8d1d7bc10efc157f2"
+  "sha256": "281fb954487914a8487cbc47d5568406d7fa3f6ac5ceaab8d1d7bc10efc157f2",
+  "licence_class": "pd"
  },
  {
   "file": "iss_pastora_san_juan.jpg",
@@ -165,6 +178,103 @@
   "width": 1200,
   "height": 800,
   "bytes": 252094,
-  "sha256": "3da7a9e587bfbf1110381428edaed244f9322981f0a6e5e0cbdb12004d13dd78"
+  "sha256": "3da7a9e587bfbf1110381428edaed244f9322981f0a6e5e0cbdb12004d13dd78",
+  "licence_class": "pd"
+ },
+ {
+  "file": "drought_mesa_verde.json",
+  "title": "Mesa Verde, Colorado 1,300 Year Moisture Balance Reconstructions (cool-season P-PE)",
+  "credit": "Stahle et al. 2015, NOAA/WDS Paleoclimatology (NCEI)",
+  "licence": "No licence on the NCEI record (data-licence field empty; access constraints: None). NCEI use constraint: cite the publication, online resource and DOI.",
+  "licence_class": "by",
+  "licence_evidence": "https://www.ncei.noaa.gov/pub/data/metadata/published/paleo/iso/xml/noaa-recon-19059.xml",
+  "source_url": "https://www.ncei.noaa.gov/access/paleo-search/study/19059",
+  "data_url": "https://www.ncei.noaa.gov/pub/data/paleo/treering/reconstructions/northamerica/usa/colorado/mesaverde2015p-pe.txt",
+  "citation": "Stahle, D.W.; Edmondson, J.R.; Burns, J.N.; Stahle, D.K.; Burnette, D.J.; Kvamme, E.; LeQuesne, C.; Therrell, M.D. (2015-07-21): NOAA/WDS Paleoclimatology - Mesa Verde, Colorado 1,300 Year Moisture Balance Reconstructions. NOAA NCEI. https://doi.org/10.25921/zgv1-tw70. Accessed 2026-11-20.",
+  "alt": "A line chart of wet and dry years at Mesa Verde from AD 722 to 2011, with the 1276-1299 Great Drought marked.",
+  "bytes": 33820,
+  "sha256": "2dd40839d39cd39bcae079043f2ea83f6f740bc1484561ddbb24559ccdcb675c",
+  "accessed": "2026-11-20"
+ },
+ {
+  "file": "tree_rings_1200_1320.json",
+  "title": "Four tree-ring chronologies of the Four Corners, AD 1200-1320 (ITRDB CO652, NM597, NM589, CO067)",
+  "credit": "International Tree-Ring Data Bank, NOAA/WDS Paleoclimatology (NCEI): Stahle et al. (CO652); Dean, J.S.; Robinson, W.J. (Dean - Gobernador Archaeological+Modern - PIPO - ITRDB NM597), NOAA/WDS Paleoclimatology, https://doi.org/10.25921/h39a-8q18; Guiterman, C.H.; Baisan, C.H.; Dean, J.S. (Guiterman - Narbona Pass, Chuska Mountains - PIPO - ITRDB NM589), NOAA/WDS Paleoclimatology, https://doi.org/10.25921/x84g-ny11; Harlan, T.P. (Harlan - Dolores - PIED - ITRDB CO067), NOAA/WDS Paleoclimatology, https://doi.org/10.25921/1k7k-0h18",
+  "licence": "No licence on the NCEI record (data-licence field empty; access constraints: None). NCEI use constraint: cite the publication, online resource and DOI.",
+  "licence_class": "by",
+  "licence_evidence": "NCEI study records 19080, 22323, 19280, 3467 (dataLicense empty; ISO metadata use constraint: cite)",
+  "source_url": "https://www.ncei.noaa.gov/products/paleoclimatology/tree-ring",
+  "data_url": [
+   "https://www.ncei.noaa.gov/pub/data/paleo/treering/chronologies/northamerica/usa/nm597.crn",
+   "https://www.ncei.noaa.gov/pub/data/paleo/treering/chronologies/northamerica/usa/nm589.crn",
+   "https://www.ncei.noaa.gov/pub/data/paleo/treering/chronologies/northamerica/usa/co067.crn"
+  ],
+  "alt": "Four wiggly lines of tree-ring widths from AD 1200 to 1320 that rise and fall together; narrow rings line up in drought years.",
+  "bytes": 5879,
+  "sha256": "81df6d0902e1da902cd7fdc99de8ddc92562ff8456984db6dbd4e8d1935e6bb9",
+  "accessed": "2026-11-20"
+ },
+ {
+  "file": "radiocarbon_four_corners.json",
+  "title": "Radiocarbon dates in the Four Corners region, per century (p3k14c)",
+  "credit": "p3k14c (Bird et al. 2022, Scientific Data 9:27), aggregated by Outpost Luna",
+  "licence": "CC0 1.0 (data); attribution requested",
+  "licence_class": "cc0",
+  "licence_evidence": "https://github.com/people3k/p3k14c#licenses (\"Data: CC0 1.0\")",
+  "source_url": "https://www.p3k14c.org/",
+  "data_url": "https://raw.githubusercontent.com/people3k/p3k14c/main/data/p3k14c_data.rda",
+  "citation": "Bird, D., Miranda, L., Vander Linden, M. et al. p3k14c, a synthetic global database of archaeological radiocarbon dates. Sci Data 9, 27 (2022). https://doi.org/10.1038/s41597-022-01118-7",
+  "sensitivity": "Region-level counts only: no coordinates, site names or sample ids; human remains and possible grave goods excluded.",
+  "alt": "A bar chart of how many radiocarbon dates come from each century in the Four Corners region, rising after AD 500.",
+  "bytes": 778,
+  "sha256": "e4f935f6dea63893a189bb5eeeec914d2e66cf6567161d11277d338c719404b2",
+  "accessed": "2026-11-20"
+ },
+ {
+  "file": "s2_mesa_verde.jpg",
+  "title": "Mesa Verde from Sentinel-2 (2025-09-25, natural colour, 10 m)",
+  "credit": "Contains modified Copernicus Sentinel data 2025",
+  "licence": "Copernicus Sentinel data terms (free, full and open: reproduction, distribution, adaptation and commercial use allowed; the source must be credited as \"Contains modified Copernicus Sentinel data [year]\")",
+  "licence_class": "by",
+  "licence_evidence": "https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice",
+  "source_url": "https://registry.opendata.aws/sentinel-2-l2a-cogs/",
+  "data_url": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2B_12SYG_20250925_0_L2A (asset visual, window (-108.62, 37.12, -108.3, 37.36))",
+  "acquired": "2025-09-25",
+  "alt": "Natural-colour satellite view of the Mesa Verde tableland, its long fingers cut by branching canyons, with green farm fields at the top left.",
+  "bytes": 1201704,
+  "sha256": "eb6b92004215eda6e3a0e492e7a934f1906c78f3fa4e5426dfcd892b9ce13eb9",
+  "width": 2000,
+  "height": 1882,
+  "accessed": "2026-11-20"
+ },
+ {
+  "file": "layer_rivers_states.png",
+  "title": "State lines and rivers of the Four Corners (Natural Earth 1:10m)",
+  "credit": "Made with Natural Earth",
+  "licence": "Public domain (Natural Earth terms of use)",
+  "licence_class": "pd",
+  "licence_evidence": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "source_url": "https://www.naturalearthdata.com/",
+  "data_url": [
+   "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_1_states_provinces_lines.zip",
+   "https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_lake_centerlines.zip",
+   "https://naciscdn.org/naturalearth/10m/physical/ne_10m_rivers_north_america.zip"
+  ],
+  "rivers": [
+   "Animas",
+   "Chaco",
+   "Chinle Wash",
+   "Colorado",
+   "Dolores",
+   "Little Colorado",
+   "Rio Grande",
+   "San Juan"
+  ],
+  "alt": "Thin white state lines meeting at the Four Corners and blue lines for the San Juan, Animas, Dolores and other rivers.",
+  "bytes": 152651,
+  "sha256": "42df06107308efacb473d8c67291e6fb29ff146893dae28efbce7af5b88137b1",
+  "width": 2048,
+  "height": 1427,
+  "accessed": "2026-11-20"
  }
 ]

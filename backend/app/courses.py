@@ -424,8 +424,9 @@ def pick_course(p: Pick):
     return {"active": active()}
 
 
-MEDIA_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,80}\.(?:jpg|png|json)$")
-MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json"}
+MEDIA_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,80}\.(?:jpg|png|json|csv|glb)$")   # one dot: no "..", no double extensions
+MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json", "csv": "text/csv; charset=utf-8",
+               "glb": "model/gltf-binary"}
 
 
 def media_dir(course_id: str) -> Path | None:

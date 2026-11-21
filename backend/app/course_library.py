@@ -7,6 +7,17 @@ merged into the video catalog by app/video.py while the course is active). The l
   image  a picture in the course's media/ folder, credited in media/credits.json (credit, licence, source_url, alt)
   video  an id in the course's videos.json (played by the app's NASA video player, frontend/src/media/video.js)
   place  a gazetteer place (places.json): the globe flies there
+  chart  a small time series in media/ (`file`: an outpost-luna-chart .json, or a .csv whose first column is x), drawn
+         by the client as an accessible SVG line or bar chart (frontend/src/media/chart.js) with optional annotated
+         `bands` [{from, to, label}], `x_label` / `y_label`, `chart_type` (line | bar) and a `summary` (its text
+         alternative; required)
+  model  a .glb in media/, shown in the app's three.js turntable (frontend/src/media/turntable.js)
+  layer  a .png in media/ draped on the globe between `bounds` (an equirectangular picture, toggled from its card),
+         with a `legend` [{color: "#rrggbb", label}] and an optional `opacity`
+
+Every file an item or overlay names is credited in media/credits.json: credit, licence, an https source_url, alt and a
+`licence_class` (licence_problem: pd | cc0 | by | by-sa, and by-sa only unmodified, `modified: false`). Anything else
+(nc, nd, unknown, missing) is rejected here and when the pack is built (scripts/asset_pack.py src_course).
 
 Any item may name a `place` (gazetteer id) or its own `lat`/`lon` (a marker on the globe), and a `source` (an id in
 the course's sources.json, the checked quotes). `overlays` drape a media picture over the globe between its bounds
@@ -30,7 +41,14 @@ from . import courses
 
 router = APIRouter()
 FORMAT, VERSION = "outpost-luna-library", 1
-KINDS = ("image", "video", "place")
+KINDS = ("image", "video", "place", "chart", "model", "layer")
+# which media files each kind may name (course media: one flat folder, app/courses.py MEDIA_NAME)
+FILE_EXT = {"image": (".jpg", ".png"), "chart": (".json", ".csv"), "model": (".glb",), "layer": (".png",)}
+# licences a possibly-commercial app may ship: public domain, CC0, attribution, share-alike (unmodified only)
+LICENCE_CLASSES = ("pd", "cc0", "by", "by-sa")
+NC_ND = re.compile(r"non-?commercial|no-?deriv|\bby-nc\b|\bby-nd\b|\bnc-|-nc\b|-nd\b", re.I)
+CHART_FORMAT = "outpost-luna-chart"
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 ID = re.compile(r"^[a-z0-9_]{2,40}$")
 CHIP_DO = re.compile(r"^(tour|item:[a-z0-9_]{2,40})$")
 
@@ -65,6 +83,104 @@ def _ll_ok(lat, lon) -> bool:
     return isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and -90 <= lat <= 90 and -180 <= lon <= 180
 
 
+def licence_problem(c) -> str | None:
+    """Why a credits.json entry may not ship (None = fine): its licence_class must be one we can use commercially."""
+    if not isinstance(c, dict):
+        return "not an object"
+    lc = str(c.get("licence_class") or "").strip().lower()
+    if not lc:
+        return "licence_class missing (pd | cc0 | by | by-sa)"
+    if lc not in LICENCE_CLASSES:
+        return f"licence_class {lc!r} cannot ship (only {', '.join(LICENCE_CLASSES)}; never nc, nd or unknown)"
+    if NC_ND.search(str(c.get("licence") or "")):
+        return "the licence text names a non-commercial or no-derivatives term"
+    if lc == "by-sa" and c.get("modified") is not False:
+        return "by-sa media ships only unmodified (modified: false)"
+    return None
+
+
+def licence_problems(credits) -> list[str]:
+    """Every entry of a credits.json list checked (the build-time gate: scripts/asset_pack.py src_course)."""
+    if not isinstance(credits, list):
+        return ["media/credits.json must be a list"]
+    out = []
+    for c in credits:
+        why = licence_problem(c)
+        if why:
+            out.append(f"media/credits.json {c.get('file') if isinstance(c, dict) else c!r}: {why}")
+    return out
+
+
+def _num(v) -> float | None:
+    if isinstance(v, bool):
+        return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if f == f and abs(f) != float("inf") else None
+
+
+def parse_chart(text: str, name: str) -> dict:
+    """A chart file -> {series: [{label, points: [[x, y], ...]}], ...}. Raises ValueError. The client reads the same
+    two shapes (frontend/src/media/chart.js parseChart): an outpost-luna-chart JSON, or a CSV (header: x, then one
+    column per series; empty or NA cells skipped; # lines are comments)."""
+    if name.endswith(".csv"):
+        rows = [r.split(",") for r in text.strip().splitlines() if r.strip() and not r.startswith("#")]
+        if len(rows) < 3 or len(rows[0]) < 2:
+            raise ValueError("a chart CSV needs a header (x, then one column per series) and at least two rows")
+        head = [h.strip() for h in rows[0]]
+        series = [{"label": h, "points": []} for h in head[1:]]
+        for r in rows[1:]:
+            x = _num(r[0])
+            if x is None:
+                raise ValueError(f"x {r[0]!r} is not a number")
+            for k, s in enumerate(series):
+                cell = r[k + 1].strip() if k + 1 < len(r) else ""
+                if cell in ("", "NA"):
+                    continue
+                y = _num(cell)
+                if y is None:
+                    raise ValueError(f"{cell!r} is not a number")
+                s["points"].append([x, y])
+        d = {"series": series, "x_label": head[0]}
+    else:
+        d = json.loads(text)
+        if not isinstance(d, dict) or d.get("format") != CHART_FORMAT:
+            raise ValueError(f'a chart JSON must say "format": "{CHART_FORMAT}"')
+        series = d.get("series")
+        if not isinstance(series, list):
+            raise ValueError("series must be a list")
+        for s in series:
+            pts = s.get("points") if isinstance(s, dict) else None
+            if not isinstance(pts, list) or not all(isinstance(p, list) and len(p) == 2 and _num(p[0]) is not None
+                                                    and _num(p[1]) is not None for p in pts):
+                raise ValueError("every series needs points [[x, y], ...] of numbers")
+    if not 1 <= len(series) <= 6:
+        raise ValueError("a chart has 1 to 6 series")
+    for s in series:
+        if not s.get("label"):
+            raise ValueError("every series needs a label")
+        xs = [p[0] for p in s["points"]]
+        if not 2 <= len(xs) <= 5000:
+            raise ValueError(f"series {s['label']!r}: 2 to 5000 points")
+        if any(b <= a for a, b in zip(xs, xs[1:])):
+            raise ValueError(f"series {s['label']!r}: x must increase")
+    return d
+
+
+def _bands_ok(bands) -> bool:
+    return bands is None or (isinstance(bands, list) and len(bands) <= 4 and all(
+        isinstance(b, dict) and _num(b.get("from")) is not None and _num(b.get("to")) is not None
+        and b["from"] < b["to"] and isinstance(b.get("label"), str) and 0 < len(b["label"]) <= 60 for b in bands))
+
+
+def _bounds_ok(b, most: float) -> bool:
+    return (isinstance(b, dict) and _ll_ok(b.get("south"), b.get("west")) and _ll_ok(b.get("north"), b.get("east"))
+            and b["south"] < b["north"] and b["west"] < b["east"] and b["east"] - b["west"] <= most * 2
+            and b["north"] - b["south"] <= most)
+
+
 def validate(lib, files: dict) -> list[str]:
     """Problems with a library (empty = fine): every file credited and present, every id known, bounds sane."""
     if not isinstance(lib, dict) or lib.get("format") != FORMAT or lib.get("version") != VERSION:
@@ -80,6 +196,8 @@ def validate(lib, files: dict) -> list[str]:
         elif not (cred[f].get("credit") and cred[f].get("licence") and str(cred[f].get("source_url", "")).startswith("https://")
                   and cred[f].get("alt")):
             out.append(f"{at}: {f}'s credit needs credit, licence, an https source_url and alt")
+        elif licence_problem(cred[f]):
+            out.append(f"{at}: {f}: {licence_problem(cred[f])}")
     shelves = lib.get("shelves")
     if not isinstance(shelves, list) or not shelves:
         return out + ["library: shelves must be a non-empty list"]
@@ -100,8 +218,35 @@ def validate(lib, files: dict) -> list[str]:
             kind = it.get("kind")
             if kind not in KINDS:
                 out.append(f"{at}: kind must be one of {KINDS}")
-            if kind == "image":
-                need_file(at, it.get("file"))
+            if kind in FILE_EXT:
+                f = it.get("file")
+                if not (isinstance(f, str) and f.endswith(FILE_EXT[kind])):
+                    out.append(f"{at}: a {kind} names a {' / '.join(FILE_EXT[kind])} file")
+                else:
+                    need_file(at, f)
+            if kind == "chart":
+                if not (isinstance(it.get("summary"), str) and 20 <= len(it["summary"]) <= 400):
+                    out.append(f"{at}: a chart needs a summary (its text alternative, 20-400 characters)")
+                if not _bands_ok(it.get("bands")):
+                    out.append(f"{at}: bands must be [{{from, to, label}}] (from < to, at most 4)")
+                if it.get("chart_type", "line") not in ("line", "bar"):
+                    out.append(f"{at}: chart_type must be line or bar")
+                p = files["media"] / str(it.get("file"))
+                if isinstance(it.get("file"), str) and p.is_file():
+                    try:
+                        parse_chart(p.read_text(encoding="utf-8"), p.name)
+                    except (ValueError, OSError) as e:
+                        out.append(f"{at}: media/{p.name}: {e}")
+            if kind == "layer":
+                if not _bounds_ok(it.get("bounds"), 180):
+                    out.append(f"{at}: a layer needs bounds {{west, south, east, north}} (degrees)")
+                lg = it.get("legend")
+                if not (isinstance(lg, list) and 1 <= len(lg) <= 8 and all(
+                        isinstance(x, dict) and HEX.match(str(x.get("color", ""))) and x.get("label") for x in lg)):
+                    out.append(f"{at}: a layer needs a legend [{{color: '#rrggbb', label}}] (1-8 entries)")
+                op = it.get("opacity", 1)
+                if not (isinstance(op, (int, float)) and not isinstance(op, bool) and 0.2 <= op <= 1):
+                    out.append(f"{at}: opacity must be 0.2-1")
             if kind == "video" and it.get("video") not in videos:
                 out.append(f"{at}: video {it.get('video')!r} is not in the course's videos.json")
             if kind == "place" and it.get("place") not in places:
@@ -159,7 +304,8 @@ def resolve(lib: dict, files: dict, course_id: str) -> dict:
         return {k: c.get(k) for k in ("credit", "licence", "source_url", "alt", "title")}
 
     def item(it):
-        o = {k: it[k] for k in ("id", "kind", "title", "caption", "place", "lat", "lon") if k in it}
+        o = {k: it[k] for k in ("id", "kind", "title", "caption", "place", "lat", "lon", "summary", "bands", "x_label",
+                                "y_label", "chart_type", "note", "bounds", "legend", "opacity") if k in it}
         if it.get("file"):
             o |= {"url": url(it["file"]), **{f"image_{k}": v for k, v in credit(it["file"]).items()}}
         if it.get("kind") == "video":
