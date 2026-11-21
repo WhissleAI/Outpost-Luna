@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -211,9 +211,12 @@ def turnlog_clear():
 
 
 @app.get("/api/safety/flags")
-def safety_flags():
+def safety_flags(request: Request):
     """[P0] The parent / teacher side: turns Arc Tagger marked as a crisis or grooming cue (kind, tags, screen, time).
-    Never the words. In memory only, on this device (docs/ARC_FEEDBACK.md, app/safety.py)."""
+    Never the words. In memory only, on this device (docs/ARC_FEEDBACK.md, app/safety.py). [D9] The most sensitive
+    read in the app: the local token, like GET /api/brain/summary (diag.authorized), on top of LocalGuard."""
+    if not diag.authorized(request.headers):
+        raise HTTPException(401, "missing or wrong local token")
     from .session import SESSIONS
     return {"flags": [{"session": sid, **f} for sid, s in SESSIONS.items() for f in s.flags]}
 

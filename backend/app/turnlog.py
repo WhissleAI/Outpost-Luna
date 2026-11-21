@@ -22,7 +22,8 @@ Never: audio in the text log, the session id, the kid's call sign or any name, t
 times are seconds since the session's first logged turn). Nothing leaves the device: a developer imports a log only
 when the family hands it over (`make director-import LOG=...`).
 
-Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on import):
+Outcome signals (one {"k": "signal"} line each, joined to its turn by `ref` on import; each carries the `day`, so the
+grown-ups' counts can honour their day window, app/brain.py):
     repeat          the kid said (nearly) the same words again within REPEAT_S  -> what we did (or didn't) was wrong
     negate          "no" / "stop" / "back" / "not that" right after (NEG_S)    -> the action was wrong
     retap           the kid tapped the same thing twice within RETAP_S, right after a turn
@@ -447,7 +448,7 @@ class SessionLog:
 
     def _signal(self, prev: dict, sig: str, dt: float, **k):
         self.store.append({"k": "signal", "v": VERSION, "s": self.sid, "ref": prev["id"], "sig": sig,
-                           "dt": round(dt, 2), **{a: b for a, b in k.items() if b is not None}})
+                           "day": _dt.date.today().isoformat(), "dt": round(dt, 2), **{a: b for a, b in k.items() if b is not None}})
 
 
 def _room(sess) -> dict | None:

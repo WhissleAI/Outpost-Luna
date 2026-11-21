@@ -5,7 +5,7 @@ call of any kind. A grown-up can save a **diagnostics file** (a zip) and choose 
 of this leaves the machine.
 
 Never collected anywhere in this system: audio, what was said or typed (transcripts), names the user said or typed, the
-call sign, the turn log (`docs/DIRECTOR_LOOP.md`, opt-in and separate), the per-launch token.
+call sign, the turn log (`docs/DIRECTOR_LOOP.md`, on by default since 0.4.3, separate), the per-launch token.
 
 **On-device learning** (`docs/ON_DEVICE_LEARNING.md`): the file has `learning.json` with the learned numbers (echo
 delay and threshold for this computer; per cadet: how many names were learned, end-of-turn silence, thresholds). The
