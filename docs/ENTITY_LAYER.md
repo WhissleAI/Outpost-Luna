@@ -127,7 +127,7 @@ Who reads it:
 Privacy:
 - Nothing is persisted.
 - The memory dies with the session.
-- The opt-in turn log follows its existing rules (local file, redacted text, on by default since 0.4.3, docs/DIRECTOR_LOOP.md).
+- The turn log follows its existing rules (local file, redacted text, on by default since 0.4.3, docs/DIRECTOR_LOOP.md).
 
 ## 4. Director features (round 12; append-only)
 

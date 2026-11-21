@@ -76,3 +76,67 @@ def test_router_hears_my_brain_on_any_screen():
         for said in ("my brain", "open my brain", "show me my brain", "what have I learned", "how does the outpost think"):
             assert R.nav_intent(said, ctx) == ("brain", None), (screen, said)
     assert R.nav_intent("show my patches", R.Ctx(screen="map"))[0] == "map"
+
+
+# ---- D9 (docs/BRAIN_SIGNALS_AUDIT.md §2): the day window, the profanity / privacy split, the flags' token ----
+
+def _sig(sig, day=None):
+    r = {"k": "signal", "v": 2, "s": "ab12", "ref": "ab12-0", "sig": sig}
+    if day is not None:
+        r["day"] = day
+    return json.dumps(r)
+
+
+def test_signals_honour_the_day_window():
+    today = dt.date.today().isoformat()
+    old = (dt.date.today() - dt.timedelta(days=40)).isoformat()
+    since = (dt.date.today() - dt.timedelta(days=29)).isoformat()
+    lines = [_sig("hint", today), _sig("hint", old), _sig("pass", old), _sig("repeat")]   # the last: no day (pre-D9)
+    c = brain.talk_counts(lines, since)
+    assert c["signals"]["hint"] == 1 and c["signals"]["pass"] == 0 and c["signals"]["repeat"] == 0
+    assert brain.talk_counts(lines)["signals"]["hint"] == 2   # no window: everything counts
+
+
+def test_signal_lines_carry_the_day(tmp_path):
+    st = turnlog.Store(tmp_path)
+
+    class _S:
+        prefs = {"improve": True}
+        screen, belief = {}, {}
+
+        @staticmethod
+        def clock():
+            return 1.0
+    lg = turnlog.SessionLog(_S(), st)
+    lg._signal({"id": "x-0"}, "hint", 1.0)
+    rec = json.loads(st.path.read_text().splitlines()[0])
+    assert rec["k"] == "signal" and rec["day"] == dt.date.today().isoformat()
+
+
+def test_profanity_is_split_from_privacy():
+    masked = json.loads(_turn(guard=True))
+    masked["router"] = {"outcome": "ignore", "reason": "safety"}
+    c = brain.talk_counts([json.dumps(masked), _turn(guard=True), _turn(guard=True), _turn()])
+    assert c["filtered"] == 1 and c["privacy"] == 2 and c["guarded"] == 3
+
+
+def test_summary_safety_split(tmp_path, monkeypatch):
+    st = turnlog.Store(tmp_path)
+    masked = json.loads(_turn(guard=True))
+    masked["router"] = {"outcome": "ignore", "reason": "safety"}
+    st.append(masked)
+    st.append(json.loads(_turn(guard=True)))
+    monkeypatch.setattr(turnlog, "STORE", st)
+    from app.main import app
+    sf = TestClient(app).get("/api/brain/summary?profile=p1").json()["safety"]
+    assert sf["filtered"] == 1 and sf["privacy"] == 1 and sf["guarded"] == 2
+
+
+def test_safety_flags_need_the_token(monkeypatch):
+    from app.main import app
+    monkeypatch.setenv("LUNA_TOKEN", "t" * 43)
+    c = TestClient(app)
+    assert c.get("/api/safety/flags").status_code == 401
+    assert c.get("/api/safety/flags", headers={"X-Luna-Token": "x" * 43}).status_code == 401
+    r = c.get("/api/safety/flags", headers={"X-Luna-Token": "t" * 43})
+    assert r.status_code == 200 and "flags" in r.json()

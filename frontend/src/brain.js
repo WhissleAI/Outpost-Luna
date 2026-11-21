@@ -243,6 +243,10 @@ export const COMPUTER = {
   room: r => `Room: calm ${r.calm}, busy ${r.busy}, too loud ${r.loud}.`,
   safetyTitle: "Safety",
   safety: s => `${s.guarded} turn${s.guarded === 1 ? "" : "s"} kept private by the privacy guard or the word filter. Nothing leaves this computer.`,
+  // [D9] profanity and privacy, split (backend brain.py `filtered` / `privacy`)
+  filtered: n => `Rude words filtered: ${n} turn${n === 1 ? "" : "s"}. The app hid them and moved on.`,
+  privacy: n => `Kept private by the privacy guard (names, addresses): ${n} turn${n === 1 ? "" : "s"}.`,
+  never: "Never the words. Nothing leaves this computer.",
   care: n => (n ? `${n} time${n === 1 ? "" : "s"} since the app opened, CAPCOM suggested a break and talking to a grown-up.` : ""),
   adaptTitle: "What the app adapted",
   adapt: a => `Learned ${a.names} name${a.names === 1 ? "" : "s"} the way this cadet says them. Waits ${a.wait_s} s before answering${a.waits_longer ? " (a little longer, so the cadet can finish)" : ""}.`,
@@ -257,7 +261,9 @@ export function computerHtml(s) {
       <p class="set-help">${esc(COMPUTER.note)}</p>
       ${c && c.turns ? `<p class="pg-cur">${esc(COMPUTER.talk(c))}</p><p class="pg-cur">${esc(COMPUTER.heard(c))}</p><p class="pg-cur">${esc(COMPUTER.room(c.room))}</p>`
         : `<p class="pg-cur">${esc(COMPUTER.off)}</p>`}</section>
-    <section class="pg-block"><h5>${esc(COMPUTER.safetyTitle)}</h5><p class="pg-cur">${esc(COMPUTER.safety(sf))}</p>${sf.care ? `<p class="pg-cur">${esc(COMPUTER.care(sf.care))}</p>` : ""}</section>
+    <section class="pg-block pg-safety"><h5>${esc(COMPUTER.safetyTitle)}</h5>${sf.filtered != null && sf.privacy != null
+      ? `<p class="pg-cur">${esc(COMPUTER.filtered(+sf.filtered || 0))}</p><p class="pg-cur">${esc(COMPUTER.privacy(+sf.privacy || 0))}</p><p class="set-help">${esc(COMPUTER.never)}</p>`
+      : `<p class="pg-cur">${esc(COMPUTER.safety(sf))}</p>`}${sf.care ? `<p class="pg-cur">${esc(COMPUTER.care(sf.care))}</p>` : ""}</section>
     ${a ? `<section class="pg-block"><h5>${esc(COMPUTER.adaptTitle)}</h5><p class="pg-cur">${esc(COMPUTER.adapt(a))} ${esc(COMPUTER.adaptMore)}</p></section>` : ""}
     <section class="pg-block"><h5>${esc(COMPUTER.controlsTitle)}</h5><ul class="pg-ctl">${COMPUTER.controls.map(t => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
 }

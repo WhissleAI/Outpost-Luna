@@ -226,7 +226,9 @@ class Session:
         self.flags: list[dict] = []
         # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
         self.prefs: dict = dict(PREF_DEFAULTS)
-        # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
+        # Settings "Help improve the voice guide" (prefs.improve): text-only turn log on this device. The client turns it
+        # on by default since 0.4.3 (an explicit off stays off); PREF_DEFAULTS keeps it off for a client that never
+        # sends prefs (tools, the generator).
         self.tlog = turnlog.SessionLog(self)
         self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
         self._dm_out: dict | None = None       # the learned Director's outputs at the current turn end (turn log v2)
@@ -745,7 +747,7 @@ class Session:
             with contextlib.suppress(Exception):
                 ear = (k.get("ear") or {}) if source in OPEN_MIC or source == "ptt" else {}
                 ents = self.memory.note_turn(ear.get("names"), ear.get("spoken") or text, self.screen_name())
-        # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
+        # the turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
         # guard path), so a false PII flag costs only the text in the log, never the turn on screen
         self._dm_out, self._tl_text = None, text
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
