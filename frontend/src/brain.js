@@ -28,7 +28,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 
 // Every lesson step the Academy grades lands in the practice counts (ids and counts only; brain_store.js).
 // [D3] In crew rotation the step counts for the cadet on turn (her saved profile), not the one whose outpost it is.
-if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) recordFor(crewState().turn, { ...e.detail, lesson: lessonKey(e.detail.lesson), course: courseState.active || store.COURSE }); });
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) recordFor(crewState().turn, { ...e.detail, lesson: lessonKey(e.detail.lesson), course: courseState.active || store.COURSE, concept: e.detail.reply && e.detail.reply.concept }); });   // [D5] + the step's concept (the server's reply names it)
 
 /** [D3] Add a graded step to a cadet's practice counts: the live keys for the playing cadet (or no id), her profile
  *  snapshot ("outpost-profiles", prefs.js) for another cadet on this computer. Ids and counts only. */
@@ -74,6 +74,11 @@ export const COPY = {
     ];
   },
   foot: "Saved on this computer only. A grown-up can see it all in Settings, For grown-ups.",
+  // [D5] spaced review: what the app will do, in kid words (never "you forgot")
+  reviewTitle: "Quick review",
+  reviewLine: "The outpost brings back ideas you haven't seen in a while.",
+  review: "Review",
+  reviewOf: t => `Review ${t}`,
   loading: "Loading…",
 };
 
@@ -206,6 +211,7 @@ export function cadetHtml(d) {
   const st = streak(store.clean(d.brain).days, d.today);
   const next = d.lessons && d.lessons.length ? summarize({ academy: { badges: academy.badges || [], qualified: !!academy.qualified, steps: academy.steps || {}, current: academy.current || null }, flown: d.flown || [] }, d.lessons).next : [];
   const voice = voiceLines(d.learned);
+  const due = reviewList(d.brain, d.concepts, d.today).slice(0, 3);   // [D5] concepts due for a quick review
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   return `<header class="bm-head"><span class="set-av" aria-hidden="true">${esc(cs.slice(0, 1).toUpperCase())}</span>
       <div class="bm-who"><h1 id="brainTitle">${esc(cs)}</h1><p>${esc(COPY.rank || (academy.qualified ? COPY.commander : COPY.cadet))}</p></div>
@@ -216,12 +222,66 @@ export function cadetHtml(d) {
       <ul class="bm-legend">${["lit", "practising", "dim"].map(k => `<li class="is-${k}"><i aria-hidden="true"></i>${esc(COPY.legend[k])}</li>`).join("")}</ul></section>
     ${next.length ? `<section class="bm-sec bm-next"><h2>${esc(COPY.tryTitle)}</h2><ul>${next.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
       <button type="button" class="btn-primary" data-bm-go>${esc(COPY.tryGo)}${icon("chevron-right")}</button></section>` : ""}
+    ${due.length ? `<section class="bm-sec bm-review"><h2>${esc(COPY.reviewTitle)}</h2><p class="bm-line">${esc(COPY.reviewLine)}</p>
+      <ul class="bm-due">${due.map(c => `<li><span>${esc(c.label)}</span><button type="button" class="btn" data-bm-review="${esc(c.id)}" aria-label="${esc(COPY.reviewOf(c.label))}">${esc(COPY.review)}</button></li>`).join("")}</ul></section>` : ""}
     <section class="bm-sec"><h2>${esc(COPY.voiceTitle)}</h2>
       ${voice.length ? `<ul class="bm-voice">${voice.map(t => `<li>${icon("hear", { size: 18 })}<span>${esc(t)}</span></li>`).join("")}</ul>` : `<p class="bm-line">${esc(COPY.voiceEmpty)}</p>`}</section>
     <section class="bm-sec"><h2>${esc(COPY.thinkTitle)}</h2>
       <ol class="bm-think">${COPY.think.map(([ic, t, s]) => `<li><span class="bm-ic" aria-hidden="true">${icon(ic, { size: 20 })}</span><div><b>${esc(t)}</b><p>${esc(s)}</p></div></li>`).join("")}</ol></section>
     <p class="foot">${esc(COPY.foot)}</p>`;
 }
+
+// ---------- [D5] concepts and their spaced review ----------
+/** The concepts due for review that this course knows about: [{id, label, lesson, step, mission, due}] (pure).
+ *  meta: GET /api/academy/concepts `concepts`. A concept from another course (not in meta) waits for its course. */
+export function reviewList(brain, meta, today = store.dayOf()) {
+  const m = meta || {};
+  return store.dueConcepts(brain, today, new Set(Object.keys(m))).map(c => ({ ...m[c.id], id: c.id, due: c.due }));
+}
+/** The grown-ups' concept rows, in course order (the order of `meta`): only concepts practised (pure). */
+export function conceptRows(brain, meta, today = store.dayOf()) {
+  const cs = store.clean(brain).concepts || {};
+  return Object.entries(meta || {}).filter(([id]) => cs[id]).map(([id, m]) => {
+    const c = cs[id];
+    return { id, label: m.label, ...c, isDue: !!(c.due && c.due <= today), remembered: c.box >= store.REMEMBERED_BOX };
+  });
+}
+export const CONCEPTS = {
+  title: "Ideas, step by step",
+  th: ["Idea", "First try", "With help", "Shown", "Next review"],
+  sum: (r, n) => `Remembered after a week or more: ${r} of ${n} idea${n === 1 ? "" : "s"} practised.`,
+  due: n => (n ? `Due for a quick review now: ${n}. My Brain offers them first, and a mission's debrief offers one.` : "Nothing is due for review today."),
+  now: "Now",
+  remembered: d => `${d} (remembered)`,
+  note: "Spaced review: right on the first try moves an idea's next review further out (1, 3, 7, then 14 days); with help, it comes back tomorrow. What the app will do next, not a grade.",
+};
+/** The grown-ups' concept table for one cadet (pure). */
+export function conceptsHtml(brain, meta, today = store.dayOf()) {
+  const rows = conceptRows(brain, meta, today);
+  if (!rows.length) return "";
+  const rem = rows.filter(r => r.remembered).length, due = rows.filter(r => r.isDue).length;
+  const next = r => (r.isDue ? CONCEPTS.now : r.remembered ? CONCEPTS.remembered(r.due) : r.due || "");
+  return `<section class="pg-block pg-concepts"><h5>${esc(CONCEPTS.title)}</h5>
+    <p class="pg-cur">${esc(CONCEPTS.sum(rem, rows.length))} ${esc(CONCEPTS.due(due))}</p>
+    <div class="tbl pg-tbl"><table><thead><tr>${CONCEPTS.th.map(h => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(r =>
+      `<tr${r.isDue ? ' class="is-due"' : ""}><td>${esc(r.label)}</td><td>${r.first}</td><td>${r.helped}</td><td>${r.shown}</td><td>${esc(next(r))}</td></tr>`).join("")}</tbody></table></div>
+    <p class="foot">${esc(CONCEPTS.note)}</p></section>`;
+}
+// The active course's concept table (GET /api/academy/concepts), fetched once per course.
+const conceptCache = {};
+export async function conceptMeta(fetchFn = typeof fetch === "function" ? fetch : null) {
+  const k = courseState.active || "moon";
+  if (conceptCache[k]) return conceptCache[k];
+  try { const r = fetchFn ? await fetchFn("/api/academy/concepts") : null; const b = r && r.ok ? await r.json() : null; if (b && b.concepts) conceptCache[k] = b.concepts; } catch (e) { /* offline: no reviews */ }
+  return conceptCache[k] || {};
+}
+/** [D5] The cadet on turn's first due review (a mission's debrief offers it: mission concepts only when asked). */
+export async function dueReview({ mission = false, storage } = {}) {
+  const meta = await conceptMeta();
+  const turn = crewState().turn, brain = turn ? brainOf(turn, storage) : store.load(storage);
+  return reviewList(brain, meta).find(c => !mission || c.mission) || null;
+}
+if (typeof window !== "undefined") O.dueReview = dueReview;
 
 // ---------- the grown-ups' practice block (Settings → For grown-ups → Progress) ----------
 export const GROWN = {
@@ -345,8 +405,10 @@ export function installBrain({ setMode = () => {}, editCallSign = () => {}, fetc
     const turn = crewState().turn, cads = readCadets();   // [D3] crew rotation: the page of the cadet on turn
     const me = (turn && cads.find(c => c.id === turn)) || cads.find(c => c.active) || { academy: { badges: [] }, flown: [], callsign: "" };
     const learned = fetchFn ? await getJson(fetchFn, `/api/learn?profile=${turn || activeProfile()}`) : null;
-    body.innerHTML = cadetHtml({ callsign: me.active ? callSign.get() : me.callsign, academy: me.academy, flown: me.flown, lessons: course || [], brain: me.active ? store.load() : brainOf(me.id), learned: learned && learned.learned });
+    const concepts = fetchFn ? await conceptMeta(fetchFn) : {};
+    body.innerHTML = cadetHtml({ callsign: me.active ? callSign.get() : me.callsign, academy: me.academy, flown: me.flown, lessons: course || [], brain: me.active ? store.load() : brainOf(me.id), learned: learned && learned.learned, concepts });
     const cs = body.querySelector("[data-bm-cs]"), go = body.querySelector("[data-bm-go]");
+    body.querySelectorAll("[data-bm-review]").forEach(b => { b.onclick = () => { const c = concepts[b.dataset.bmReview]; if (!c) return; dlg.close(); if (O.review) O.review(c.lesson, c.step); }; });   // [D5]
     if (cs) cs.onclick = () => { dlg.close(); setMode("academy"); setTimeout(() => editCallSign(), 450); };
     if (go) go.onclick = () => { dlg.close(); setMode("academy"); };
   }

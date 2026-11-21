@@ -41,6 +41,8 @@
 
 .bm-next ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-md)}
 .bm-next .btn-primary{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--space-2)}
+.bm-due{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.bm-due li{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);font-size:var(--text-md)}
 .bm-voice{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
 .bm-voice li{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-surface-2);font-size:var(--text-md)}
 .bm-voice svg{flex:none;margin-top:2px;color:var(--color-accent)}

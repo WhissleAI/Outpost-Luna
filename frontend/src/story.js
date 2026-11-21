@@ -548,6 +548,8 @@ export const DEBRIEF = {
   storyTitle: "What happened",
   numbersTitle: "What the numbers say",   // cause -> effect in real numbers, with sources (docs/PHYSICS.md)
   tryTitle: "Try next",
+  reviewTitle: "Quick review",          // [D5] a mission concept due for spaced review (brain.js dueReview)
+  review: "Review it in Flight School",
   start: (site, days) => `You ran ${site} for ${days} day${days === 1 ? "" : "s"}.`,
   stormSafe: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew stayed safe.`,
   stormHurt: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew took a big dose.`,
