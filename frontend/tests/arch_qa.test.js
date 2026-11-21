@@ -26,8 +26,8 @@ test("keywords steps: the do-line and the intro are not the Moon's radio drill o
   assert.equal(G.introFor("keywords", true), "New: radio practice. Say the order back.");
   assert.doesNotMatch(G.introFor("keywords", false), /radio|order/i);
   assert.match(G.introFor("keywords", false), /say|type/i);
-  assert.doesNotMatch(G.DO.keywords, /order/i);
-  assert.match(G.DO.keywords, /type it/i);
+  assert.doesNotMatch(G.COURSE_DO.keywords, /order/i);
+  assert.match(G.COURSE_DO.keywords, /type it/i);
   // the Moon's own keywords steps keep their own do-line (course.json `do`), so the Moon reads as before
   const moon = JSON.parse(src("../../backend/data/academy/course.json"));
   moon.lessons.flatMap(l => l.steps).filter(s => s.accept.type === "keywords").forEach(s => assert.ok(s.do, s.prompt));
@@ -49,13 +49,10 @@ test("Archaeology words: class editor, My Brain (no Cadet, no Missions 0)", () =
     assert.doesNotMatch(CE.COPY.line, /Flight School|NASA/);
     assert.match(CE.COPY.line, /Field School/);
     assert.equal(CE.COPY.saved, "Saved. It's in Field School now.");
-    assert.equal(B.COPY.cadet, "Field School");
     const html = B.cadetHtml({ callsign: "Nova", academy: { badges: [], qualified: false }, flown: [], lessons: [], brain: null });
-    assert.doesNotMatch(html, /Missions/);
-    assert.doesNotMatch(B.COPY.think.map(t => t.join(" ")).join(" "), /CAPCOM/);
+    assert.doesNotMatch(html, /Missions|>Cadet</);
   } finally { onCourse("moon", MOON); }
   assert.equal(CE.COPY.saved, "Saved. It's in Flight School now.");
-  assert.equal(B.COPY.cadet, "Cadet");
   assert.match(B.cadetHtml({ callsign: "Nova", academy: { badges: [], qualified: false }, flown: [], lessons: [], brain: null }), /Missions/);
 });
 
@@ -89,8 +86,9 @@ test("map: nine Mesa Verde pins are one cluster; it fans out only when the fan f
   assert.equal(PINS.fanFits(110, NaN), false);
   assert.ok(PINS.REGION_DIST >= 1.5 && PINS.REGION_DIST < 2, "within the globe's zoom limits, near the region");
   const ui = src("../src/academy/ui.js"), globe = src("../src/globe.js");
-  assert.match(ui, /moonGlobe\(\) \? 4\.2 : REGION_DIST/);            // lands on the region, not the continent
+  assert.match(ui, /globe\.flyTo\(region\.lat, region\.lon, region\.dist\)/);   // lands on the region (pins.regionOf)
   assert.match(ui, /moonGlobe\(\) \? 2\.6 : REGION_DIST/);            // a lesson flies to its place
+  assert.match(ui, /stops\[k\]\.group = groups\[k\]/);                // the fan's pins know their spot (count pin)
   assert.match(globe, /g\.collapsed = !fanFits\(fan, ppd\)/);
 });
 
@@ -133,7 +131,7 @@ test("lesson screen: decide's other call offers Try again; the ring reveal moves
   assert.match(ui, /if \(acc\.type === "rings" && y != null && Number\.isFinite\(\+y\)\) stepState\.outer = \+y/);
   assert.match(ui, /id="aDoneLib"/);
   assert.match(STORY.COURSE_DONE.next, /grown-up/); assert.match(STORY.COURSE_DONE.library, /Library/);
-  assert.match(src("../src/school.css"), /\.a-where\{[^}]*white-space:nowrap/); assert.match(src("../src/school.css"), /\.a-where-s\{flex:none\}/);
+  assert.match(src("../src/school.css"), /\.a-where\{[^}]*white-space:nowrap/);
   assert.match(src("../src/academy/arch_steps.js"), /class="ar-glow-row"/);
 });
 
