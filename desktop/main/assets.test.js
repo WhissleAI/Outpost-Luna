@@ -276,6 +276,8 @@ test("courses: a running download writes '<done> <total>' bytes into .active/<id
     const last = seen[seen.length - 1].split(" ").map(Number);
     assert.ok(seen.length >= 2 && last[1] > 0 && last[0] === last[1], seen.join("|"));
     assert.ok(calls.includes("download"));                           // the caller's own onProgress still runs
+    // [arch QA] after the bytes, the phase: "<done> <total> verify", then "… install" (the pick says what it is doing)
+    assert.ok(seen.some(s => / verify$/.test(s)) && / install$/.test(seen[seen.length - 1]), seen.join("|"));
     assert.ok(!fs.existsSync(path.join(dir, ".active/course_testland")));
   } finally { srv.close(); }
 });
