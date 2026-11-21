@@ -79,7 +79,11 @@ export const STEP_RENDERERS = {
     html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" data-n="${k + 1}" aria-hidden="true">${"ABCD"[k]}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-choice").forEach(b => b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)),
   },
-  keywords: { html: () => "" },
+  // [arch QA] a word step has no buttons: one points at the voice bar's field, so a novice sees where to type
+  keywords: {
+    html: () => `<button type="button" class="btn-quiet a-typeit">${icon("keyboard", { size: 16 })}<span>Type your answer</span></button>`,
+    wire: el => { const b = el.querySelector(".a-typeit"); if (b) b.onclick = () => { const q = document.getElementById("q"); if (q) q.focus(); }; },
+  },
   tap: { html: () => "" },
   intent: { html: () => "" },
   command: {
