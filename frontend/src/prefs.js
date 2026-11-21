@@ -21,7 +21,7 @@ export const PREF_DEFAULTS = Object.freeze({
   graphics: "high",          // "high" | "low"
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12) | "engineer" (Commander in real units, docs/PHYSICS.md)
   improve: true,             // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). [0.4.3] On by default; an explicit off stays off.
-  improve_v: 2,              // [0.4.3] migration flag: a stored improve:false without it was the old off-by-default, turned on once
+  improve_v: 2,              // [0.4.3] marks prefs saved by an app that defaults the log on; [0.5.2] prefs without it keep their stored improve
   muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
   update_check: false,       // Settings → App version → "Check for updates automatically" (app_update_ui.js). Off by default.
   assets_check: false,       // Settings → Storage & updates → "Check for new models and media automatically" (storage_ui.js). Off by default.
@@ -83,9 +83,11 @@ export function normalizePrefs(x) {
   pick("engine", ["os", "steer"]);
   if (typeof s.steer_voice === "string") o.steer_voice = s.steer_voice.slice(0, 32);
   o.pack = s.pack !== false;          // on unless explicitly turned off
-  // [0.4.3] on by default. Prefs saved before 0.4.3 (no improve_v) held the old off-by-default: they turn on once. After
-  // that only an explicit false (the Settings switch) is off, and it stays off.
-  o.improve = s.improve_v === 2 ? s.improve !== false : true;
+  // [0.4.3] on by default for NEW installs (no saved prefs). [0.5.2] an existing install keeps the setting it had: prefs
+  // saved before 0.4.3 (no improve_v) stay as they were (on only if they said true), never switched on behind a grown-up's
+  // back. After that only an explicit false (the Settings switch) is off, and it stays off.
+  const saved = Object.keys(s).length > 0;
+  o.improve = s.improve_v === 2 ? s.improve !== false : saved ? s.improve === true : true;
   o.improve_v = 2;
   o.muted = s.muted === true;
   o.update_check = s.update_check === true;   // opt-in only
