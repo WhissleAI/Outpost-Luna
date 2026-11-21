@@ -5,6 +5,8 @@ shape (docs/SESSION_CONTRACT.md: `lesson` + `say`), so a session Director can re
 """
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, HTTPException
 from typing import Literal
 
@@ -22,6 +24,25 @@ router.include_router(_vocab_router)
 HINT_AFTER = 1   # misses before the hint (the hint ladder: app/academy/guide.py)
 SHOW_AFTER = REVEAL_AFTER   # real misses (and >= 20 s open: grade.reveal_due) before CAPCOM shows the answer (§5)
 SHOWN = "Here it is. "
+# [arch QA] after three misses the reply shows the answer; it never opens with praise the kid did not earn
+_PRAISE = re.compile(r"^(?:(?:right|correct|yes|yep|exactly|nice|nice work|good|great|well done|that's it|that's right|"
+                     r"you got it|good call|that's the call)[.!,]\s*)+", re.I)
+
+
+def guessed(st: dict, guess: str) -> str:
+    """[arch QA] "You guessed: Treasure to collect. " before a wrong guess's reveal (it went straight to the answer)."""
+    lab = next((o["label"] for o in st["accept"].get("options", []) if o["id"] == guess), "")
+    return f"You guessed: {lab.rstrip('.')}. " if lab else ""
+
+
+def shown_line(say: str, lesson_id: str = "") -> str:
+    """SHOWN + the step's line. A course pack's line (a prefixed lesson id, "archaeology:dating") loses its opening
+    praise: "Here it is. Anyone can re-measure a dated beam.", never "Here it is. Right. Anyone…" (QA 0.5.2). The Moon's
+    reveals stay exactly as recorded in the voice pack (docs/VOICE_PACK.md) until they are re-recorded."""
+    if ":" not in (lesson_id or ""):
+        return SHOWN + (say or "")
+    rest = _PRAISE.sub("", (say or "").strip())
+    return (SHOWN + (rest[:1].upper() + rest[1:] if rest else "")).strip()
 GUESS_RIGHT = "You guessed it! "     # a video step's guess chip, checked after the video (or Skip)
 GUESS_OTHER = "Good guess. Here's the answer. "
 # The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
@@ -39,6 +60,9 @@ class AttemptInput(BaseModel):
     plan: list[str] | None = Field(None, max_length=12)   # vocab step: the client's spaced-repetition order of item ids
     long_text: str | None = Field(None, max_length=2400)  # summary step: the whole spoken / typed summary
     rich: bool = False   # summary step: the grown-up setting asked for the local rewrite (feedback.py; off by default)
+    # [arch QA] the turn was clearly meant for this step (typed, Space held, or the router said so: turn_router
+    # `sure`): any content word is a real try, so a wrong word is a miss with the next hint (grade.plausible)
+    sure: bool = False
 
 
 class AttemptReq(BaseModel):
@@ -136,7 +160,8 @@ async def academy_attempt(req: AttemptReq):
     ok, extra = grade(st, req.input.model_dump(exclude_none=True))
     if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
         ok = await similar(st, req.input.text)
-    if not ok and text_only(req.input.model_dump(exclude_none=True)) and not plausible(st, req.input.text):
+    if not ok and text_only(req.input.model_dump(exclude_none=True)) and \
+            not plausible(st, req.input.text, sure=req.input.sure):
         return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
     if not ok and st["accept"]["type"] == "video":
         return _ignored(les["id"], req.step)          # a video step is never missed: only watch / skip move it on
@@ -155,12 +180,14 @@ async def academy_attempt(req: AttemptReq):
         say = st["success"]
         if st["accept"]["type"] == "predict" and not extra.get("correct"):
             say = st["reveal"]                          # a guess is never wrong: "your guess" vs "the data"
+            if ":" in les["id"] and extra.get("guess"):   # [arch QA] a course pack's guess is acknowledged first
+                say = guessed(st, extra["guess"]) + say   # (the Moon's recorded reveal lines stay as they are)
         if st["accept"]["type"] == "decide" and ok:     # every call gets its own reply, then the law card (on screen)
             say = next((o["reply"] for o in st["accept"]["options"] if o["id"] == extra.get("choice")), say)
         if st["accept"]["type"] == "video" and extra.get("guess"):   # the guess, acknowledged, then the answer
             say = (GUESS_RIGHT if extra.get("correct") else GUESS_OTHER) + say
         if shown:
-            say = SHOWN + say
+            say = shown_line(say, les["id"])
         return _out(les["id"], req.step, "passed", say, next_step=None if last else req.step + 1,
                     badge=les["badge"] if last else None, shown=True if shown else None,
                     shown_answer=_answer_of(st) if shown else None, **extra)
@@ -184,7 +211,7 @@ def _field_reply(les: dict, req: AttemptReq, st: dict, ok: bool, extra: dict) ->
     got = extra.get("got") or []
 
     def passed(say: str, shown: bool = False) -> dict:
-        return _out(lid, req.step, "passed", (SHOWN if shown else "") + say, next_step=None if last else req.step + 1,
+        return _out(lid, req.step, "passed", (shown_line(say, lid) if shown else say), next_step=None if last else req.step + 1,
                     badge=les["badge"] if last else None, shown=True if shown else None,
                     shown_answer=_answer_of(st) if shown else None, **extra)
     if ok:
@@ -371,7 +398,7 @@ def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra
     from .vocab import term
     t = term(st["accept"]["term"]) or {}
     if ok or shown:
-        out = _out(les["id"], req.step, "passed", (SHOWN if shown else "") + st["success"],
+        out = _out(les["id"], req.step, "passed", (shown_line(st["success"], les["id"]) if shown else st["success"]),
                    next_step=None if last else req.step + 1, shown=True if shown else None,
                    badge=les["badge"] if last else None, term=t or None, **{k: v for k, v in extra.items() if k != "term"})
     else:
@@ -485,7 +512,7 @@ async def _speech_attempt(les: dict, req: AttemptReq, st: dict) -> dict:
     got = extra.get("got") or []
 
     def passed(say: str, shown: bool = False, **more) -> dict:
-        return _out(lid, req.step, "passed", (SHOWN if shown else "") + say, next_step=None if last else req.step + 1,
+        return _out(lid, req.step, "passed", (shown_line(say, lid) if shown else say), next_step=None if last else req.step + 1,
                     badge=les["badge"] if last else None, shown=True if shown else None,
                     shown_answer=speech.answer_of(acc, prior, inp.get("plan")) if shown else None, **{**extra, **more})
 

@@ -18,6 +18,10 @@
 // Pure helpers first (tests/courses.test.js), then the small client.
 
 export const COURSE_KEY = "outpost-course";
+/** [arch QA] One-shot (sessionStorage): the title of the course just removed while it was playing, for the line after
+ *  the reload ("Archaeology removed. You're on the Moon course now…"). */
+export const REMOVED_KEY = "outpost-course-removed";
+export const REMOVED_COPY = t => `${t} was removed. You're on the Moon course now. Get it again in Settings → For grown-ups → Course storage.`;
 export const DEFAULT_COURSE = "moon";
 export const ACADEMY_KEY = "atm-academy";
 export const ACADEMY_BACKUP = "atm-academy.v1";

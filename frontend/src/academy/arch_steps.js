@@ -51,11 +51,11 @@ export function trenchLayout(acc, { width = 320, height = 168 } = {}) {
   return { rows, pit, width, height };
 }
 
-function trenchSvg(acc) {
+function trenchSvg(acc, glow = null) {
   const { rows, pit, width, height } = trenchLayout(acc);
   const lab = (x, y, t, cls = "") => `<text x="${x}" y="${y.toFixed(1)}" class="ar-t ${cls}">${esc(t)}</text>`;
   return `<svg class="ar-trench" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(`Trench wall, top to bottom: ${rows.map(r => `${r.letter} ${r.label}`).join(", ")}${pit ? `. A ${pit.label.toLowerCase()} cuts down from below ${rows.find(r => r.id === acc.pit.from).label.toLowerCase()} into ${rows.find(r => r.id === acc.pit.to).label.toLowerCase()}` : ""}.`)}">
-    ${rows.map(r => `<rect x="0" y="${r.y.toFixed(1)}" width="${width}" height="${r.h.toFixed(1)}" fill="${r.fill}"/>
+    ${rows.map(r => `<rect x="0" y="${r.y.toFixed(1)}" width="${width}" height="${r.h.toFixed(1)}" fill="${r.fill}"${r.id === glow ? ` class="ar-glow-row"` : ""}/>
       <line x1="0" x2="${width}" y1="${r.y.toFixed(1)}" y2="${r.y.toFixed(1)}" class="ar-edge"/>
       ${lab(8, r.y + r.h / 2 + 4, `${r.letter}  ${r.label}`)}${r.finds ? lab(118, r.y + r.h / 2 + 4, `◆ ${r.finds}`, "ar-find") : ""}`).join("")}
     ${pit ? `<path d="${pit.d}" fill="${TONES.fill}" class="ar-pit"/>${lab(pit.x0 + 10, pit.top + (pit.bottom - pit.top) / 2 + 4, pit.label, "ar-pit-t")}` : ""}
@@ -71,7 +71,7 @@ O.stepRenderers.layers = ctx => {
   const g = ctx.guide || {};
   return {
     html: `<div class="ar-dig">
-        ${trenchSvg(ctx.acc)}
+        ${trenchSvg(ctx.acc, g.answer && !got.includes(g.answer) ? g.answer : null)}
         <p class="ar-cap">${esc("Oldest first")}</p>
         <ol class="f-seq ar-order" aria-label="Your order, oldest first">${chips.map((_, k) => {
           const it = byId[got[k]];
