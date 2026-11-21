@@ -81,6 +81,8 @@ rsync -a --exclude "__pycache__" --exclude "media" --exclude "cache" --exclude "
 MOON=${MOON_MAP:-$ROOT/backend/data/media/img/moon4k.jpg}
 [ -f "$MOON" ] || { echo "no Moon map at $MOON: run make data (or set MOON_MAP=<moon4k.jpg>)"; exit 1; }
 mkdir -p "$A/backend/data/media/img" && cp "$MOON" "$A/backend/data/media/img/moon4k.jpg"
+# the Moon's open-data map layers (docs/OPEN_DATA.md: USGS age + height maps) ship too; the rsync above skips every media/
+mkdir -p "$A/backend/data/courses/moon/media" && cp "$ROOT/backend/data/courses/moon/media/"* "$A/backend/data/courses/moon/media/"
 if [ ! -f "$ROOT/frontend/dist/index.html" ]; then (cd "$ROOT/frontend" && npm run build); fi
 rsync -a "$ROOT/frontend/dist/" "$A/frontend/"
 du -sh "$B/Python.xcframework" "$B/stage/"*

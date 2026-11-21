@@ -36,6 +36,7 @@
  },
  "gazetteer": "places.json",
  "entities": "entities/outpost_luna.json",
+ "library": "courses/moon/library.json",
  "ear": {
   "vocab": "ear_vocab.json",
   "names": "entities"
