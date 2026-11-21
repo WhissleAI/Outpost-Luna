@@ -211,14 +211,17 @@ def test_chatter_gets_no_response(sess):
     assert [d for d in sess.outbox if d["t"] not in ("floor",)] == []
 
 
-def test_upset_kid_during_alarm_gets_calm_short_lines(sess):
+def test_affect_stream_is_dropped(sess):
+    """[D6] An affect label on the session socket is dropped on arrival: nothing in the belief, the lines unchanged."""
     _storm_event(sess)
     run(sess.poll())
     sess.outbox.clear()
     run(sess.handle({"t": "emotion", "label": "frustrated"}))
+    run(sess.handle({"t": "affect", "label": "scared"}))
+    assert "emotion" not in sess.belief["kid"] and not sess.outbox
     run(sess.handle({"t": "typed", "text": "what's the status"}))
     say = next(d for d in sess.outbox if d["t"] == "say")
-    assert say["text"].startswith("Okay, we've got this.") and len(say["text"].split()) <= 30
+    assert not say["text"].startswith("Okay, we've got this.")
 
 
 def test_role_from_hello_gates_commands(world):

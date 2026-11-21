@@ -220,16 +220,10 @@ def houston(text: str, state: dict | None, mid: str | None = None) -> tuple[str,
 
 
 def short(line: str) -> str:
-    """Confused / frustrated kid: the first sentence only, calm."""
+    """The first sentence only (a short CAPCOM line)."""
     body = _strip_copy(line)
     first = re.split(r"(?<=[.!?])\s+", body)[0].replace("!", ".") if body else ""
     return f"Copy. {first}".strip() if body != line.strip() else first
-
-
-def excited(line: str) -> str:
-    if line.endswith("!"):
-        return line
-    return line + " Great call!" if line.startswith(("Copy", "Confirmed")) else line
 
 
 def role_check(cmd: dict, role: str | None) -> str | None:

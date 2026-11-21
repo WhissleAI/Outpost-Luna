@@ -5,6 +5,7 @@
 .pg-bar .set-help{margin:0;flex:1;min-width:12rem}
 .pg-sheet{display:flex;flex-direction:column;gap:var(--space-3)}
 .pg-paused,.pg-printed{margin:0;color:var(--color-text-2);font-size:var(--text-sm)}
+.pg-practice-only{margin:0;color:var(--color-text-2);font-size:var(--text-sm);font-style:italic}
 .pg-cadet{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-3) var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-lg);background:var(--color-surface)}
 .pg-cadet.is-active{border-color:var(--color-accent)}
 .pg-head{display:flex;align-items:center;gap:var(--space-3)}

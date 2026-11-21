@@ -6,7 +6,6 @@ and emphasis markup. The Director picks them from the situation with one small t
 
     persona  -> voice role + tag          (CAPCOM confident, guide warm, the hardware's story nostalgic)
     situation -> tag + controls           (storm alert, all clear, night on low power, hard word, awe, badge, retry …)
-    kid affect -> overrides               (frustrated/confused: slower, calmer, more pauses; excited: match it)
     a question -> rising ending           (f0_end up)
     readbacks -> emphasis                 (key numbers and the place name, as inline *markup*)
     safety    -> never anger, contempt, disgust, sarcasm, panic or disappointment toward a kid
@@ -78,16 +77,8 @@ SITUATIONS: dict[str, dict] = {
     "vocab":           {"tag": "enunciated", "controls": {"rate": -1.0, "pause": 0.6, "f0_iqr": 0.3}},
 }
 
-# Kid affect (Arc / emotion) -> overrides. Applied on top of the situation, except it never speeds up a calming line.
-AFFECT: dict[str, dict] = {
-    "frustrated": {"tag": "sympathy", "controls": {"rate": -0.7, "pause": 0.8, "loud": -0.2}},
-    "confused":   {"tag": "serenity", "controls": {"rate": -0.7, "pause": 0.8}},
-    "scared":     {"tag": "serenity", "controls": {"rate": -0.6, "pause": 0.6, "loud": -0.3}},
-    "anxious":    {"tag": "serenity", "controls": {"rate": -0.6, "pause": 0.6, "loud": -0.3}},
-    "excited":    {"tag": "excited", "controls": {"rate": 0.4, "f0_iqr": 0.8}},
-    "happy":      {"tag": "happiness", "controls": {"f0_iqr": 0.6}},
-}
-# During an alarm an upset kid gets a steady line: urgency stays in the words, the voice stops racing.
+# [D6] No overrides from a guess at the kid's feelings: the style comes from the situation and the persona only
+# (docs/BRAIN.md §6). Alarm lines are mastered a little louder (tts.py, loudness.ALARM_LUFS_OFFSET).
 ALARM_SITUATIONS = frozenset({"storm_alert", "storm_warning", "failure"})
 QUESTION_F0_END = 1.5
 NUMBER_SITUATIONS = frozenset({"readback", "storm_alert", "storm_warning", "night_low_power", "failure", "explain"})
@@ -134,11 +125,11 @@ def _merge(base: dict, over: dict, calm_only: bool = False) -> dict:
     return c
 
 
-def style_for(voice: str = "guide", text: str = "", situation: str | None = None, emotion: str | None = None,
+def style_for(voice: str = "guide", text: str = "", situation: str | None = None,
               places: list[str] | None = None, tag: str | None = None, controls: dict | None = None,
               vocab: list[str] | None = None) -> dict:
     """The style of one `say`. voice: persona (guide|capcom|story|houston). situation: a SITUATIONS key.
-    emotion: the kid's affect (Arc / emotion stream). places: names to emphasize. tag/controls: explicit overrides."""
+    places: names to emphasize. tag/controls: explicit overrides."""
     persona = voice if voice in VOICES else "guide"
     if situation == "story":
         persona = "story"
@@ -147,20 +138,6 @@ def style_for(voice: str = "guide", text: str = "", situation: str | None = None
     if situation in SITUATIONS:
         s = SITUATIONS[situation]
         st = {"tag": s["tag"], "controls": _merge(st["controls"], s["controls"])}
-    emo = (emotion or "").lower()
-    if emo in AFFECT:
-        a = AFFECT[emo]
-        upset = emo in ("frustrated", "confused", "scared", "anxious")
-        if situation in ALARM_SITUATIONS and upset:
-            # keep the alert's tag (determined / emphasis) but drop the speed-up and loudness boost: steady, slower
-            st["controls"] = {**{k: v for k, v in st["controls"].items() if k not in ("rate", "loud")},
-                              "rate": -0.3, "pause": 0.5}
-        elif situation in ("badge", "passed", "mission_complete") and upset:
-            st["controls"] = _merge(st["controls"], {"rate": -0.3})       # good news stays good news, just gentler
-        elif situation in ("night_low_power", "guard", "retry") and not upset:
-            pass                                                          # an excited kid doesn't hype a calm line
-        else:
-            st = {"tag": a["tag"], "controls": _merge(st["controls"], a["controls"])}
     if tag:
         st["tag"] = tag
     if controls:

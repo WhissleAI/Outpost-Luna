@@ -164,7 +164,7 @@ Arc is the ear by default (`EAR=arc`). One local model gives the words, the turn
 browser mic ──PCM16 80 ms──▶ backend /ws/listen ──▶ model server WS /v1/stream?ear=arc
                                │  1st frame: {"t":"context","names":Tier A (74)}
                                │  client context: its names first, then Tier A
-                               ◀── words / turn / arc / emotion / context_ack (relayed unchanged; posted to the session)
+                               ◀── words / turn / arc / context_ack (relayed unchanged; posted to the session; D6: never affect)
 ```
 
 - **Model server** (`model_server/app/arc_ear.py`, `routes_meta.py`): `ARC_EAR=on` (the default) loads Arc's decoder

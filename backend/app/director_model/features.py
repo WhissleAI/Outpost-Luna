@@ -3,7 +3,7 @@
 
 One STEP per session event the Session sees (session.py `handle`, `_turn`, `poll`):
 
-    hello · ui · playback start/end · typed · words (partial) · turn start/eager/end/resumed · arc · emotion · lesson
+    hello · ui · playback start/end · typed · words (partial) · turn start/eager/end/resumed · arc · lesson  (D6: the old emotion column is frozen)
     · poll (telemetry + new sim events)
 
 A step = `record(sess, ev, read)` (a plain JSON-able dict of everything the Director can see at that moment, BEFORE it
@@ -44,12 +44,14 @@ STYLE_TAGS = ["interest", "confidence", "nostalgia", "enunciated", "determined",
 CTRL = ("rate", "loud", "f0_iqr")          # each binned: 0 lower (< -0.15), 1 neutral, 2 higher (> 0.15)
 
 EVENTS = ["hello", "ui", "playback_start", "playback_end", "typed", "words", "turn_start", "turn_eager", "turn_end",
-          "turn_resumed", "arc", "emotion", "lesson", "poll"]
+          "turn_resumed", "arc", "emotion", "lesson", "poll"]   # D6: the "emotion" kind is a frozen column, never fed
 UI_EVENTS = ["tap_place", "tap_artifact", "button", "end_shift", "lesson_answer", "barge_in", "kid_done",
              "mission_start", "other"]
 SIM_EVENTS = ["solar_storm", "storm_warning", "comm_open", "storm_end", "dose_alert", "low_power", "sunset", "failure",
               "mission_complete", "other"]
-EMOTIONS = ["neutral", "happy", "excited", "frustrated", "confused", "scared", "bored"]
+# [D6] frozen columns: the shipped weights were trained with these one-hot inputs, so the columns stay, but nothing
+# feeds them any more (no affect stream: app/session.py NO_AFFECT). Every turn reads "neutral".   D6
+EMOTIONS = ["neutral", "happy", "excited", "frustrated", "confused", "scared", "bored"]   # D6 frozen
 MODES = ["mission", "academy", "cadet"]
 FLOOR = ["none", "kid", "guide", "crew"]
 ACCEPT = ["intent", "command", "tap", "keywords", "choice"]
@@ -132,15 +134,6 @@ def hash_tok(w: str, buckets: int = 1 << 20) -> int:
     return 1 + int(hashlib.blake2b(w.encode(), digest_size=4).hexdigest(), 16) % (buckets - 1) if w else 0
 
 
-def _emo(e: str | None) -> str:
-    e = (e or "").lower()
-    if e in ("anxious",):
-        return "scared"
-    if e in ("joy", "joyful"):
-        return "happy"
-    return e if e in EMOTIONS else "neutral"
-
-
 def _clip_log(s: float | None, cap: float = 60.0) -> float:
     if s is None or s < 0:
         return 1.0
@@ -192,7 +185,6 @@ def record(sess, ev: dict, read: dict | None = None) -> dict:
         "floor": b.get("floor"), "kid_open": bool(k.get("open")),
         "dd": k.get("device_directed") if t != "arc" or ev.get("device_directed") is None else ev["device_directed"],
         "cc": k.get("command_complete") if t != "arc" or ev.get("command_complete") is None else ev["command_complete"],
-        "emotion": (ev.get("label") if t == "emotion" else None) or k.get("emotion"),
         "playing_kind": playing.get("kind"), "playing_text": playing.get("text") or "",
         "since_play": (now - playing["since"]) if playing.get("since") is not None else None,
         "since_turn_start": (now - k["start"]) if k.get("start") is not None and k.get("open") else None,
@@ -431,7 +423,7 @@ FEATS: list[str] = (
     + ["tag_avail", "tag_q", "tag_cmd", "tag_stmt", "tag_dd", "tag_mentions", "tag_numbers", "tag_pii", "tag_hard_pii",
        "tag_complete"]
     # Arc audio metadata
-    + ["dd_avail", "dd", "cc_avail", "cc"] + [f"emo_{e}" for e in EMOTIONS]
+    + ["dd_avail", "dd", "cc_avail", "cc"] + [f"emo_{e}" for e in EMOTIONS]   # D6 frozen columns
     # mission telemetry / state
     + ["st_avail", "power", "life", "dose_frac", "dose_rate", *[f"load_{x}" for x in nlu.LOADS], "storm", "storm_sev",
        "in_sun", "earth_vis", "next_comm", "shelter", "rover_busy", "alerts", "day", "over", "pending_confirm",
@@ -608,7 +600,7 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
         s("dd_avail", 1); s("dd", rec["dd"])
     if rec.get("cc") is not None:
         s("cc_avail", 1); s("cc", rec["cc"])
-    s(f"emo_{_emo(rec.get('emotion'))}", 1)
+    s("emo_neutral", 1)   # D6 frozen: no affect input, every turn reads neutral
     st = rec.get("state")
     if st:
         s("st_avail", 1)

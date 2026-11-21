@@ -35,21 +35,13 @@ def test_personas_have_distinct_tts_voices():
     assert S("guide", "A crater.", situation="story")["voice"] == "story"   # a hardware story speaks as the hardware
 
 
-@pytest.mark.parametrize("emotion,tag", [("frustrated", "sympathy"), ("confused", "serenity"), ("excited", "excited")])
-def test_kid_affect(emotion, tag):
-    st = S("guide", "Craters are holes.", emotion=emotion)
-    assert st["tag"] == tag
-    if emotion != "excited":
-        assert st["controls"]["rate"] < 0 and st["controls"]["pause"] > 0
-
-
-def test_upset_kid_during_alarm_keeps_alert_tag_but_slows():
-    st = S("capcom", "Storm is here!", situation="storm_alert", emotion="scared")
-    assert st["tag"] == "determined" and st["controls"]["rate"] < 0 and "loud" not in st["controls"]
-
-
-def test_excited_kid_does_not_hype_a_calm_line():
-    assert S("capcom", "Save power.", situation="night_low_power", emotion="excited")["tag"] == "serenity"
+def test_no_style_from_kid_affect():
+    """[D6] The style comes from the situation and the persona only: there is no affect table and no parameter."""
+    assert not hasattr(steering, "AFFECT")
+    with pytest.raises(TypeError):
+        S("guide", "Craters are holes.", emotion="frustrated")
+    assert S("capcom", "Storm is here!", situation="storm_alert")["tag"] == "determined"
+    assert S("capcom", "Save power.", situation="night_low_power")["tag"] == "serenity"
 
 
 def test_question_rises():
@@ -69,9 +61,8 @@ def test_readback_emphasizes_numbers_and_place():
 
 def test_forbidden_tags_never_chosen():
     for situation in [None, *steering.SITUATIONS]:
-        for emo in [None, *steering.AFFECT, "angry"]:
-            for v in steering.PERSONAS:
-                assert S(v, "Hmm?", situation=situation, emotion=emo)["tag"] not in steering.FORBIDDEN
+        for v in steering.PERSONAS:
+            assert S(v, "Hmm?", situation=situation)["tag"] not in steering.FORBIDDEN
     for bad in ("anger", "contempt", "disgust", "sarcasm", "panic", "disappointment"):
         assert S("guide", "No.", tag=bad)["tag"] not in steering.FORBIDDEN
         assert tts.clean_style("guide", "No.", {"tag": bad})["tag"] not in steering.FORBIDDEN
@@ -95,7 +86,9 @@ def test_decisions_for_maps_actions_to_situations():
     rb = says({"action": "command", "say": "Copy, commander. Shields to 40%.", "source": "mission", "state": {}})
     assert rb["voice"] == "capcom" and rb["emph"] == ["40"]
     assert says({"action": "houston", "say": "Houston here. Go.", "source": "mission", "state": {}})["voice"] == "houston"
-    assert says({"action": "say", "say": "Craters.", "source": "llm"}, {"emotion": "frustrated"})["tag"] == "sympathy"
+    # [D6] an affect label in the context changes nothing
+    assert says({"action": "say", "say": "Craters.", "source": "llm"}, {"emotion": "frustrated"}) == \
+        says({"action": "say", "say": "Craters.", "source": "llm"})
     st = says({"action": "status", "say": "Storm.", "source": "mission", "state": {"env": {"storm": {"active": True}}}})
     assert st["tag"] == "determined"
 

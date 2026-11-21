@@ -66,6 +66,8 @@ export const COPY = {
   words: (p, l, r) => `Words practised ${p}, learned ${l}, to review ${r}`,
   summaries: (n, k) => `Summaries told ${n}, key points ${k}`,
   printedOn: d => `Outpost Luna progress · ${d}`,
+  // [D8] the brain is never used for grading (EU AI Act Annex III; docs/BRAIN.md §6b). On screen and on paper.
+  practiceOnly: "A practice record for the cadet and the family, not an assessment. Not for grading.",
 };
 
 // ---------- reading what is saved ----------
@@ -200,7 +202,7 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
 export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined } = {}) {
   if (!cadets.length) return `<p class="set-help">${esc(COPY.none)}</p>`;
   const pause = saved && saved.site_name ? `<p class="pg-paused">${esc(COPY.paused(String(saved.site_name).split(" (")[0], saved.day || 1))}</p>` : "";
-  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}${pause}
+  return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}<p class="pg-practice-only" data-pg-not-grading>${esc(COPY.practiceOnly)}</p>${pause}
     ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary })).join("")}</div>`;
 }
 

@@ -1,4 +1,4 @@
-"""Live kid speech: browser mic -> the ear (words + turns) and Arc metadata + emotion.
+"""Live kid speech: browser mic -> the ear (words + turns) and Arc metadata.
 
 EAR=arc (default, local): one model-server stream, ws://.../v1/stream?ear=arc, gives words, turns, names and metadata
     from Arc Transcriber Space (model_server/app/arc_ear.py). Its messages are relayed unchanged. The session screen's
@@ -16,7 +16,7 @@ WebSocket /ws/listen
   server -> client: {"t":"ready"}
                     {"t":"words","text":str,"final":bool}           every Flux TurnInfo (the whole current turn)
                     {"t":"turn","state":"start"|"eager"|"end"|"resumed","text":str}
-                    {"t":"arc",...} / {"t":"emotion","label":str,"p":float}   relayed from the model server stream
+                    {"t":"arc",...}   relayed from the model server stream (D6: never an affect stream)
                     {"t":"context_ack",...}                                   the model server took the context
                     {"t":"error","message":str}
                     {"t":"ear","ear":"arc"|"deepgram",...}                     which ear serves this session (info)
@@ -171,7 +171,7 @@ async def listen(ws: WebSocket):
     await ws.accept()
     lock = asyncio.Lock()
     # Session Director hook (docs/SESSION_CONTRACT.md §1): ?session=<id>, or `session` in a context frame, makes this
-    # relay also post its words / turn / arc / emotion into that session server-side.
+    # relay also post its words / turn / arc into that session server-side.
     sid = {"id": ws.query_params.get("session")}
     stat = {"ear": None, "turns": 0, "errors": 0, "t0": time.perf_counter()}   # [#92] counts only, never words
     diag.METRICS.inc("listen_sessions")
@@ -184,7 +184,7 @@ async def listen(ws: WebSocket):
         with contextlib.suppress(Exception):
             async with lock:
                 await ws.send_json(m)
-        if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion", "echo_delay"):
+        if sid["id"] and m.get("t") in ("words", "turn", "arc", "echo_delay"):
             clip = None
             with contextlib.suppress(Exception):
                 clip = rec.mark(m)
@@ -253,13 +253,13 @@ def ref_message(d: dict) -> dict | None:
 
 
 async def run_arc(ws: WebSocket, send, sid: dict, arc):
-    """EAR=arc: audio + context to the model server's Arc ear; its words / turn / arc / emotion / context_ack back."""
+    """EAR=arc: audio + context to the model server's Arc ear; its words / turn / arc / context_ack back."""
     base = default_names() if ear_settings.ear_names else []
     if base:
         await arc.send(json.dumps({"t": "context", "names": base}))
     # error: the decode watchdog (#87); entity / eot / barge_in: libarc ABI 2 live events (model_server arc_ear.py)
     # echo_delay / tune_ack: on-device learning (app/learn): this computer's echo delay per line, the applied tuning
-    relay = ("words", "turn", "arc", "emotion", "context_ack", "error", "entity", "eot", "barge_in", "echo_delay",
+    relay = ("words", "turn", "arc", "context_ack", "error", "entity", "eot", "barge_in", "echo_delay",
              "tune_ack")
 
     async def from_arc():
@@ -375,7 +375,7 @@ async def run_deepgram(ws: WebSocket, send, sid: dict, fallback_from: dict | Non
             async for raw in meta:
                 with contextlib.suppress(ValueError):
                     d = json.loads(raw)
-                    if isinstance(d, dict) and d.get("t") in ("arc", "emotion", "context_ack"):
+                    if isinstance(d, dict) and d.get("t") in ("arc", "context_ack"):
                         await send(d)
         except Exception:  # noqa: BLE001
             pass
