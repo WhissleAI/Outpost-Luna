@@ -102,8 +102,8 @@ macOS `~/Library/Application Support/Outpost Luna/`, Windows `%APPDATA%\Outpost 
 | Mission autosave (`cache/saves/`): the orders given, not recordings | always, so a mission resumes |
 | Settings, cadet call signs, lesson progress and patches | always (the app's local storage) |
 | What the app learned about how a cadet says names (small JSON, no audio) | always; Settings → For grown-ups shows and clears it |
-| The voice-guide turn log: what it heard, as text, no audio, no names | on by default; a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it |
-| Playtest audio clips | only during a playtest a grown-up starts, with permission (Settings → For grown-ups → Voice log and playtest), exported as one zip to a place they choose |
+| The voice-guide turn log: what it heard, as text, no audio, no names | on by default, 30 days (then deleted; `docs/SECURITY.md` "Retention"); a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it |
+| Playtest audio clips | only during a playtest a grown-up starts, with permission (Settings → For grown-ups → Voice log and playtest), exported as one zip to a place they choose; deleted after 30 days |
 | Saved NASA videos, logs (scrubbed, capped at 75 MB), local counters | always; logs never hold words or audio |
 | Weekly talk and safety counts per cadet (`cache/brain/counts.json`): numbers by kind and channel, never words | always, 12 weeks; Reset and "Clear this cadet's safety counts" erase them (`docs/BRAIN.md` §9, `docs/DPIA.md`) |
 | Care notes (`cache/brain/care.json`): kind and day only | until a grown-up marks them seen, 30 days at most |
