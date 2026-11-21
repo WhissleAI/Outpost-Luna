@@ -611,6 +611,8 @@ def build(only: set[str] | None) -> dict:
             a["fallback"] = previous_pack(prev)
         elif prev and not same and (prev.get("fallback") or {}).get("kind") == "pack" and not a.get("fallback"):
             a["fallback"] = prev["fallback"]     # rebuilt again before an upload: still the last published pack
+        elif same and (prev.get("fallback") or {}).get("kind") == "pack" and not a.get("fallback"):
+            a["fallback"] = prev["fallback"]     # rebuilt unchanged: keep the fallback until this tar is uploaded
         assets.append(a)
         print(f"  {aid:9s} {size / 1e6:8.1f} MB  {len(listing):4d} files  {sha[:12]}  {'url kept' if url else 'NEW (upload)'}"
               f"  {time.time() - t:.0f} s", flush=True)
