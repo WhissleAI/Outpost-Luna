@@ -189,8 +189,6 @@ education). A school that files a printout still owns that record (FERPA); the s
 
 ## 8. What's left
 
-- **Per-concept mastery below the lesson.** Lessons cite `concepts.json` facts but steps don't name a concept. A
-  `concept` field on steps would give a finer table.
 - **Mission decisions as counts** (shelter on time, readbacks). Debriefs are live only, so a small aggregate like §5
   would keep them.
 - **A teacher roll-up across computers.** Out of scope: nothing leaves the device.
@@ -264,3 +262,30 @@ makes them again.
 ![Grown-ups: Practice](img/brain/brain_grownup_1440x900.jpg)
 ![Grown-ups: Practice, 1280x720](img/brain/brain_grownup_1280x720.jpg)
 ![Grown-ups: talk, safety, adapted, controls](img/brain/brain_grownup_computer_1280x720.jpg)
+
+## 11. Concepts and spaced review (D5)
+
+Mastery below the lesson, per cadet and per course, reported as outcomes and as what the app will do next, never as a
+trait or a grade (§6b).
+
+- **The map:** `backend/data/learning/step_concepts.json` names the concept each graded step practises, for the Moon
+  (28 concepts) and Archaeology (23). Videos and predict guesses have none. It is data, so a course edit needs no
+  code; `backend/tests/test_concepts.py` checks every mapped step still exists and is graded, every concept is
+  practised, and every graded Moon step has one.
+- **The wire:** every graded attempt's reply carries `concept` (`backend/app/academy/routes.py` `_out`), with the
+  client's id rule: bare on the Moon (`radio_words`), `<course>:<id>` elsewhere (`archaeology:stratigraphy`).
+  `GET /api/academy/concepts` lists the active course's concepts: label, the lesson and step its review opens, and
+  whether a mission uses it.
+- **The store:** `outpost-brain` gains `concepts: {<id>: {first, helped, shown, box, due}}` (`brain_store.js`, per
+  cadet, cleaned on read and write, erased with the practice counts). The spaced review uses the vocabulary's Leitner
+  boxes: right on the first try moves a concept up a box (next review in 1, 3, 7, then 14 days); with help or shown,
+  it goes back to box 1 (tomorrow). In crew rotation it lands on the cadet on turn.
+- **The cadet sees** "Quick review" in My Brain when an idea is due: "The outpost brings back ideas you haven't seen in
+  a while.", the idea's name and a Review button that opens Flight School at the step that practises it. Never
+  "you forgot", never a score.
+- **Missions resurface it too:** a mission's debrief offers one due mission concept (power, radio, storms, ice) under
+  Try next, with "Review it in Flight School". It is an offer, never a gate.
+- **Grown-ups see** "Ideas, step by step": per idea, first try / with help / shown and the next review ("Now", a day,
+  or "remembered"), and "Remembered after a week or more: 8 of 11 ideas practised." The table says it is what the app
+  will do next, not a grade.
+

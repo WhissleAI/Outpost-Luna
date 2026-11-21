@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from .. import safety as safety_, steering
-from . import arch_steps, content, guide, ride as rides
+from . import arch_steps, concepts as concepts_, content, guide, ride as rides
 from .grade import FIELD_TYPES, REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
 from . import feedback as fb, speech
 from .speech import SPEECH_TYPES
@@ -76,13 +76,24 @@ def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | No
 
 
 def _out(lesson_id: str, step: int, status: str, say: str, **extra) -> dict:
-    return {"status": status, "say": say, **{k: v for k, v in extra.items() if v is not None},
-            "decisions": _decisions(lesson_id, step, status, say, extra.get("score"), badge=bool(extra.get("badge")))}
+    out = {"status": status, "say": say, **{k: v for k, v in extra.items() if v is not None},
+           "decisions": _decisions(lesson_id, step, status, say, extra.get("score"), badge=bool(extra.get("badge")))}
+    c = concepts_.concept_of(lesson_id, step)   # [D5] the concept this step practises (an id; the client counts it)
+    if c:
+        out["concept"] = c
+    return out
 
 
 @router.get("/api/academy/course")
 def academy_course():
     return content.public()
+
+
+@router.get("/api/academy/concepts")
+def academy_concepts():
+    """[D5] The active course's concepts: label, where each one's review opens, and whether a mission uses it."""
+    from .. import courses
+    return concepts_.public(courses.active())
 
 
 @router.post("/api/academy/ride")

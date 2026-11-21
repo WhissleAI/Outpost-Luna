@@ -20,6 +20,11 @@
 //   course: "moon"               the course last practised (default "moon"). The lesson ids carry their own course
 //                                (brain.js lessonKey: bare on the Moon, "<course>:<id>" elsewhere), so one store holds
 //                                every course's counts; this field only says which course was played last.
+//   concepts: { <conceptId>: {first, helped, shown, box, due: YYYY-MM-DD} }   [D5] the concept each graded step practises
+//            (the server's reply names it: backend app/academy/concepts.py), bare on the Moon, "<course>:<id>" elsewhere.
+//            first / helped / shown: how its steps went; box 0-4 and due: its spaced review (BOX_DAYS, the Leitner
+//            boxes the vocabulary uses). Right on the first try moves it up a box; with help or shown, back to box 1.
+//            Outcomes and what the app will do next, never a trait or a grade (docs/BRAIN.md §6b, §11).
 //   speech: { c: { <course>: {read, questions, aloud, aloud_words, summaries, points, words: {<glossary word>:
 //            {box, due: YYYY-MM-DD, n}}} } }   reading / vocab / summary counts and the vocab spaced repetition
 //            (academy/speech_store.js; docs/SPEECH_LEARNING.md). Counts and glossary words only, never what was said.
@@ -34,6 +39,12 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Steps that are guesses or watching, never right or wrong: they don't count toward practice. */
 export const UNGRADED = new Set(["video", "predict"]);
 const FIELDS = ["steps", "first", "helped", "shown", "misses", "pause", "secs"];
+/** [D5] Spaced review: the days to the next review in each box (= academy/speech_store.js BOX_DAYS). */
+export const BOX_DAYS = [0, 1, 3, 7, 14];
+export const REMEMBERED_BOX = 3;   // reached after right-first-try reviews 1, 3 and 7 days apart: "remembered after a week"
+const CFIELDS = ["first", "helped", "shown"];
+/** The day n days after a YYYY-MM-DD day (local calendar; pure). */
+export function addDays(day, n) { const t = new Date(day + "T12:00:00"); t.setDate(t.getDate() + n); return dayOf(t); }
 
 export const COURSE = "moon";   // the default course (the field is the course last practised; ids carry their own)
 const COURSE_ID = /^[a-z0-9][a-z0-9-]{0,23}$/;
@@ -49,6 +60,14 @@ export function clean(raw) {
     if (!ID.test(id) || !v || typeof v !== "object") continue;
     out.lessons[id] = Object.fromEntries(FIELDS.map(f => [f, n(v[f])]));
   }
+  const cs = raw.concepts && typeof raw.concepts === "object" ? raw.concepts : {};
+  const concepts = {};
+  for (const [id, v] of Object.entries(cs)) {
+    if (!ID.test(id) || !v || typeof v !== "object") continue;
+    concepts[id] = { ...Object.fromEntries(CFIELDS.map(f => [f, n(v[f])])), box: Math.min(BOX_DAYS.length - 1, n(v.box)),
+      due: typeof v.due === "string" && DAY.test(v.due) ? v.due : null };
+  }
+  if (Object.keys(concepts).length) out.concepts = concepts;
   const sp = parseSpeech(raw.speech);
   if (Object.keys(sp.c).length) out.speech = sp;
   out.days = [...new Set((Array.isArray(raw.days) ? raw.days : []).filter(d => typeof d === "string" && DAY.test(d)))].sort().slice(-MAX_DAYS);
@@ -82,8 +101,24 @@ export function record(store, ev, today = dayOf()) {
     L.secs += Math.min(STEP_CAP_S, n(Math.round(+ev.step_s || 0)));
   }
   s.lessons[ev.lesson] = L;
+  if (st !== "hint" && ev.concept && ID.test(String(ev.concept)) && DAY.test(today)) {   // [D5] the concept and its review
+    const cs = s.concepts || (s.concepts = {});
+    const c = cs[ev.concept] || { first: 0, helped: 0, shown: 0, box: 0, due: null };
+    const first = st === "passed" && !ev.shown && n(ev.misses) === 0 && !ev.helped;
+    if (st === "missed" || ev.shown) c.shown++; else if (first) c.first++; else c.helped++;
+    c.box = first ? Math.min(BOX_DAYS.length - 1, c.box + 1) : 1;
+    c.due = addDays(today, BOX_DAYS[c.box]);
+    cs[ev.concept] = c;
+  }
   if (DAY.test(today) && !s.days.includes(today)) s.days = [...s.days, today].sort().slice(-MAX_DAYS);
   return s;
+}
+
+/** [D5] The concepts due for review on `today`, the longest-waiting first (pure). only: a set of ids to keep. */
+export function dueConcepts(store, today = dayOf(), only = null) {
+  const cs = clean(store).concepts || {};
+  return Object.entries(cs).filter(([id, c]) => c.due && c.due <= today && (!only || only.has(id)))
+    .sort((a, b) => (a[1].due < b[1].due ? -1 : a[1].due > b[1].due ? 1 : a[0] < b[0] ? -1 : 1)).map(([id, c]) => ({ id, ...c }));
 }
 
 // ---------- localStorage (try/catch: private mode keeps it for this visit only) ----------
