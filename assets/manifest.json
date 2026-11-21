@@ -5683,32 +5683,32 @@
   },
   {
    "id": "course_archaeology",
-   "version": "2",
-   "min_version": "2",
+   "version": "4",
    "min_app": "0.1.0",
    "max_app": null,
    "requires": [],
+   "min_version": "4",
    "title": "Course: Archaeology",
    "required": false,
-   "file": "outpost-luna-v2-course_archaeology-2.tar",
-   "url": "https://www.dropbox.com/scl/fi/fe0c9jwv6712mnp0bv4ws/outpost-luna-v2-course_archaeology-2.tar?rlkey=67i0h7rjn553n9wsnqalklbbc&dl=1",
-   "sha256": "60f22967640ea3644499e7cfa218e0cea0637c13e2a6db23233049f3a21258ce",
-   "size": 37713920,
-   "unpacked_size": 37682056,
-   "n_files": 39,
+   "file": "outpost-luna-v2-course_archaeology-4.tar",
+   "url": "https://www.dropbox.com/scl/fi/3b5robisar098datvtxdk/outpost-luna-v2-course_archaeology-4.tar?rlkey=ar6evpqdohujzfnsipjv7c9a3&dl=1",
+   "sha256": "6bd530e789c938ebc664793ec1726e11b272f0c6c0b8a6d90a5ac4a06062e9bb",
+   "size": 39157760,
+   "unpacked_size": 39117111,
+   "n_files": 42,
    "env": "",
    "subdir": "",
    "licence": [],
    "files": [
     {
      "path": "course.json",
-     "size": 68375,
-     "sha256": "8d44da502e0df07ed469487c892e9ab1988ebfbcb09804f8b3330df5d70de8fb"
+     "size": 68626,
+     "sha256": "647e60395543655ada7fad79756c8543acd4ccb3bfb1fce64e99941ec412ddc2"
     },
     {
      "path": "course.manifest.json",
-     "size": 4188,
-     "sha256": "a980bc08163d1ee96b339691ab4fcde8e48908df0b0d67486199dbf10bbbbb3f"
+     "size": 6178,
+     "sha256": "553f85ea6494a89d973cda1c5b4861459e999be60228006722f9205524586419"
     },
     {
      "path": "ear_vocab.json",
@@ -5722,13 +5722,18 @@
     },
     {
      "path": "library.json",
-     "size": 7112,
-     "sha256": "ecca79cd5e51ce2771eb8666babb105cd7c3a7b75ed1d44c9f95e489fdc3f169"
+     "size": 8402,
+     "sha256": "97025b0b47f8b1177a00b3c5c0d04bfb9958188c293e3e5c59dd0c9c475a34f7"
+    },
+    {
+     "path": "media/co652_chart.png",
+     "size": 115837,
+     "sha256": "e27b37c36bec338e15f22c66d773aa4d25c8790eb88c300f61c74cec01b7a99e"
     },
     {
      "path": "media/credits.json",
-     "size": 8431,
-     "sha256": "fec2fb6dee2c40ec66f8e1c6b4878c75cb968227092d74e30a5d72c73dfeb4d3"
+     "size": 10842,
+     "sha256": "a18aba672d8c11c6fa0285d8d604f2a21e93d813e459f30cee8a779487d7b8ee"
     },
     {
      "path": "media/earth5400.jpg",
@@ -5801,6 +5806,16 @@
      "sha256": "6c1f39cfb112e7f0f2c2491a0c38095537598e2be7440338a89f4eca99ac1d37"
     },
     {
+     "path": "media/s2_mesa_verde_nir.jpg",
+     "size": 666685,
+     "sha256": "75abd36eb401bc5e197aec05a2a642268c38e13e9b34e5a1d7d223e1ca58e0f0"
+    },
+    {
+     "path": "media/s2_mesa_verde_true.jpg",
+     "size": 643386,
+     "sha256": "ff2ef052be6877d720590c2ce5156a8659e7f35006f98b13dbc24c0c0d18e51b"
+    },
+    {
      "path": "places.json",
      "size": 2640,
      "sha256": "5d6eec2bf71feb7f7995d70624be66da6536f51659ef9e12bba648683e6bdd8a"
@@ -5812,8 +5827,8 @@
     },
     {
      "path": "sources.json",
-     "size": 37587,
-     "sha256": "ae60b9ce33e4885d74ec088f16a16d86fe2eb5a6b0abd4263c6737490fd4c205"
+     "size": 40792,
+     "sha256": "33ad494aacd26fad0224b43430fb537152590269a620b099e2c0e30593f9ae4d"
     },
     {
      "path": "video/arch_landsat_moon.jpg",
@@ -5902,19 +5917,19 @@
     "subject": "Social studies (history, geography, civics) with science methods",
     "grades": "9-12"
    },
-   "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable. v2 carries its five NASA videos (video/, re-encoded for size: videos.json pack). Hosted on the GitHub release only until a Dropbox copy is uploaded (scripts/upload_assets.py).",
+   "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable.",
    "fallback": {
     "kind": "pack",
-    "version": "1",
-    "file": "outpost-luna-v2-course_archaeology.tar",
-    "url": "https://www.dropbox.com/scl/fi/vspyiobww2d8h5y2438mk/outpost-luna-v2-course_archaeology.tar?rlkey=mfivqzgdwxbf4s71c9dbzvs2j&dl=1",
+    "version": "2",
+    "file": "outpost-luna-v2-course_archaeology-2.tar",
+    "url": "https://www.dropbox.com/scl/fi/fe0c9jwv6712mnp0bv4ws/outpost-luna-v2-course_archaeology-2.tar?rlkey=67i0h7rjn553n9wsnqalklbbc&dl=1",
     "mirrors": [
-     "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology.tar"
+     "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-2.tar"
     ],
-    "sha256": "c86b8eac430e647e3b619fe2edae35fd889e0c35062927e4ed31573d4bb822c9",
-    "size": 4608000,
-    "unpacked_size": 4589438,
-    "n_files": 19,
+    "sha256": "60f22967640ea3644499e7cfa218e0cea0637c13e2a6db23233049f3a21258ce",
+    "size": 37713920,
+    "unpacked_size": 37682056,
+    "n_files": 39,
     "files": [
      {
       "path": "course.json",
@@ -5923,8 +5938,8 @@
      },
      {
       "path": "course.manifest.json",
-      "size": 4134,
-      "sha256": "07eb227819a5a731a6f7ea7d56f5707e23d342b8ca4c2ab12f89ce3155816f60"
+      "size": 4188,
+      "sha256": "a980bc08163d1ee96b339691ab4fcde8e48908df0b0d67486199dbf10bbbbb3f"
      },
      {
       "path": "ear_vocab.json",
@@ -5937,9 +5952,14 @@
       "sha256": "415bd58421a610ddb67e6661602127a812854fa218d737855b3c69c1146e3c9e"
      },
      {
+      "path": "library.json",
+      "size": 7112,
+      "sha256": "ecca79cd5e51ce2771eb8666babb105cd7c3a7b75ed1d44c9f95e489fdc3f169"
+     },
+     {
       "path": "media/credits.json",
-      "size": 6517,
-      "sha256": "126fa14d9d6ac55e82cb02e97c291621ef4bedf2c609973a9ace59f163111ea9"
+      "size": 8431,
+      "sha256": "fec2fb6dee2c40ec66f8e1c6b4878c75cb968227092d74e30a5d72c73dfeb4d3"
      },
      {
       "path": "media/earth5400.jpg",
@@ -5960,6 +5980,21 @@
       "path": "media/four_corners.jpg",
       "size": 596599,
       "sha256": "bc44c6ad749b92a824bb89a9bf2906856e5ef81351292434af79302d7ad94256"
+     },
+     {
+      "path": "media/four_corners_region.jpg",
+      "size": 916159,
+      "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660"
+     },
+     {
+      "path": "media/iss_pastora_san_juan.jpg",
+      "size": 252094,
+      "sha256": "3da7a9e587bfbf1110381428edaed244f9322981f0a6e5e0cbdb12004d13dd78"
+     },
+     {
+      "path": "media/iss_wupatki.jpg",
+      "size": 214662,
+      "sha256": "281fb954487914a8487cbc47d5568406d7fa3f6ac5ceaab8d1d7bc10efc157f2"
      },
      {
       "path": "media/photo_cliff_palace.jpg",
@@ -6010,11 +6045,91 @@
       "path": "sources.json",
       "size": 37587,
       "sha256": "ae60b9ce33e4885d74ec088f16a16d86fe2eb5a6b0abd4263c6737490fd4c205"
+     },
+     {
+      "path": "video/arch_landsat_moon.jpg",
+      "size": 3006,
+      "sha256": "3a939707e1c071eab28af973b53601bf3a5ee1c51f331ac09354f3645c59f676"
+     },
+     {
+      "path": "video/arch_landsat_moon.mp4",
+      "size": 2247583,
+      "sha256": "98c88c8cfd8209717159442b7858f596b8c7399afafc59b569033895883e9079"
+     },
+     {
+      "path": "video/arch_landsat_moon.vtt",
+      "size": 2838,
+      "sha256": "90acafb064acb662f60ce909eb730a0706c8bfc84c944c7a8f6298693dd4a697"
+     },
+     {
+      "path": "video/arch_landsat_pushbroom.jpg",
+      "size": 2653,
+      "sha256": "fd82a6237efcd99734428a21f13f8ec3034ce08db5ab9f651554fc01e1714a49"
+     },
+     {
+      "path": "video/arch_landsat_pushbroom.mp4",
+      "size": 445348,
+      "sha256": "7271b1fa243828fc4af8b535fc2caa2f10296fbad0a1fde7eec92b10f593df59"
+     },
+     {
+      "path": "video/arch_landsat_pushbroom.vtt",
+      "size": 62,
+      "sha256": "423254eb6859f11de60900ca75f8b6a09871d3012e10c589b19627bf103119c9"
+     },
+     {
+      "path": "video/arch_lidar_space.jpg",
+      "size": 13274,
+      "sha256": "32842d85d794897dbb942a69ec95065466d6cc0e3982221a4f5c00ba4ded46bd"
+     },
+     {
+      "path": "video/arch_lidar_space.mp4",
+      "size": 12107143,
+      "sha256": "7697c9134701115c4706eec81818cb025159d24093962f8c055ae0cc80ac243b"
+     },
+     {
+      "path": "video/arch_lidar_space.vtt",
+      "size": 4329,
+      "sha256": "2f0a778660b44e7ebbc98d9f71420972472a3a91e8d61835071c552f8ba04044"
+     },
+     {
+      "path": "video/arch_remote_sensing.jpg",
+      "size": 13146,
+      "sha256": "196c01763900891a2694c09078e7c1603b966f77d678888241a6355060fc22dd"
+     },
+     {
+      "path": "video/arch_remote_sensing.mp4",
+      "size": 11385740,
+      "sha256": "fe74efc2ef9ad4d7bf629aaf8d925d3b6adab84630f39882413eb214fc3dbb26"
+     },
+     {
+      "path": "video/arch_remote_sensing.vtt",
+      "size": 8318,
+      "sha256": "4c7d7c1644122051b559c0cb1359c249510ed18ef4236fb66bc3fcb5209f78b6"
+     },
+     {
+      "path": "video/arch_tree_ring_drought.jpg",
+      "size": 13308,
+      "sha256": "e58f650c0eb43ed7178d434f64a7560f8ecfb99ae83f719d9d09e2e401ae5dc8"
+     },
+     {
+      "path": "video/arch_tree_ring_drought.mp4",
+      "size": 5443031,
+      "sha256": "15c53b2c6277ab234ae189e5780c3acc356cdbf8bde5b916ec8c28943bafdc58"
+     },
+     {
+      "path": "video/arch_tree_ring_drought.vtt",
+      "size": 3976,
+      "sha256": "4d45960210f85aabbe8dfabd2cc7a8b1d6c85957844cbac12a975fe4b88a47a7"
+     },
+     {
+      "path": "videos.json",
+      "size": 6868,
+      "sha256": "2fb3c8cf19e6ef7ff7307eb05d24c8c75e2519fc1e2033058abf01db90f30d37"
      }
     ]
    },
    "mirrors": [
-    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-2.tar"
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology-4.tar"
    ]
   }
  ],
@@ -6025,6 +6140,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-21T03:49:59Z",
- "version": "2026.11.21.0349"
+ "published_at": "2026-11-21T17:36:58Z",
+ "version": "2026.11.21.1736"
 }
