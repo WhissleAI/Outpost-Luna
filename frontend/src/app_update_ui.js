@@ -1,11 +1,16 @@
 // Settings → App version (desktop/main/appupdate.js, docs/DESKTOP.md "App updates"): the installed version and
 // "Check for updates". The page is locked to its own origin, so the shell does the asking: the page navigates to
 // /__outpost/update?do=check (Electron stops that), the main process asks GitHub for the latest release and calls
-// window.__lunaUpdate with the result. "Download" navigates to /__outpost/update?do=open&what=download: the shell opens
-// the installer it found in the system browser (the page never names a URL). Nothing installs by itself.
+// window.__lunaUpdate with the result. "Download" navigates to /__outpost/update?do=open&what=download: the shell
+// downloads the installer it found into the Downloads folder itself (no web browser needed; the page never names a
+// URL), sends progress / done / failed as `dl` on the same result, then opens it. Nothing installs by itself.
+// When a link the shell opens in the browser does not open, the result carries `link_failed` and the row shows the
+// link with a Copy button (link_fallback_ui.js).
 // Opt-in "Check for updates automatically" (prefs.update_check, off by default): when the page loads, the shell asks
 // window.__lunaUpdate whether it is on; if so it checks at most once a day and stays silent unless there is an update,
 // which shows as a small notice with the same Download. In a browser (make dev) the section is not shown.
+import { fallbackHtml, onCopyClick } from "./link_fallback_ui.js";
+
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -22,9 +27,49 @@ const bundled = () => (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ 
 
 const list = xs => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
-/** A result from the shell -> what the row shows: {line, notes, action: {what, label} | null, busy}. Pure. */
+export const DL_COPY = {
+  done: "Downloaded! It's in your Downloads folder.",
+  mac: "Open it, then drag Outpost Luna into Applications.",
+  win: "Open it to install the new version.",
+  folder: "Show in folder",
+  again: "Try again",
+  failed: {
+    offline: "The download stopped. Check the internet and try again.",
+    check: "The download came out broken. Try again.",
+    disk: "There's no room for it in Downloads.",
+    school: "Downloads are off on the school network.",
+    error: "The download didn't finish. Try again.",
+  },
+};
+
+/** The installer download (`s.dl`, from the shell) -> the row, or null when there is none. Pure. */
+function dlView(s) {
+  const d = s && s.dl;
+  if (!d || !d.state) return null;
+  if (d.state === "downloading") {
+    const pct = d.total ? Math.max(0, Math.min(100, Math.floor((100 * (d.got || 0)) / d.total))) : null;
+    return { line: `Downloading ${s.latest || "the new version"}…${pct == null ? "" : ` ${pct}%`}`, notes: "", action: null, busy: true, progress: pct == null ? -1 : pct };
+  }
+  if (d.state === "done") {
+    const how = s.platform === "Windows" ? DL_COPY.win : s.platform === "Mac" ? DL_COPY.mac : "";
+    return { line: DL_COPY.done, notes: how, action: { what: "folder", label: DL_COPY.folder } };
+  }
+  if (d.state === "failed") {
+    if (d.reason === "school" || d.reason === "disk") return { line: DL_COPY.failed[d.reason], notes: "", action: d.reason === "disk" ? { what: "download", label: DL_COPY.again } : null };
+    return { line: DL_COPY.failed[d.reason] || DL_COPY.failed.error, notes: "", action: { what: "download", label: DL_COPY.again } };
+  }
+  return null;
+}
+
+/** A result from the shell -> what the row shows: {line, notes, action: {what, label} | null, busy, progress, link}. Pure. */
 export function view(s) {
+  const v = baseView(s);
+  if (s && typeof s.link_failed === "string" && s.link_failed) v.link = s.link_failed;   // the browser didn't open
+  return v;
+}
+function baseView(s) {
   const st = (s && s.state) || "idle";
+  if (st === "available" && s.download) { const d = dlView(s); if (d) return d; }
   switch (st) {
     case "checking": return { line: "Checking…", notes: "", action: null, busy: true };
     case "up_to_date": return { line: `You're up to date (${s.current})`, notes: "", action: null };
@@ -51,6 +96,7 @@ const go = (w, q) => { w.location.href = `/__outpost/update?${q}`; };
 export const check = (w = window) => go(w, "do=check");
 export const open = (what, w = window) => go(w, `do=open&what=${encodeURIComponent(what)}`);
 
+const progressHtml = p => (p == null ? "" : `<progress class="au-progress" max="100"${p >= 0 ? ` value="${p}"` : ""}></progress>`);
 const notesHtml = n => (n ? `<p class="au-notes">${n.split("\n").map(esc).join("<br>")}</p>` : "");
 const actionHtml = (a, cls) => (a ? `<button type="button" class="${cls}" data-au-open="${esc(a.what)}">${esc(a.label)}</button>` : "");
 
@@ -62,7 +108,8 @@ function paint() {
   if (btn) btn.disabled = !!v.busy;
   if (st) {
     st.dataset.state = (last && last.state) || "idle";
-    st.innerHTML = v.line ? `<p class="au-line">${esc(v.line)}</p>${notesHtml(v.notes)}${actionHtml(v.action, v.action && v.action.what === "download" ? "btn-primary" : "btn-quiet")}` : "";
+    st.innerHTML = (v.line ? `<p class="au-line">${esc(v.line)}</p>${progressHtml(v.progress)}${notesHtml(v.notes)}${actionHtml(v.action, v.action && v.action.what === "download" ? "btn-primary" : "btn-quiet")}` : "")
+      + (v.link ? fallbackHtml(v.link) : "");
   }
 }
 
@@ -106,7 +153,11 @@ const section = {
     const btn = el.querySelector("[data-au-check]");
     if (!btn) return;
     btn.onclick = () => { last = { ...(last || {}), state: "checking" }; paint(); check(); };
-    el.querySelector("[data-au-state]").onclick = e => { const t = e.target.closest("[data-au-open]"); if (t) open(t.dataset.auOpen); };
+    el.querySelector("[data-au-state]").onclick = e => {
+      const t = e.target.closest("[data-au-open]");
+      if (t) { if (last && last.link_failed) { last = { ...last, link_failed: null }; paint(); } open(t.dataset.auOpen); return; }
+      onCopyClick(e);
+    };
     paint();
   },
 };

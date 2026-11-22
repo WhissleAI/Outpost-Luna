@@ -21,8 +21,10 @@
 //      backend.jsonl / models.jsonl), crash-free sessions in metrics/, and Settings -> Help & diagnostics -> "Save a
 //      diagnostics file…" (a zip the user saves where they choose; nothing is uploaded).
 //  10. app updates (appupdate.js, docs/DESKTOP.md "App updates"): Settings -> App version -> "Check for updates" asks
-//      GitHub for the latest release (manual; or once a day on launch when the user opted in) and "Download" opens the
-//      installer in the system browser. Nothing is installed by the app.
+//      GitHub for the latest release (manual; or once a day on launch when the user opted in) and "Download" fetches the
+//      installer into the Downloads folder itself (no browser needed), checks its size + sha256 and opens it (macOS
+//      mounts the dmg; a Windows .exe is only shown in its folder). Nothing is installed by the app.
+//      Every web link (openOutside) is awaited: when the system browser does not open, the page shows the link to copy.
 //  11. School network mode (netpolicy.js, docs/SCHOOL_IT.md): an IT admin's machine policy or a grown-up's switch stops
 //      every outbound connection except to an allow list (none by default): the page's (session.webRequest), the
 //      shell's own downloads (globalThis.fetch is gated) and both servers' (LUNA_NET_POLICY -> app/netgate.py).
@@ -300,11 +302,28 @@ function watchNetPolicy() {
     if (was !== netPol.school_network) { log(`school network: ${netPol.school_network ? "on" : "off"} (${netPol.source})`); jlog.event("school_network", { on: netPol.school_network, source: netPol.source }); }
   });
 }
+/**
+ * The system browser, awaited (appupdate.openWithFallback). A Mac whose default browser app is gone rejects
+ * (LaunchServices -10810, "The application can't be opened"): that is logged and the page is told, so it shows the
+ * link with a Copy button (window.__lunaLink, frontend/src/link_fallback_ui.js; the update row for its own links).
+ * Test runs only: OUTPOST_TEST_OPEN_FAIL=1 makes every open fail that way.
+ */
+function openOutside(url, where, onFail) {
+  return AU.openWithFallback(url, {
+    open: (u) => (TESTING && process.env.OUTPOST_TEST_OPEN_FAIL === "1" ? Promise.reject(new Error("test: no browser (-10810)")) : shell.openExternal(u)),
+    log: (...a) => log(`[${where}]`, ...a),
+    onFail: (u) => {
+      jlog.event("open_external_failed", { where });
+      if (onFail) onFail(u);
+      else if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.__lunaLink && window.__lunaLink(${JSON.stringify({ url: u })})`).catch(() => {});
+    },
+  });
+}
 /** A web link the page asked for: allow-listed (hardening.linkAllowed) and not switched off by the policy. */
 function openLink(url, kind) {
   if (!netPol.open_links) { log("link not opened (policy: open_links off)", url.slice(0, 120)); return; }
-  if (kind === "youtube") gate(win, url).then((ok) => { if (ok) shell.openExternal(url); });   // [media] grown-up gate
-  else if (kind === "external") shell.openExternal(url);
+  if (kind === "youtube") gate(win, url).then((ok) => { if (ok) return openOutside(url, "youtube"); });   // [media] grown-up gate
+  else if (kind === "external") openOutside(url, "link");
   else log("link refused (not on the list)", url.slice(0, 120));
 }
 const gate = G.createGate({ makeWindow: (o) => new BrowserWindow(o), file: path.join(__dirname, "gate.html"), log });
@@ -334,9 +353,16 @@ function createMain(origin) {
     if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin, /[?&]names=1\b/.test(url)); return; }
     // Settings → For grown-ups → "Export playtest": the grown-up picks where; nothing is uploaded
     if (PT.isExportUrl(url, origin)) { e.preventDefault(); exportPlaytest(origin); return; }
-    // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and opens the browser
+    // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and downloads the installer
     const up = AU.parseUpdateUrl(url, origin);
-    if (up) { e.preventDefault(); if (up.do === "check") checkAppUpdate("Settings"); else openUpdateTarget(up.what); return; }
+    if (up) {
+      e.preventDefault();
+      if (up.do === "check") checkAppUpdate("Settings");
+      else if (up.what === "download") downloadAppUpdate();
+      else if (up.what === "folder") showDownloaded();
+      else openUpdateTarget(up.what);
+      return;
+    }
     const kind = H.navigation(url, origin, G.classifyOpen);
     if (kind !== "ours") { e.preventDefault(); openLink(url, kind); }
   });
@@ -354,13 +380,17 @@ function createMain(origin) {
 
 // ---- Settings → App version → "Check for updates" (appupdate.js) ----------------------------------------------------
 // Test runs only (unpackaged, like OUTPOST_DIAG_SAVE_PATH): OUTPOST_TEST_APP_VERSION pretends to be another version;
-// OUTPOST_TEST_OPEN_LOG appends the URL "Download" would open to that file instead of opening a browser.
+// OUTPOST_TEST_OPEN_LOG appends the URL "Release page" / "Open the site" would open (and "openPath <file>" for a finished
+// download) to that file instead of opening anything; OUTPOST_TEST_DOWNLOAD_DIR saves the installer there, not Downloads.
 const TESTING = !app.isPackaged;
 const UPDATE_VERSION = (TESTING && process.env.OUTPOST_TEST_APP_VERSION) || APP_VERSION;
 const autoGate = AU.createAutoGate({ file: path.join(USER, "update-check.json") });
 let appUpdate = null, appUpdateBusy = false;
+let dl = null;              // the installer download: {state: "downloading"|"done"|"failed", got, total, name, reason, version}
+let dlFile = null;          // where the last finished download landed (for "Show in folder")
 function pushUpdate(s) {
   if (!win || win.isDestroyed()) return Promise.resolve(null);
+  if (dl && s && s.state === "available" && s.latest === dl.version) s = { ...s, dl };   // a check mid-download keeps its bar
   return win.webContents.executeJavaScript(`window.__lunaUpdate ? window.__lunaUpdate(${JSON.stringify(s)}) : null`).catch(() => null);
 }
 /** The page loaded: tell it the version; it answers whether the user opted in to the daily check. */
@@ -388,8 +418,54 @@ function openUpdateTarget(what) {
   const url = AU.targetUrl(appUpdate, what);
   if (!url) { log(`app update: open ${what} refused (nothing allow-listed to open)`); return; }
   log(`app update: opening ${what} ${url}`);
-  if (TESTING && process.env.OUTPOST_TEST_OPEN_LOG) { fs.appendFileSync(process.env.OUTPOST_TEST_OPEN_LOG, url + "\n"); return; }
-  shell.openExternal(url);
+  if (TESTING && process.env.OUTPOST_TEST_OPEN_LOG && process.env.OUTPOST_TEST_OPEN_FAIL !== "1") { fs.appendFileSync(process.env.OUTPOST_TEST_OPEN_LOG, url + "\n"); return; }
+  // no browser: the row shows the link with a Copy button
+  openOutside(url, "app update", (u) => pushUpdate({ ...(appUpdate || { state: "idle", current: UPDATE_VERSION }), link_failed: u }));
+}
+/**
+ * "Download": the main process fetches the installer itself (appupdate.downloadInstaller), never a browser. Into the
+ * Downloads folder under a fresh name, size + sha256 checked against the release; progress, done or failed go to the
+ * page. Then macOS opens the dmg (mounts it) and shows it in Finder; Windows only shows the .exe in its folder.
+ */
+async function downloadAppUpdate() {
+  if (!appUpdate || appUpdate.state !== "available" || !appUpdate.download) { log("app update: download refused (no installer found)"); return; }
+  if (dl && dl.state === "downloading") return;
+  const rel = appUpdate;
+  const dir = (TESTING && process.env.OUTPOST_TEST_DOWNLOAD_DIR) || app.getPath("downloads");
+  dl = { state: "downloading", got: 0, total: rel.size || null, name: rel.asset, version: rel.latest };
+  pushUpdate(rel);
+  log(`app update: downloading ${rel.asset} ${rel.latest} (${rel.size || "?"} bytes, ${rel.sha_url ? "sha256 file" : rel.digest ? "digest" : "size only"})`);
+  let lastPush = 0;
+  const realFetch = globalThis.fetch.__real || globalThis.fetch;   // getAsset checks the policy hop by hop itself
+  try {
+    const r = await AU.downloadInstaller({ last: rel, dir, fetchImpl: realFetch, appVersion: UPDATE_VERSION,
+      hostOk: (h) => NP.hostAllowed(h, netPol),
+      onProgress: (got, total) => {
+        dl = { ...dl, got, total };
+        const t = Date.now();
+        if (t - lastPush > 250) { lastPush = t; pushUpdate(appUpdate && appUpdate.latest === rel.latest ? appUpdate : rel); }
+      } });
+    dlFile = r.file;
+    dl = { state: "done", got: r.bytes, total: r.bytes, name: path.basename(r.file), version: rel.latest, verified: r.verified };
+    log(`app update: downloaded ${r.bytes} bytes to ${r.file} (${r.verified} checked)`);
+    jlog.event("app_update_download", { ok: true, latest: rel.latest, bytes: r.bytes, verified: r.verified });
+    pushUpdate(appUpdate && appUpdate.latest === rel.latest ? appUpdate : rel);
+    if (TESTING && process.env.OUTPOST_TEST_OPEN_LOG) { fs.appendFileSync(process.env.OUTPOST_TEST_OPEN_LOG, `openPath ${r.file}\n`); return; }
+    if (process.platform === "darwin") {
+      const err = await shell.openPath(r.file);   // mounts the dmg: the drag-to-Applications window, no browser
+      if (err) log(`app update: could not open the dmg: ${err}`);
+    }
+    shell.showItemInFolder(r.file);   // Windows: only this; the installer is never run by the app
+  } catch (e) {
+    dl = { state: "failed", reason: e.kind || "error", name: rel.asset, version: rel.latest };
+    log(`app update: download failed (${dl.reason}): ${e.message}`);
+    jlog.event("app_update_download", { ok: false, latest: rel.latest, reason: dl.reason });
+    pushUpdate(appUpdate && appUpdate.latest === rel.latest ? appUpdate : rel);
+  }
+}
+function showDownloaded() {
+  if (dlFile && fs.existsSync(dlFile)) shell.showItemInFolder(dlFile);
+  else shell.openPath(app.getPath("downloads")).then((err) => { if (err) log(`app update: could not open Downloads: ${err}`); });
 }
 
 // ---- Settings → Help & diagnostics (#92, diag.js) -------------------------------------------------------------------
