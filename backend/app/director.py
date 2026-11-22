@@ -10,8 +10,10 @@ _mission_turn and docs/MISSION_CONTRACT.md.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import inspect
 import re
+from dataclasses import dataclass, field
 
 from . import claims, knowledge, steering
 from .knowledge.answer import detect_attr, did_you_mean
@@ -417,10 +419,24 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
     return None, "", []
 
 
+# A graph run (app/graph/turn.py) sets this around its call to direct(): the handlers then run as nodes of a subgraph of
+# that run, so the turn trace shows which handler answered (docs/TURN_GRAPH.md). Unset (/api/ask, tools): a plain loop.
+RUN: contextvars.ContextVar = contextvars.ContextVar("director_run", default=None)
+
+
 async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None) -> dict:
     """One kid turn -> the old single-action response (docs/CONTRACT.md), plus `decisions:[…]` (docs/SESSION_CONTRACT.md
     §2): the same answer as typed, ordered decisions. The session Director (session.py) adds proactive ones around them."""
-    out = await _direct(text, read, gaz, index, context)
+    run = RUN.get()
+    if run is not None:
+        d = DirectState.make(text, read, gaz, index, context)
+        await run.subgraph(direct_graph(), d)
+        return d.result
+    return finish(await _direct(text, read, gaz, index, context), text, gaz, context)
+
+
+def finish(out: dict, text: str, gaz: Gazetteer, context: dict | None = None) -> dict:
+    """Steering: the response -> its typed decisions (decisions_for: the say's style from the situation)."""
     ctx = dict(context or {})
     p = gaz.places.get(out.get("place")) if out.get("place") else None
     if p is not None:
@@ -434,72 +450,133 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     return out
 
 
+@dataclass
+class DirectState:
+    """One turn through the handlers: what they share (the corrected words, the linked place) and the answer."""
+    text: str
+    read: dict
+    gaz: Gazetteer
+    index: MomentIndex
+    context: dict | None
+    ctx: dict
+    sess: str
+    q: str
+    short: bool
+    out: dict
+    target: str = ""
+    corrected: bool = False
+    wants_crew: bool = False
+    place: Place | None = None
+    how: str = ""
+    cands: list = field(default_factory=list)
+    raw: dict | None = None          # the handler's answer
+    handler: str | None = None       # which handler answered
+    result: dict | None = None       # after steering
+
+    @classmethod
+    def make(cls, text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None):
+        ctx = context or {}
+        # [D6] one answer length for every kid: never chosen from a guess at how the kid feels
+        out = {"action": "say", "say": "", "place": None, "view": None, "moment": None, "ask": None, "claims": [],
+               "readout": read, "source": "rules", "corrected": False}
+        return cls(text, read, gaz, index, context, ctx, str(ctx.get("session") or ""), norm(text), False, out)
+
+
 async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None) -> dict:
-    ctx = context or {}
-    sess = str(ctx.get("session") or "")
-    q = norm(text)
-    short = False   # [D6] one answer length for every kid: never chosen from a guess at how the kid feels
-    out = {"action": "say", "say": "", "place": None, "view": None, "moment": None, "ask": None, "claims": [],
-           "readout": read, "source": "rules", "corrected": False}
+    d = DirectState.make(text, read, gaz, index, context)
+    for _name, h in HANDLERS:
+        r = await h(d)
+        if r is not None:
+            return r
+    raise RuntimeError("no handler answered")   # unreachable: the local brain always answers
 
-    # 1. Privacy first: never send a child's address, phone or name anywhere (no LLM call).
-    if _hard_pii(read, gaz) or NAME_GIVEN.search(q):
-        return {**out, "action": "guard", "say": _course_line("guard", GUARD), "source": "arc" if read.get("available") else "rules"}
 
-    # 1b. Mission mode: commands, status, Houston. Non-mission questions fall through to the Moon explorer below.
-    if ctx.get("mission"):
-        m = await _mission_turn(text, read, ctx, out, index)
-        if m is not None:
-            return m
+# The handlers, in order: the first to answer (not None) wins. Each is the code that was inline in _direct.
+async def h_privacy(d: DirectState) -> dict | None:
+    """1. Privacy first: never send a child's address, phone or name anywhere (no LLM call)."""
+    if _hard_pii(d.read, d.gaz) or NAME_GIVEN.search(d.q):
+        return {**d.out, "action": "guard", "say": _course_line("guard", GUARD),
+                "source": "arc" if d.read.get("available") else "rules"}
+    return None
 
-    target, corrected = _after_correction(text)
-    out["corrected"] = corrected
-    wants_crew = bool(WANTS_CREW.search(q))
 
-    # 2. Misconceptions: gentle correction + a related moment as evidence.
+async def h_mission(d: DirectState) -> dict | None:
+    """1b. Mission mode: commands, status, Houston (mission nlu). Non-mission questions fall through to the explorer."""
+    if d.ctx.get("mission"):
+        return await _mission_turn(d.text, d.read, d.ctx, d.out, d.index)
+    return None
+
+
+async def h_correction(d: DirectState) -> None:
+    """"No wait, I mean Tycho": the words after the correction (never answers by itself)."""
+    d.target, d.corrected = _after_correction(d.text)
+    d.out["corrected"] = d.corrected
+    d.wants_crew = bool(WANTS_CREW.search(d.q))
+    return None
+
+
+async def h_misconception(d: DirectState) -> dict | None:
+    """2. Misconceptions: gentle correction + a related moment as evidence."""
     for pat, fix, pid in MISCONCEPTIONS:
-        if pat.search(q):
-            p = gaz.places.get(pid) if pid else None
-            m = index.best_moment(pid) if pid else None
-            return {**out, "action": "say", "say": _short(fix) if short else fix, "place": p.id if p else None,
+        if pat.search(d.q):
+            p = d.gaz.places.get(pid) if pid else None
+            m = d.index.best_moment(pid) if pid else None
+            return {**d.out, "action": "say", "say": _short(fix) if d.short else fix, "place": p.id if p else None,
                     "view": _view(p), "moment": public(m), "source": "misconception",
                     "claims": [{"text": fix, "status": "verified", "source": "fact sheet (misconception)"}]}
+    return None
 
-    # 3. "What does albedo mean?" -> glossary (useful while a crew moment plays).
-    if DEFINE.search(q):
-        for form, (term, explain) in index.glossary.items():
-            if re.search(rf"\b{re.escape(form)}\b", q):
-                return {**out, "action": "say", "say": f"{term.capitalize()}: {explain}", "source": "glossary",
+
+async def h_glossary(d: DirectState) -> dict | None:
+    """3. "What does albedo mean?" -> glossary (useful while a crew moment plays)."""
+    if DEFINE.search(d.q):
+        for form, (term, explain) in d.index.glossary.items():
+            if re.search(rf"\b{re.escape(form)}\b", d.q):
+                return {**d.out, "action": "say", "say": f"{term.capitalize()}: {explain}", "source": "glossary",
                         "claims": [{"text": explain, "status": "verified", "source": "glossary"}]}
+    return None
 
-    # 4. Earthrise.
-    if re.search(r"earth ?rise|see (the )?earth|earth from", target):
-        m = index.best_in_clip("earthrise")
-        return {**out, "action": "play" if m else "say", "say": EARTHRISE, "view": {"lat": 5, "lon": -100},
+
+async def h_earthrise(d: DirectState) -> dict | None:
+    """4. Earthrise."""
+    if re.search(r"earth ?rise|see (the )?earth|earth from", d.target):
+        m = d.index.best_in_clip("earthrise")
+        return {**d.out, "action": "play" if m else "say", "say": EARTHRISE, "view": {"lat": 5, "lon": -100},
                 "moment": public(m)}
+    return None
 
-    # 4b. Mission sounds ("play the launch", "what did liftoff sound like") -> the Artemis voices clip.
+
+async def h_sounds(d: DirectState) -> dict | None:
+    """4b. Mission sounds ("play the launch", "what did liftoff sound like") -> the Artemis voices clip."""
     for pat, clip_id, line in SOUNDS:
-        if pat.search(target) and (SOUND_ASK.search(q) or clip_id in ("duke", "lovell")):
-            m = _sound_moment(clip_id, target, index)
+        if pat.search(d.target) and (SOUND_ASK.search(d.q) or clip_id in ("duke", "lovell")):
+            m = _sound_moment(clip_id, d.target, d.index)
             if m:
-                return {**out, "action": "play", "say": line, "moment": public(m), "source": "sounds"}
+                return {**d.out, "action": "play", "say": line, "moment": public(m), "source": "sounds"}
+    return None
 
-    # 4c. Hardware tours ("show me the rovers", "what's left on the Moon"), unless one artifact is named.
-    named = gaz.match_text(target)
+
+async def h_tour(d: DirectState) -> dict | None:
+    """4c. Hardware tours ("show me the rovers", "what's left on the Moon"), unless one artifact is named."""
+    named = d.gaz.match_text(d.target)
     if not (named and named.kind == "artifact"):
-        tour = _tour(target, gaz)
-        if tour and WHO.search(q):  # "who drove the rovers?" -> every crew, from the data
-            crews = [f"{_names(p.crew)} on {p.mission}" for p in map(gaz.places.get, tour[0]) if p.crew]
+        tour = _tour(d.target, d.gaz)
+        if tour and WHO.search(d.q):  # "who drove the rovers?" -> every crew, from the data
+            crews = [f"{_names(p.crew)} on {p.mission}" for p in map(d.gaz.places.get, tour[0]) if p.crew]
             if crews:
                 say = "These astronauts did: " + "; ".join(crews) + "."
                 tour = (tour[0], say)
         if tour:
-            return {**out, "action": "tour", "places": tour[0], "say": tour[1], "source": "tour"}
+            return {**d.out, "action": "tour", "places": tour[0], "say": tour[1], "source": "tour"}
+    return None
 
-    # 5. Link a place: alias in the (corrected) words, else an Arc mention by fuzzy match (with an ask band).
+
+async def h_link(d: DirectState) -> dict | None:
+    """5. Link a place: alias in the (corrected) words, else an Arc mention by fuzzy match (with an ask band); else the
+    last place, for "tell me more about it"."""
+    target, read, gaz, q = d.target, d.read, d.gaz, d.q
     place, how, cands = _link(target, read, gaz)
-    if place is None and corrected and not cands:
+    if place is None and d.corrected and not cands:
         place, how, cands = _link(q, read, gaz)
     if place is None and cands:
         names = [f"{p.name}" for p, _ in cands]
@@ -510,39 +587,94 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
                 hd, hp = confirm_heard(how, read, target, cands[0][0], gaz)
                 if hd:
                     ask.update(heard=hd, p=None if hp is None else round(float(hp), 3))
-        return {**out, "action": "ask", "say": question, "ask": ask,
+        return {**d.out, "action": "ask", "say": question, "ask": ask,
                 "place": cands[0][0].id, "view": _view(cands[0][0]),
                 "source": {"confirm": "ear_confirm", "near": "ear_near"}.get(how, "arc+link")}
-    last = gaz.places.get(ctx.get("last_place") or "")
-    if place is None and last and (MORE.search(target) or wants_crew or (last.kind == "artifact" and WHO.search(q))):
+    last = gaz.places.get(d.ctx.get("last_place") or "")
+    if place is None and last and (MORE.search(target) or d.wants_crew or (last.kind == "artifact" and WHO.search(q))):
         place, how = last, "context"
+    d.place, d.how, d.cands = place, how, cands
+    return None
 
-    if place is None:
-        if re.search(r"\b(far|back|dark|other) side\b", target):
-            return {**out, "action": "view", "view": {"lat": 0, "lon": 180}, "say": _short(FAR) if short else FAR}
-        if re.search(r"\b(near side|side we see|front)\b", target):
-            return {**out, "action": "view", "view": {"lat": 0, "lon": 0}, "say": _short(NEAR) if short else NEAR}
 
+async def h_sides(d: DirectState) -> dict | None:
+    """The far side / the near side, when no place is named."""
+    if d.place is None:
+        if re.search(r"\b(far|back|dark|other) side\b", d.target):
+            return {**d.out, "action": "view", "view": {"lat": 0, "lon": 180}, "say": _short(FAR) if d.short else FAR}
+        if re.search(r"\b(near side|side we see|front)\b", d.target):
+            return {**d.out, "action": "view", "view": {"lat": 0, "lon": 0}, "say": _short(NEAR) if d.short else NEAR}
+    return None
+
+
+async def h_artifact(d: DirectState) -> dict | None:
+    """A piece of hardware left on the Moon: its story, its crew, its voice."""
+    place = d.place
     if place is not None and place.kind == "artifact":
-        return await _artifact(place, text, q, {**out, "place": place.id, "view": _view(place), "source": how},
-                               gaz, index, short, sess)
+        return await _artifact(place, d.text, d.q, {**d.out, "place": place.id, "view": _view(place), "source": d.how},
+                               d.gaz, d.index, d.short, d.sess)
+    return None
 
+
+async def h_place(d: DirectState) -> dict | None:
+    """A place: crew request -> play the best moment with one bridge line; else fly there with a claim-checked line."""
+    place, how, text = d.place, d.how, d.text
     if place is not None:
-        moment = index.best_moment(place.id)
-        base = {**out, "place": place.id, "view": _view(place), "source": how}
-        if wants_crew:  # crew request -> play the best moment, one bridge line
+        moment = d.index.best_moment(place.id)
+        base = {**d.out, "place": place.id, "view": _view(place), "source": how}
+        if d.wants_crew:
             if moment:
                 return {**base, "action": "play", "say": _bridge(moment), "moment": public(moment)}
-            say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=True, session=sess)
+            say, cl, src = await claims.guide_line([place.id], text, d.gaz, d.index.facts, short=True, session=d.sess)
             return {**base, "action": "fly", "say": f"{NO_MOMENT} {say}".strip(), "claims": cl,
                     "source": f"{how}+{src}"}
-        say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=short, session=sess)
+        say, cl, src = await claims.guide_line([place.id], text, d.gaz, d.index.facts, short=d.short, session=d.sess)
         return {**base, "action": "fly", "say": say, "claims": cl, "moment": public(moment),
                 "source": f"{how}+{src}"}
+    return None
 
-    # 6. Nothing matched: the local brain. Card alias + attribute rules, else the embedder's nearest card+attribute
-    #    (accept -> answer, ask band -> "Did you mean A or B?", below -> an honest "I don't know that one yet").
-    return await _brain_turn(text, out, gaz, index, sess, short)
+
+async def h_brain(d: DirectState) -> dict:
+    """6. Nothing matched: the local brain. Card alias + attribute rules, else the embedder's nearest card+attribute
+    (accept -> answer, ask band -> "Did you mean A or B?", below -> an honest "I don't know that one yet")."""
+    return await _brain_turn(d.text, d.out, d.gaz, d.index, d.sess, d.short)
+
+
+HANDLERS = [("privacy", h_privacy), ("mission", h_mission), ("correction", h_correction),
+            ("misconception", h_misconception), ("glossary", h_glossary), ("earthrise", h_earthrise),
+            ("sounds", h_sounds), ("tour", h_tour), ("link", h_link), ("sides", h_sides), ("artifact", h_artifact),
+            ("place", h_place), ("brain", h_brain)]
+COMMIT_HANDLERS = ("mission",)   # applies orders to the sim: a barge-in no longer cancels the turn once it starts
+_GRAPH: list = []
+
+
+def direct_graph():
+    """The handlers as a graph (app/graph/runtime.py): a chain, the first answer goes to steering."""
+    if _GRAPH:
+        return _GRAPH[0]
+    from .graph.runtime import END, Graph, goto
+
+    def node(name, fn):
+        async def run_handler(d: DirectState, run):
+            r = await fn(d)
+            if r is not None:
+                d.raw, d.handler = r, name
+                return goto("steering")
+            return None
+        return run_handler
+
+    def steer(d: DirectState, run):
+        d.result = finish(d.raw, d.text, d.gaz, d.context)
+        return END
+
+    g = Graph("direct")
+    for name, fn in HANDLERS:
+        g.node(name, node(name, fn), commit=name in COMMIT_HANDLERS,
+               view=lambda d, _n=name: {"handler": d.handler} if d.handler == _n else None)
+    g.chain(*[n for n, _ in HANDLERS])
+    g.node("steering", steer, view=lambda d: {"action": (d.result or {}).get("action")})
+    _GRAPH.append(g.check())
+    return _GRAPH[0]
 
 
 async def _brain_turn(text: str, out: dict, gaz: Gazetteer, index: MomentIndex, sess: str, short: bool) -> dict:

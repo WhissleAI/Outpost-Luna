@@ -124,8 +124,9 @@ Run: `make setup && make data && make dev`, then open http://localhost:5173. Tes
 
 `/api/ask` answers one turn. The session Director (`backend/app/session.py`, contract in
 [`SESSION_CONTRACT.md`](SESSION_CONTRACT.md)) keeps one live session per browser on `WS /ws/session`. It reads every
-stream, keeps one belief state, and sends several typed decisions back. The turn logic is still `director.direct()`, which
-now also returns `decisions:[…]` (so `/api/ask` returns them too, beside the old fields).
+stream, keeps one belief state, and sends several typed decisions back. Each turn is one run of the turn graph
+(`backend/app/graph/turn.py`, [`TURN_GRAPH.md`](TURN_GRAPH.md)); its rules are still `director.direct()`'s handlers,
+which also return `decisions:[…]` (so `/api/ask` returns them too, beside the old fields).
 
 ```
  INPUTS                               BELIEF (Session.belief)                 POLICY                       DECISIONS

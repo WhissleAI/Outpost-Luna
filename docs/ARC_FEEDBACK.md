@@ -15,7 +15,7 @@ kid turns, plus a guard layer (`src/guard.c`). The app now uses it:
 
 - **Safety reads use `domain: "kids"`** (`backend/app/safety.py` `tagger_read` → `POST /v1/tag`), with
   `command_context: true` on the command screens (`cabin`, `brief`, `ride`), so "kill the heaters" is a command.
-- **The Director's read-out stays on `assistant`** (`session._direct_turn`, `/api/ask`, `claims.py`). On the same model
+- **The Director's read-out stays on `assistant`** (the turn graph's `readout` node, `backend/app/graph/turn.py`; `/api/ask`; `claims.py`). On the same model
   files the 0.5.0 library gives byte-identical `assistant` / `news` / `talk` output to the 0.3 library (1,500 round-11
   kid texts × 3 domains: 0 differences), so the shipped r10 weights see exactly what they saw.
 - **Model files unchanged** (the tagger asset, v1). The kids thresholds are built into the library (`src/kids_thr.inc`);

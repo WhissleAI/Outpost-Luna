@@ -17,6 +17,8 @@ turn the router sees is appended to a JSONL file in the app data folder, as TEXT
               (guarded), what the guarded runtime finally did
       room    the room-state estimate (calm / busy / too loud) when the estimator is present
       wav     only in a grown-up's Playtest session (playtest.py): the file name of this turn's local audio clip
+      trace   the turn graph's per-node trace (trace_view, docs/TURN_GRAPH.md): node names, ms, the node each
+              decision node chose, small enum / number views; never words
 
 Never: audio in the text log, the session id, the kid's call sign or any name, timestamps finer than the day (turn
 times are seconds since the session's first logged turn). Nothing leaves the device: a developer imports a log only
@@ -196,6 +198,43 @@ def seen_view(rec: dict | None, explain: dict | None = None) -> dict | None:
         out["cls"] = explain.get("cls")
         out["bare"] = bool(explain.get("bare"))
     return out
+
+
+# The turn graph's per-node trace (app/graph, docs/TURN_GRAPH.md), on a turn line as `trace`: node names, wall ms, the
+# node a decision node chose, and each node's own small view (router outcome / reason / intent, the director handler,
+# the model's act and p), numbers and code enums only: never words, never a name.
+_TRACE_NODE = re.compile(r"^[a-z_]{1,24}(/[a-z_]{1,24}){0,3}$")
+_TRACE_ENUM = re.compile(r"^[a-z][a-z0-9_+.:-]{0,39}$")
+TRACE_MAX = 48
+
+
+def trace_view(trace: list | None) -> list | None:
+    """The graph run's trace -> what a turn line keeps: [{"n", "ms", "go"?, "o"?, "par"?, "cancelled"?}, ...]."""
+    out: list = []
+    for t in (trace or [])[:TRACE_MAX]:
+        n = t.get("n") if isinstance(t, dict) else None
+        if not isinstance(n, str) or not _TRACE_NODE.match(n):
+            continue
+        e: dict = {"n": n}
+        if isinstance(t.get("ms"), (int, float)):
+            e["ms"] = round(float(t["ms"]), 2)
+        if isinstance(t.get("go"), str) and _TRACE_NODE.match(t["go"]):
+            e["go"] = t["go"]
+        o = t.get("o")
+        if isinstance(o, dict):
+            v = {k: (x if isinstance(x, (bool, int, float)) else x if isinstance(x, str) and _TRACE_ENUM.match(x)
+                     else None) for k, x in o.items() if isinstance(k, str) and _TRACE_NODE.match(k)}
+            v = {k: x for k, x in v.items() if x is not None}
+            if v:
+                e["o"] = v
+        if isinstance(t.get("par"), dict):
+            e["par"] = {k: round(float(x), 2) for k, x in t["par"].items()
+                        if isinstance(k, str) and _TRACE_NODE.match(k) and isinstance(x, (int, float))}
+        for k in ("cancelled", "interrupt"):
+            if t.get(k):
+                e[k] = True
+        out.append(e)
+    return out or None
 
 
 _DIR_SIGN = {"percent": 0, "delta": 1, "little": 1}
