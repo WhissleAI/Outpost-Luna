@@ -5,6 +5,8 @@
 //     cadet profile it was turned on from; other profiles on this computer are never collected.
 //   * Audio is a separate switch, off by default. A turn counter, "Export to share" (one redacted zip, saved where the
 //     adult chooses: the desktop shell's save dialog, or a download in the browser) and "Delete everything".
+//   * It switches itself off 4 hours after it was turned on, or when the app quits (the backend's `until` / boot tag);
+//     the row says "On until HH:MM". Collected turns stay until exported or deleted.
 //   * Nothing is sent. No network.
 import { turnProfileId } from "./prefs.js";
 import { holdButtonHtml, bindHold } from "./reset.js";
@@ -16,6 +18,7 @@ export const COPY = {
   title: "Help improve Outpost Luna",
   off: "Off. Nothing extra is kept.",
   on: "On for this profile.",
+  onUntil: t => `On until ${t}.`,
   what: "Keeps the words it heard and what the app did, to improve it.",
   where: "Stays on this computer. Nothing is sent.",
   share: "You choose whether to export and share a file.",
@@ -25,7 +28,8 @@ export const COPY = {
   consent: ["Kept: the words the app heard, and what it decided and said.",
     "Audio clips only if you turn them on below.",
     "No names. It stays on this computer. Nothing is sent.",
-    "You can export a file to share, or delete everything."],
+    "You can export a file to share, or delete everything.",
+    "It turns off after 4 hours, or when you quit."],
   agree: "I'm an adult, and I agree.",
   go: "Turn on",
   cancel: "Cancel",
@@ -47,6 +51,12 @@ export const isDesktop = (ua = typeof navigator !== "undefined" ? navigator.user
 /** Is it on for the profile playing now? (st = GET /api/collect) */
 export const onHere = (st, pid) => !!(st && st.on && st.profile === pid);
 
+/** "On until HH:MM" in the computer's own clock (until = epoch seconds from the backend). */
+export function hhmm(until) {
+  const d = new Date(until * 1000);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 /** The part's HTML (pure; tests/collect_ui.test.js). view = "main" | "consent". */
 export function viewHtml({ st = null, pid = "p1", view = "main" } = {}) {
   if (view === "consent") {
@@ -58,7 +68,7 @@ export function viewHtml({ st = null, pid = "p1", view = "main" } = {}) {
       <button type="button" class="btn" data-col-cancel>${esc(COPY.cancel)}</button></span></div>`;
   }
   const on = onHere(st, pid), turns = (st && st.turns) || 0, clips = (st && st.clips) || 0;
-  const head = `<p class="set-help pt-status"><span class="pt-lamp${on ? " is-rec" : " is-off"}" aria-hidden="true"></span>${esc(on ? COPY.on : COPY.off)}${turns ? ` ${esc(COPY.count(turns))}` : ""}${clips ? ` ${esc(COPY.clips(clips))}` : ""}</p>
+  const head = `<p class="set-help pt-status"><span class="pt-lamp${on ? " is-rec" : " is-off"}" aria-hidden="true"></span>${esc(on ? (st.until ? COPY.onUntil(hhmm(st.until)) : COPY.on) : COPY.off)}${turns ? ` ${esc(COPY.count(turns))}` : ""}${clips ? ` ${esc(COPY.clips(clips))}` : ""}</p>
     <p class="set-help">${esc(COPY.what)} ${esc(COPY.where)} ${esc(COPY.share)}</p>`;
   const sw = on
     ? `<label class="a11y-sw"><input type="checkbox" data-col-audio ${st && st.audio ? "checked" : ""}><span><b>${esc(COPY.audio)}</b><small>${esc(COPY.audioHelp)}</small></span></label>
@@ -72,6 +82,14 @@ export function viewHtml({ st = null, pid = "p1", view = "main" } = {}) {
 }
 
 // ---- the top bar's tag, while it is on for this profile ----
+let tagTimer = 0;
+/** When it switches itself off (until), ask again then, so the tag and the row go. */
+function recheck(st) {
+  if (typeof window === "undefined" || typeof setTimeout !== "function") return;
+  clearTimeout(tagTimer);
+  if (st && st.on && st.until) tagTimer = setTimeout(() => refresh(), Math.min(Math.max(1000, st.until * 1000 - Date.now() + 1000), 2 ** 31 - 1));
+  if (tagTimer && typeof tagTimer.unref === "function") tagTimer.unref();   // node tests: never hold the process
+}
 export function setTag(on, doc = typeof document !== "undefined" ? document : null) {
   if (!doc) return;
   let t = doc.getElementById("colTag");
@@ -92,6 +110,7 @@ export async function refresh(fetchFn = typeof fetch === "function" ? fetch : nu
   if (!fetchFn) return null;
   const st = await get(fetchFn);
   setTag(onHere(st, pid()));
+  recheck(st);
   return st;
 }
 
@@ -132,7 +151,7 @@ const section = {
       if (f) f.focus({ preventScroll: true });
     };
     const say = t => { const s = zone.querySelector("[data-col-state]"); if (s) s.textContent = t; };
-    const load = async (focus) => { st = await get(fetchFn); setTag(onHere(st, pid())); draw(focus); };
+    const load = async (focus) => { st = await get(fetchFn); setTag(onHere(st, pid())); recheck(st); draw(focus); };
     const set = async (body, focus) => {
       const r = await post("/api/collect", body, fetchFn).catch(() => null);
       view = "main";

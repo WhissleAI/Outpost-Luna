@@ -157,7 +157,7 @@ this checkout ships. v1 turns count under `unknown`.
 ## 1d. Adult sessions (real labelled turns)
 
 Early users are adults. Settings → For grown-ups → **Help improve Outpost Luna** is an adult's opt-in (off by default,
-consent screen, one profile, audio a separate switch, export a redacted zip of only those turns, delete everything).
+consent screen, one profile, audio a separate switch, off again 4 hours after it was turned on or at quit, export a redacted zip of only those turns, delete everything).
 The 25–30 minute session protocol, the consent text and the labelling tool (`make director-label LOG=<zip>`,
 `director_model/label_ui/`) are in `docs/ADULT_SESSIONS.md`. The tool's labels are `reviewed.jsonl` rows with `fix` plus
 `nav`, `nav_arg`, `cmd`, `place`, `reply` and `split`; the import puts them in the item's gold.

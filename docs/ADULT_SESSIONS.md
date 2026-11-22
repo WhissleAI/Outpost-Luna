@@ -25,7 +25,11 @@ Settings → For grown-ups (the 3-second hold, then the teacher PIN when one is 
   collected and never gets audio from it. Use a profile of your own for the session (Settings → Cadets → Add).
 - **Audio is a separate switch**, off by default: "Also keep audio clips". Ask for it (§2): the ear's errors are only
   learnable with the audio.
-- **While it is on** a small **Improving** tag shows in the top bar. The panel counts the turns and clips kept.
+- **While it is on** a small **Improving** tag shows in the top bar. The panel says **On until HH:MM** and counts the
+  turns and clips kept.
+- **It switches itself off** 4 hours after it was turned on, or when the app quits, whichever comes first (like the
+  Playtest). Changing the audio switch does not restart the clock. The turns it collected stay until they are exported
+  or deleted (and the turn log's own 30-day limit). A session that runs long, or restarts the app, turns it on again.
 - **Export to share…** writes one zip where the tester chooses (a save dialog in the desktop app). It holds only the
   collected turns, redacted again on the way out, their outcome signals and clips, and a manifest. Nothing is sent.
 - **Hold to delete everything** removes the collected turns and clips (the rest of the turn log stays).
@@ -56,6 +60,9 @@ in the session sheet. The in-app consent screen is the second, recorded step.
 > **Please don't** say real names, addresses, phone numbers or anything private during the session. If you do, the
 > app replaces most of it, but not all of it is guaranteed.
 >
+> **It turns itself off** 4 hours after you turn it on, or when you quit the app, whichever comes first. What it kept
+> stays on this computer until you export or delete it.
+>
 > **Your choice, at every step.** You can stop at any time, skip any task, turn audio off, or delete everything from
 > Settings → For grown-ups → Help improve Outpost Luna → Hold to delete everything. At the end, you choose whether to
 > export a file and give it to us. Until you do, nobody else has it.
@@ -77,7 +84,8 @@ default), with typing only where a card says so.
 1. The app is on the latest release, the room is normal-quiet (a home or an office, not a studio).
 2. Settings → Cadets → **Add** a profile for the tester (any call sign; it is redacted anyway).
 3. The facilitator reads the consent text (§2). The tester turns it on: Settings → For grown-ups (hold 3 s) →
-   Help improve Outpost Luna → Turn on → tick → Turn on, then **Also keep audio clips** if they agree.
+   Help improve Outpost Luna → Turn on → tick → Turn on. The facilitator asks them to turn on **Also keep audio
+   clips** (it is off by default); it is their choice. The row now reads "On until HH:MM", four hours ahead.
 4. Sound on, at a normal level: the app's own voice in the room is part of what we need (echo, barge-in). The
    facilitator's laptop or phone stays muted.
 
@@ -254,7 +262,7 @@ applies (about 15 % test).
 - **Consent wording** (§2 and the in-app screen): reviewed by a lawyer before testers outside the team? The text says
   "a few people on the team may listen to the clips"; confirm who.
 - **Who runs the sessions**, and where the zips are kept (one team folder, access list, deletion on request).
-- **Persistence:** the opt-in stays on for the profile until turned off (the Playtest switches itself off after 3 h).
-  Should it also expire, for example after 4 hours or at quit?
-- **Audio default:** off, a separate switch, as asked. Sessions get far more value with audio; the facilitator asks.
+- **Expiry (decided 2026-11-22):** it switches itself off 4 hours after it was turned on, or at quit; collected turns
+  stay until exported or deleted.
+- **Audio default (decided):** off, a separate switch; the session runner asks the tester to turn it on.
 - **Pay or thank-you** for testers, and whether testers may be team members' family (adults only).

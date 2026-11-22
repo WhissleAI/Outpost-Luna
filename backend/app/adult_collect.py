@@ -11,12 +11,17 @@ behind the grown-up gate, to keep their own turns with everything a labeller nee
     is off, tagged `"collect": true`, with the extra label fields (`reply`: what the app said and did) and the outcome
     signals (repeat, negate, misheard, barge, nav_back, undo ...).
   * Audio is a SEPARATE switch (`audio`, off by default): each heard turn's clip, like a Playtest (playtest.py).
+  * It switches itself off MAX_S (4 hours) after it was turned on, or when the app quits, whichever comes first
+    (like the Playtest). The stored opt-in carries this process's random `boot` tag, so a new backend process (the
+    app started again) reads it as off. The settings row shows "On until HH:MM" (`until`, epoch seconds). Collected
+    turns stay until exported or deleted (and the turn log's own 30-day retention).
   * Nothing is sent. "Export to share" writes ONE zip with only the collected lines (redacted again on the way out),
     their signals and clips, where the adult chooses. "Delete everything" removes the collected lines and clips.
 
-State: <turnlog dir>/collect.json {"on", "audio", "profile", "day", "consent_v"}. No name, no device id.
+State: <turnlog dir>/collect.json {"on", "audio", "profile", "day", "consent_v", "until", "boot"}. No name, no device
+id.
 
-  GET  /api/collect            {on, audio, profile, turns, clips, clip_bytes}
+  GET  /api/collect            {on, audio, profile, until, max_s, turns, clips, clip_bytes}
   POST /api/collect            {"on": bool, "audio": bool, "consent": true, "adult": true, "profile": "p1"}
                                + the page's X-Outpost-Reset header (turning on needs consent + adult; off never does)
   POST /api/collect/export     the zip, as the response body ({"app_version"} in the body)
@@ -29,7 +34,9 @@ import io
 import json
 import os
 import re
+import secrets
 import threading
+import time
 import zipfile
 from pathlib import Path
 
@@ -38,6 +45,8 @@ from fastapi import APIRouter, HTTPException, Request, Response
 FORMAT = "outpost-luna-collect"
 FORMAT_VERSION = 1
 CONSENT_V = 1                       # bump when the consent text changes (a stored opt-in under an older text is off)
+MAX_S = 4 * 3600.0                  # switches itself off this long after it was turned on
+BOOT = secrets.token_hex(6)          # this backend process: an opt-in from an earlier run of the app is off
 _PID = re.compile(r"^p[1-6]$")
 _lock = threading.Lock()
 _cache: dict = {"path": None, "mtime": None, "st": None}
@@ -50,25 +59,37 @@ def _path() -> Path:
     return turnlog.log_dir() / "collect.json"
 
 
+def _now() -> float:
+    return time.time()
+
+
+_OFF = {"on": False, "audio": False, "profile": None, "day": None, "until": None}
+
+
 def state() -> dict:
-    """The stored opt-in (off when missing, unreadable or given under an older consent text)."""
+    """The stored opt-in: off when missing, unreadable, given under an older consent text, turned on by an earlier run
+    of the app (another `boot`), or past its `until` (MAX_S after it was turned on)."""
     p = _path()
     try:
         mt = p.stat().st_mtime_ns
     except OSError:
-        return {"on": False, "audio": False, "profile": None}
-    if _cache["path"] == str(p) and _cache["mtime"] == mt and _cache["st"] is not None:
-        return dict(_cache["st"])
-    try:
-        st = json.loads(p.read_text())
-    except (OSError, ValueError):
-        st = {}
-    ok = isinstance(st, dict) and st.get("consent_v") == CONSENT_V and st.get("on") is True
-    out = {"on": bool(ok), "audio": bool(ok and st.get("audio") is True),
-           "profile": st.get("profile") if ok and _PID.match(str(st.get("profile") or "")) else None,
-           "day": st.get("day") if ok else None}
-    _cache.update(path=str(p), mtime=mt, st=out)
-    return dict(out)
+        return dict(_OFF)
+    if _cache["path"] == str(p) and _cache["mtime"] == mt and _cache["st"] is not None and _cache.get("boot") == BOOT:
+        out = dict(_cache["st"])
+    else:
+        try:
+            st = json.loads(p.read_text())
+        except (OSError, ValueError):
+            st = {}
+        ok = isinstance(st, dict) and st.get("consent_v") == CONSENT_V and st.get("on") is True and \
+            st.get("boot") == BOOT and isinstance(st.get("until"), (int, float))
+        out = {"on": bool(ok), "audio": bool(ok and st.get("audio") is True),
+               "profile": st.get("profile") if ok and _PID.match(str(st.get("profile") or "")) else None,
+               "day": st.get("day") if ok else None, "until": float(st["until"]) if ok else None}
+        _cache.update(path=str(p), mtime=mt, st=out, boot=BOOT)
+    if out["on"] and _now() >= out["until"]:
+        return dict(_OFF)
+    return out
 
 
 def _save(st: dict) -> None:
@@ -110,8 +131,11 @@ def set_state(on: bool, audio: bool = False, consent: bool = False, adult: bool 
             raise ValueError("an adult has to read and accept the consent text first")
         if not _PID.match(str(profile or "")):
             raise ValueError("which profile is collecting?")
+        cur = state()
+        # changing the audio switch keeps the clock; turning on (again) starts MAX_S from now
+        until = cur["until"] if cur["on"] and cur["profile"] == profile else _now() + MAX_S
         _save({"on": True, "audio": bool(audio), "profile": profile, "consent_v": CONSENT_V,
-               "day": _dt.date.today().isoformat()})
+               "day": _dt.date.today().isoformat(), "until": round(until, 1), "boot": BOOT})
     return status()
 
 
@@ -152,8 +176,8 @@ def status() -> dict:
     from . import turnlog
     d = turnlog.STORE.path.parent
     cb = sum((d / c).stat().st_size for c in clips if (d / c).exists())
-    return {"on": st["on"], "audio": st["audio"], "profile": st["profile"], "turns": len(turns), "clips": len(clips),
-            "clip_bytes": cb, "since": st.get("day")}
+    return {"on": st["on"], "audio": st["audio"], "profile": st["profile"], "until": st.get("until"), "max_s": MAX_S,
+            "turns": len(turns), "clips": len(clips), "clip_bytes": cb, "since": st.get("day")}
 
 
 _TAG = re.compile(r"<[a-z]+>")

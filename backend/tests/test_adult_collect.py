@@ -110,7 +110,42 @@ def test_off_by_default_and_on_needs_consent_adult_and_a_profile(logdir):
 
 def test_an_older_consent_text_reads_as_off(logdir):
     (logdir / "collect.json").write_text(json.dumps({"on": True, "audio": True, "profile": "p1", "consent_v": 0}))
-    assert AC.state() == {"on": False, "audio": False, "profile": None, "day": None}
+    assert AC.state()["on"] is False and AC.state()["profile"] is None
+
+
+def test_it_switches_itself_off_after_4_hours(logdir, monkeypatch):
+    t0 = 1_800_000_000.0
+    monkeypatch.setattr(AC, "_now", lambda: t0)
+    st = AC.set_state(True, consent=True, adult=True, profile="p2")
+    assert st["on"] and st["until"] == t0 + AC.MAX_S == t0 + 4 * 3600 and st["max_s"] == 4 * 3600
+    monkeypatch.setattr(AC, "_now", lambda: t0 + 3600)
+    assert AC.set_state(True, audio=True, consent=True, adult=True, profile="p2")["until"] == t0 + AC.MAX_S, \
+        "the audio switch keeps the clock"
+    monkeypatch.setattr(AC, "_now", lambda: t0 + AC.MAX_S - 1)
+    assert AC.on_for("p2") and AC.audio_any()
+    monkeypatch.setattr(AC, "_now", lambda: t0 + AC.MAX_S)
+    assert AC.on_for("p2") is False and AC.audio_any() is False and playtest.recording() is False
+    assert AC.status()["on"] is False and AC.status()["until"] is None
+    clock = Clock()                                   # expired: a turn of that profile is not collected
+    s = sess(clock)
+    ear_turn(s, clock, "what is a crater", pcm=PCM)
+    assert turns(logdir) == []
+    monkeypatch.setattr(AC, "_now", lambda: t0 + AC.MAX_S + 10)
+    assert AC.set_state(True, consent=True, adult=True, profile="p2")["until"] == t0 + 2 * AC.MAX_S + 10   # on again
+
+
+def test_it_is_off_when_the_app_starts_again_and_collected_turns_stay(logdir, monkeypatch):
+    AC.set_state(True, consent=True, adult=True, profile="p2")
+    clock = Clock()
+    s = sess(clock)
+    ear_turn(s, clock, "what is a crater")
+    assert AC.status()["turns"] == 1 and AC.on_for("p2")
+    monkeypatch.setattr(AC, "BOOT", "0123456789ab")   # the app quit; a new backend process reads the same file
+    assert AC.state()["on"] is False and AC.on_for("p2") is False
+    st = AC.status()
+    assert st["on"] is False and st["turns"] == 1     # what was collected stays until exported or deleted
+    body, man = AC.export_zip("x")
+    assert man["turns"] == 1
 
 
 def test_routes_need_the_page_header_and_consent(logdir):

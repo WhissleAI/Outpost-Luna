@@ -42,6 +42,17 @@ test("off by default; on only for the profile that turned it on", () => {
   assert.match(C.viewHtml({ st: { ...st, audio: true, clips: 2 }, pid: "p2" }), /data-col-audio checked/);
 });
 
+test("on: the row says when it switches itself off (On until HH:MM, the computer's clock)", () => {
+  const until = new Date(2026, 10, 22, 15, 7, 0).getTime() / 1000;
+  assert.equal(C.hhmm(until), "15:07");
+  const h = C.viewHtml({ st: { on: true, audio: false, profile: "p1", until, turns: 2 }, pid: "p1" });
+  assert.match(h, /On until 15:07\. 2 turns kept\./);
+  assert.ok(C.COPY.consent.some(t => /turns off after 4 hours, or when you quit/.test(t)), "the consent says so");
+  assert.match(C.viewHtml({ view: "consent" }), /It turns off after 4 hours, or when you quit\./);
+  assert.match(C.viewHtml({ st: { on: false, until: null, turns: 2 }, pid: "p1" }), /Off\./, "after it expires: off, the turns stay");
+  assert.match(C.viewHtml({ st: { on: false, until: null, turns: 2 }, pid: "p1" }), /data-col-export/);
+});
+
 test("the consent screen: Turn on stays disabled until the adult agrees", () => {
   const h = C.viewHtml({ view: "consent" });
   assert.match(h, /data-col-agree/);
