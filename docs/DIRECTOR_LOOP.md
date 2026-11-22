@@ -59,7 +59,9 @@ every other setting. Settings → For grown-ups → "Voice log and playtest" say
 | `ear` (v2) | The ear's ABI 2 read-out on the final words, numbers and enums only: `uconf`, `min_wconf`, `eot`, `dropped`, decoder agreement (`agree`, `dec`), name links (`names`: p, state, kind; never the name), almost matches (p only), quantities (kind, small values), disfluency count, `playback_leak` / `playback`, `barge` / `barge_p`, `speech_s` / `max_pause_s` / `end_silence_s`. Null for typed turns. |
 | `seen` (v2) | What the learned Director saw at the turn end (`features.record`, numbers and flags only): the situation class (`cls`: hot / short / echo / video / quiet), the bare-turn guard (`bare`), and the e13 / link / hot / entity views. |
 | `room` (v2) | The room-state estimate (calm / busy / too loud) and its numbers, when the session has the estimator (`session.room_state`); null until it ships. |
-| `wav` (v2) | Only in a playtest: the file name of this turn's audio clip (`playtest/<turn id>.wav`). |
+| `wav` (v2) | Only in a playtest, or an adult's collection with audio on: the file name of this turn's audio clip (`playtest/<turn id>.wav`). |
+| `collect` | Only on an adult tester's turn while Settings → For grown-ups → "Help improve Outpost Luna" is on for that profile (`backend/app/adult_collect.py`, `docs/ADULT_SESSIONS.md`): `true`. |
+| `reply` | Collected turns only: what the app said and did for the turn, the labeller's candidates: `say` (our lines, call signs redacted), `nav` (`intent`, `arg`: an app id or null), `place` (an entity id), `kinds` (the decision types). |
 | `trace` | The turn graph's per-node trace ([`TURN_GRAPH.md`](TURN_GRAPH.md), `turnlog.trace_view`): node names, milliseconds, the node each decision node chose, and small views (router outcome / reason / intent, the director handler that answered, the model's act and p). Names, numbers and code enums only, never words. The importer ignores it. |
 | `t`, `day` | Seconds since the session's first logged turn, and the calendar day. No clock time. |
 | `s`, `id` | A random per-session tag. It is never the session id. |
@@ -75,6 +77,13 @@ every other setting. Settings → For grown-ups → "Voice log and playtest" say
 | `pass` (v2) | The lesson step passed right after a turn the router sent to it as the answer. |
 | `undo` (v2) | The next order within 20 s took the order back: a cancel, the same switch flipped, power moved back. |
 | `confirm_cancel` / `confirm_yes` | How a confirm we asked for was answered. |
+| `misheard` | "that's not what I said", "I said …", "you misheard" within 10 s (an ear error more than a Director one). |
+| `barge` | The speaker talked over our reply (a barge-in) within 20 s of a turn we acted on. |
+| `nav_back` | A navigation the turn caused was taken back within 15 s: the screen returned to where the turn was said, or "back" / "map" was said. |
+
+These three are additive (any log may carry them). The import treats `misheard` and `nav_back` like `negate`: an acted
+turn goes to review as `ask_clarify`. A per-node trace added by the graph runtime sits beside these fields; nothing
+here reads or writes it.
 
 **Redaction**, before anything is written (`turnlog.redact`, `ear_view`, `seen_view`):
 
@@ -145,6 +154,14 @@ situation class (plus `nav` and `answer`, and `all`), it prints turns, act ok an
 the shipped config, and the extra wrong actions (shipped wrong where the rules were right). Gold is the import's weak
 label at ≥ 0.6, or a reviewed label. It says which weights and mode decided the turns, and warns when that is not what
 this checkout ships. v1 turns count under `unknown`.
+
+## 1d. Adult sessions (real labelled turns)
+
+Early users are adults. Settings → For grown-ups → **Help improve Outpost Luna** is an adult's opt-in (off by default,
+consent screen, one profile, audio a separate switch, off again 4 hours after it was turned on or at quit, export a redacted zip of only those turns, delete everything).
+The 25–30 minute session protocol, the consent text and the labelling tool (`make director-label LOG=<zip>`,
+`director_model/label_ui/`) are in `docs/ADULT_SESSIONS.md`. The tool's labels are `reviewed.jsonl` rows with `fix` plus
+`nav`, `nav_arg`, `cmd`, `place`, `reply` and `split`; the import puts them in the item's gold.
 
 ## 2. Import: weak labels from outcome signals
 

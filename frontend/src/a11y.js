@@ -18,7 +18,7 @@ export const GROWNUPS = {
   title: "For grown-ups",
   gate: "Progress, courses, class lessons, reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["See progress", "Class summary", "Teacher PIN", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
+  inside: ["See progress", "Class summary", "Teacher PIN", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "Help improve Outpost Luna", "School network", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",

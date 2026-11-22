@@ -135,6 +135,10 @@ director-import: ## Turn logs -> labelled training turns (data/real_turns.json) 
 	@test -n "$(LOG)" || (echo "usage: make director-import LOG=path/to/turnlog-or-playtest.zip" && exit 2)
 	python3 director_model/import_logs.py --log $(LOG)
 
+director-label: ## The local labelling tool for real turns (LOG=an adult export / playtest .zip or turnlog folder; BY=initials; PORT=8377): http://127.0.0.1:$(or $(PORT),8377)
+	@test -n "$(LOG)" || (echo "usage: make director-label LOG=path/to/outpost-luna-help.zip [BY=kr]" && exit 2)
+	python3 director_model/label_ui/serve.py --log $(LOG) --port $(or $(PORT),8377) $(if $(BY),--by $(BY),)
+
 director-eval-real: ## The class gate of the SHIPPED routed Director vs the rules on real logged turns (LOG=folder, .jsonl or playtest .zip; EVAL_OUT=file.json)
 	@test -n "$(LOG)" || (echo "usage: make director-eval-real LOG=path/to/turnlog-or-playtest.zip" && exit 2)
 	python3 director_model/eval_real.py --log $(LOG) $(if $(EVAL_OUT),--out $(EVAL_OUT),)
@@ -213,4 +217,4 @@ smoke-installed: ## Smoke the INSTALLED app without touching your data: launches
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check smoke-installed site-physics site-layers nasa-views open-data moon-views arch-open-data arch-region arch-docs ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views open-data moon-views arch-open-data arch-region arch-docs ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-label director-eval-real director-loop

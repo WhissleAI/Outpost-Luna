@@ -284,6 +284,9 @@ class Session:
     async def emit(self, ds: list[dict]):
         if self.dm is not None:
             self.dm.emitted(ds)
+        if self._tl is not None:   # adult collection: what the app said / did for the turn being logged (turnlog `reply`)
+            with contextlib.suppress(Exception):
+                self.tlog.note_out(self._tl, ds)
         for d in ds:
             if d["t"] in ("say", "play"):
                 self.pending[d["id"]] = d
@@ -416,6 +419,8 @@ class Session:
             if key(new) != key(self.screen):
                 self.step_since = self.clock()      # when this step opened (turn_router.yesno_counts)
             self.screen = new
+            with contextlib.suppress(Exception):   # a navigation a turn caused, taken back (turnlog `nav_back`)
+                self.tlog.screen(new.get("screen"))
             return
         if ev == "lesson_result":  # the Academy's grade of a step answer (turn log outcome signal only)
             self.tlog.lesson(m.get("status"), m.get("step_type") or self.screen.get("step_type"))
@@ -548,6 +553,8 @@ class Session:
         for i in drop:
             self.pending.pop(i, None)
         self.belief["kid"]["open"] = True
+        with contextlib.suppress(Exception):   # talked over our reply (turnlog `barge`, an outcome signal)
+            self.tlog.barge()
         out = [decision("cancel", P_BARGE, ids=drop)] if drop else []
         self.belief["floor"] = "kid"
         out.append(decision("floor", P_BARGE, holder="kid"))
