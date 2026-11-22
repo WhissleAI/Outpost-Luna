@@ -62,6 +62,7 @@ every other setting. Settings → For grown-ups → "Voice log and playtest" say
 | `wav` (v2) | Only in a playtest, or an adult's collection with audio on: the file name of this turn's audio clip (`playtest/<turn id>.wav`). |
 | `collect` | Only on an adult tester's turn while Settings → For grown-ups → "Help improve Outpost Luna" is on for that profile (`backend/app/adult_collect.py`, `docs/ADULT_SESSIONS.md`): `true`. |
 | `reply` | Collected turns only: what the app said and did for the turn, the labeller's candidates: `say` (our lines, call signs redacted), `nav` (`intent`, `arg`: an app id or null), `place` (an entity id), `kinds` (the decision types). |
+| `trace` | The turn graph's per-node trace ([`TURN_GRAPH.md`](TURN_GRAPH.md), `turnlog.trace_view`): node names, milliseconds, the node each decision node chose, and small views (router outcome / reason / intent, the director handler that answered, the model's act and p). Names, numbers and code enums only, never words. The importer ignores it. |
 | `t`, `day` | Seconds since the session's first logged turn, and the calendar day. No clock time. |
 | `s`, `id` | A random per-session tag. It is never the session id. |
 

@@ -133,7 +133,7 @@ NLU, UI = frontend, S = safety, L = turn log.
 | `act`, `intent`, `complete` | M only (`tag_q/cmd/stmt/dd`, `tag_complete`) |
 | `safety` `[{tag, p, thr, on}]` | S `safety.classify` via `tagger_read` on **every** heard turn (blocking, ≤ 0.3 s); the ear's `arc.safety` is never sent (only Head Start's `/v1/tag/stream` has it), so `k["safety"]` is always None |
 
-`tag_avail` is non-zero on only 52 % of turn ends because `summarize(tag(...))` runs only in `_direct_turn` (router
+`tag_avail` is non-zero on only 52 % of turn ends because `summarize(tag(...))` runs only in `_direct_turn` (since the turn graph: its `readout` node, docs/TURN_GRAPH.md) (router
 outcome question / order) and in `/api/ask`. Turns routed ignore / navigate / answer call the Director with
 `{"available": False}` (`session.py:617`). It is also False when the tag call fails or times out (2 s). This is by
 design, not a bug: the model sees the tagger only where the rules ask for it.

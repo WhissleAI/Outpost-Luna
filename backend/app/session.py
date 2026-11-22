@@ -7,15 +7,19 @@ Inputs:  hello / ui / typed / playback (WS /ws/session), words / turn / arc (pos
          events + state deltas (polled from the sim registry once a second; the sim has no hooks), lesson events.
 Outputs: say, play, fly, highlight, card, hud, alert, ask_confirm, lesson, floor, cancel.
 
-The turn itself is still `director.direct()`; this module decides WHEN to answer, what else to say around the answer,
-what to drop on barge-in, and what to say without being asked (storms, comm windows, low power at night), under the
-floor rules of §3.
+The turn itself is one run of the turn graph (app/graph/turn.py, docs/TURN_GRAPH.md): safety, the router, the read-out,
+the learned Director, director.direct()'s handlers, the fallback gate, steering, as nodes. This module is the supervisor:
+it keeps the belief, the ear stream, barge-in and the sim poll, decides WHEN to answer, what else to say around the
+answer, what to drop on barge-in, and what to say without being asked (storms, comm windows, low power at night), under
+the floor rules of §3. TURN_ENGINE=legacy runs the pre-graph code (_turn_legacy / _routed / _direct_turn), kept for one
+release so tools/turn_replay.py can diff the two engines.
 """
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import copy
+import os
 import re
 import time
 from collections import deque
@@ -54,6 +58,17 @@ NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shi
 # (forecast = storm_warning, crisis = solar_storm, recovery = storm_end, earthrise = comm_open), or the client says them
 # (arrival: the cabin hello).
 SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlink")
+
+
+def turn_engine() -> str:
+    """graph (default) | legacy: the pre-graph turn code, kept one release for the replay diff (tools/turn_replay.py)."""
+    return "legacy" if os.environ.get("TURN_ENGINE", "graph").strip().lower() == "legacy" else "graph"
+
+
+def barge_cancels() -> bool:
+    """TURN_GRAPH_BARGE_CANCEL=1: a barge-in also cancels the turn still being worked out (before it changes anything).
+    Off by default: the graph PR changes no behaviour (docs/TURN_GRAPH.md "Cancellation")."""
+    return os.environ.get("TURN_GRAPH_BARGE_CANCEL", "0") == "1"
 
 
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
@@ -247,6 +262,7 @@ class Session:
         self.rb_praised: set[str] = set()
         self.rb_nudged: set[str] = set()
         self.rb_last: dict | None = None
+        self._run = None                       # the turn graph's run in flight (graph.runtime.RunHandle), if any
 
     def ear_tune(self) -> dict | None:
         """The ear's learned, bounded values ({"t":"tune"}: end-of-turn silence, echo reference shift)."""
@@ -531,6 +547,8 @@ class Session:
 
     async def barge_in(self):
         """The kid wins (§3 rule 2): cancel every unplayed decision below the guard; the kid holds the floor."""
+        if self._run is not None and barge_cancels():
+            self._run.cancel()        # unless it already changed the world (a commit node): then it finishes
         drop = [i for i, d in self.pending.items() if d["priority"] > P_GUARD]
         for i in drop:
             self.pending.pop(i, None)
@@ -722,6 +740,31 @@ class Session:
         return False
 
     async def _turn(self, text: str, source: str):
+        if turn_engine() == "legacy":
+            await self._turn_legacy(text, source)
+        else:
+            await self._turn_graph(text, source)
+
+    async def _turn_graph(self, text: str, source: str):
+        """One run of the turn graph (app/graph/turn.py) in its own task, so a barge-in can cancel it; the turn log gets
+        the run's per-node trace (turnlog.trace_view: names, ms, enums; never words)."""
+        from .graph import turn as turn_graph
+        trace: list = []
+        h = turn_graph.TURN.start(turn_graph.TurnState(self, text, source), stream=self.emit, trace=trace)
+        self._run = h
+        try:
+            await h
+        finally:
+            if self._run is h:
+                self._run = None
+            if self._tl is not None:
+                tv = turnlog.trace_view(trace)
+                if tv:
+                    self._tl["trace"] = tv
+                self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=bool(self._tl.pop("_guard", False)))
+            self._tl = None
+
+    async def _turn_legacy(self, text: str, source: str):
         k = self.belief["kid"]
         if self.learning.offer is not None:      # the answer to "Did you mean X?" teaches the learner (never an echo)
             with contextlib.suppress(Exception):
@@ -1152,7 +1195,15 @@ class Session:
         return []
 
     async def poll(self):
-        """One poll step: state deltas + new sim events → proactive decisions. Run every POLL_S by the socket."""
+        """One poll step: state deltas + new sim events → proactive decisions. Run every POLL_S by the socket: one run of
+        the poll graph (app/graph/turn.py POLL)."""
+        if turn_engine() == "legacy":
+            await self._poll_legacy()
+            return
+        from .graph import turn as turn_graph
+        await turn_graph.POLL.run(turn_graph.PollState(self))
+
+    async def _poll_legacy(self):
         s = self._state()
         if s is None:
             return
