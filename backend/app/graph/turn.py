@@ -164,8 +164,11 @@ async def care(s: TurnState, run):
 
 
 # ---- routing --------------------------------------------------------------------------------------------------------
-def route(s: TurnState, run):
+async def route(s: TurnState, run):
     sess, k, text, source = s.sess, s.k, s.text, s.source
+    if sess.dm is not None:      # round 15 (shadow only): the learned Director's pre-routing read of this turn
+        with contextlib.suppress(Exception):
+            await sess.dm.perceive(sess._end_event(text, source))
     rt = router_.route(text, s.ctx_r, act=k.get("act"))
     if source in S.OPEN_MIC and rt["outcome"] != "ignore" and S.ear_playback(k.get("ear"), sess.playback_threshold()):
         rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)

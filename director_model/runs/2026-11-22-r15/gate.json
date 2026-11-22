@@ -1,0 +1,508 @@
+{
+ "val_fitted": {
+  "policy": {
+   "cmd": 0.98,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 0.8,
+   "answer_ignore": null,
+   "nav": null,
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "total": {
+     "rules": {
+      "n": 5517,
+      "ok": 4790,
+      "wrong": 332,
+      "extra_rules": 0,
+      "extra_ship": 1
+     },
+     "ship": {
+      "n": 5517,
+      "ok": 4791,
+      "wrong": 331,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 5517,
+      "ok": 4804,
+      "wrong": 330,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": [
+     "test_ear",
+     "test_h40_asr",
+     "cls_voice_echo_os"
+    ]
+   },
+   "short": {
+    "total": {
+     "rules": {
+      "n": 2095,
+      "ok": 1616,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 2095,
+      "ok": 1616,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 2095,
+      "ok": 1615,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": [
+     "test_ear"
+    ]
+   },
+   "echo": {
+    "total": {
+     "rules": {
+      "n": 952,
+      "ok": 773,
+      "wrong": 39,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 952,
+      "ok": 779,
+      "wrong": 39,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 952,
+      "ok": 782,
+      "wrong": 38,
+      "extra_rules": 1,
+      "extra_ship": 1
+     }
+    },
+    "pass": false,
+    "worse": [
+     "test_clean"
+    ]
+   },
+   "video": {
+    "total": {
+     "rules": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   },
+   "quiet": {
+    "total": {
+     "rules": {
+      "n": 3651,
+      "ok": 2266,
+      "wrong": 408,
+      "extra_rules": 0,
+      "extra_ship": 1
+     },
+     "ship": {
+      "n": 3651,
+      "ok": 2274,
+      "wrong": 407,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 3651,
+      "ok": 2285,
+      "wrong": 404,
+      "extra_rules": 4,
+      "extra_ship": 5
+     }
+    },
+    "pass": false,
+    "worse": [
+     "test_clean",
+     "test_asr",
+     "test_voice_heldout",
+     "cls_coverage"
+    ]
+   },
+   "nav": {
+    "total": {
+     "rules": {
+      "n": 12215,
+      "ok": 9445,
+      "wrong": 831,
+      "extra_rules": 0,
+      "extra_ship": 2
+     },
+     "ship": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   },
+   "answer": {
+    "total": {
+     "rules": {
+      "n": 12215,
+      "ok": 9445,
+      "wrong": 831,
+      "extra_rules": 0,
+      "extra_ship": 2
+     },
+     "ship": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   }
+  },
+  "routed_total": {
+   "n": 12215,
+   "rules_ok": 9445,
+   "ship_ok": 9460,
+   "ok": 9460,
+   "rules_wrong": 831,
+   "ship_wrong": 829,
+   "wrong": 829,
+   "extra_ship": 0,
+   "extra_rules": 0
+  }
+ },
+ "heads": {
+  "reply": {
+   "n": 3916,
+   "top1": 0.5209,
+   "top3": 0.6328,
+   "nearest_line_top1": 0.0546,
+   "nearest_line_top3": 0.1356
+  },
+  "ent": {
+   "n": 10074,
+   "acc": 0.9475,
+   "always_none": 0.9072,
+   "named_n": 935,
+   "named_acc": 0.507
+  },
+  "opt": {
+   "n": 2183,
+   "acc": 0.907,
+   "always_none": 0.7009,
+   "named_n": 653,
+   "named_acc": 0.7948
+  },
+  "nav_arg": {
+   "n": 3906,
+   "kind_acc": 0.9575,
+   "majority": 0.8185,
+   "full_slot_acc": 0.9383,
+   "kinds": {
+    "lesson": 127,
+    "none": 3197,
+    "offer": 287,
+    "other": 143,
+    "a11y": 28,
+    "site": 75,
+    "site_ctl": 27,
+    "option": 8,
+    "warp": 4,
+    "gauge": 10
+   }
+  },
+  "style": {
+   "n": 3840,
+   "acc": 0.8833,
+   "r12_acc": 0.8466
+  }
+ },
+ "act_alone": {
+  "n": 12215,
+  "rules": 9480,
+  "r12": 11008,
+  "r15": 10911
+ },
+ "ignore_only": {
+  "policy": {
+   "cmd": 1.01,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": null,
+   "nav": null,
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "total": {
+     "rules": {
+      "n": 5517,
+      "ok": 4790,
+      "wrong": 332,
+      "extra_rules": 0,
+      "extra_ship": 1
+     },
+     "ship": {
+      "n": 5517,
+      "ok": 4791,
+      "wrong": 331,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 5517,
+      "ok": 4808,
+      "wrong": 331,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": [
+     "cls_voice_echo_os"
+    ]
+   },
+   "short": {
+    "total": {
+     "rules": {
+      "n": 2095,
+      "ok": 1616,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 2095,
+      "ok": 1616,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 2095,
+      "ok": 1616,
+      "wrong": 52,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   },
+   "echo": {
+    "total": {
+     "rules": {
+      "n": 952,
+      "ok": 773,
+      "wrong": 39,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 952,
+      "ok": 779,
+      "wrong": 39,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 952,
+      "ok": 780,
+      "wrong": 39,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": [
+     "test_clean"
+    ]
+   },
+   "video": {
+    "total": {
+     "rules": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "ship": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 0,
+      "ok": 0,
+      "wrong": 0,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   },
+   "quiet": {
+    "total": {
+     "rules": {
+      "n": 3651,
+      "ok": 2266,
+      "wrong": 408,
+      "extra_rules": 0,
+      "extra_ship": 1
+     },
+     "ship": {
+      "n": 3651,
+      "ok": 2274,
+      "wrong": 407,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 3651,
+      "ok": 2279,
+      "wrong": 408,
+      "extra_rules": 0,
+      "extra_ship": 1
+     }
+    },
+    "pass": false,
+    "worse": [
+     "cls_coverage"
+    ]
+   },
+   "nav": {
+    "total": {
+     "rules": {
+      "n": 12215,
+      "ok": 9445,
+      "wrong": 831,
+      "extra_rules": 0,
+      "extra_ship": 2
+     },
+     "ship": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   },
+   "answer": {
+    "total": {
+     "rules": {
+      "n": 12215,
+      "ok": 9445,
+      "wrong": 831,
+      "extra_rules": 0,
+      "extra_ship": 2
+     },
+     "ship": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     },
+     "r15": {
+      "n": 12215,
+      "ok": 9460,
+      "wrong": 829,
+      "extra_rules": 0,
+      "extra_ship": 0
+     }
+    },
+    "pass": false,
+    "worse": []
+   }
+  },
+  "routed_total": {
+   "n": 12215,
+   "rules_ok": 9445,
+   "ship_ok": 9460,
+   "ok": 9460,
+   "rules_wrong": 831,
+   "ship_wrong": 829,
+   "wrong": 829,
+   "extra_ship": 0,
+   "extra_rules": 0
+  }
+ },
+ "shipped": false,
+ "shadow_only": true,
+ "export": {
+  "file_bytes": 1217518,
+  "params": 860463,
+  "int8_vs_float_max_dp": 0.01704,
+  "numpy_ms_per_step_p50": 0.514,
+  "numpy_ms_per_step_p99": 0.814
+ }
+}

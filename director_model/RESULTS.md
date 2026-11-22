@@ -1669,3 +1669,202 @@ starts from them. The shipped routed config (r12 xl in quiet, r10 in hot + echo)
 Next: decode the `r14` jobs and re-decode the echo-bed jobs with the calibrated, warmed path (a fresh cache: cached
 decodes keep the old path). Then run a full round with the embedder loaded, and with real playtest turns as `test_log` /
 `test_log_audio`.
+
+## Round 15 — 2026-11-22 (the raw feature set, reply / slot heads, embedder loaded) — SHADOW ONLY: nothing routed, r12 routed config unchanged
+
+**This was a reduced round, run on synthetic speech.** The voices are the Mac voice bank and Steer TTS, sent through a
+simulated room and mic and decoded by the real ABI 2 ear. Nothing here has been checked on a child. The shipped
+policy is unchanged: `DEFAULT_MODE` is `guarded`, `weights.json` (r12 xl) decides in quiet and `weights_r10` decides
+in hot + echo. The new file `weights_r15.*` runs in shadow only, and no decision path reads it.
+
+- Pipeline: `director_model/run_r15.sh`.
+- Gate: `director_model/gate_r15.py`.
+- Committed summary: `runs/2026-11-22-r15/gate.json`.
+- The logs, model and memo stayed local.
+
+### What was built
+
+- **The raw feature set** (`features.raw_feats`, `F_RAW` = 628; selected by `"feat_set": "raw"` in the weights json).
+  - The legacy 275-wide set is untouched and remains the default, so r10 and r12 load and run as before.
+  - What raw keeps (167 legacy slots):
+    - event and timing;
+    - floor and playback;
+    - word-change stats;
+    - dd;
+    - mission, lesson and screen state;
+    - echo overlap with what is playing or was just said;
+    - the ear's names / link p / decoder agreement;
+    - the entity layer;
+    - the ABI 2 read-outs.
+  - What raw adds:
+    - Arc Tagger's own read-out: 7 acts, 45 intents plus "other", 19 span types, and PII;
+    - the embedder's 384-d vector of the words.
+  - What raw drops:
+    - every regex flag (`lx_*`, `has_num`, `gaz_*`, `opt_named`, `neg_now`, chatter / filler);
+    - the mission NLU (`nlu_*`);
+    - the router's outcome, reason and nav reads (`rt_*`, `rw_*`, `nav_*`, `prev_ignored` / `_acted`);
+    - the hot-list matcher;
+    - the Academy grader;
+    - the dead slots (cc, emo, the round-7 ear slots, n-best).
+  - In raw mode, `step_feats(raw=True)` never calls the NLU or the grader, so a navigation turn still never reaches the
+    NLU (`test_router_panels`).
+- **Route independence.** A legacy turn-end record is taken after the router's bookkeeping. On the direct path the
+  floor is already reset; on the routed path it is not, so `floor_*` leaked the route.
+  - `runtime.Shadow.perceive` takes the raw turn end before routing instead. It is one call in the turn graph's
+    `route` node and one in the legacy `session._turn`.
+  - The same call fetches the tagger read and the embedder vector for every turn, on either path.
+  - The generator records this snapshot too (`rec["raw"]`), so train and serve read the same thing.
+  - Cost:
+    - perceive takes 3.7 ms p50 / 4.5 ms p95 on a local model server;
+    - it is capped at 0.5 s;
+    - it runs only while a raw shadow file is loaded (or in the generator).
+- **New heads** (`train.py --r15`):
+  - **reply**: a pointer over 1,603 candidate lines. Its score is `(P e_c) · q(h) / √64`, where `e_c` is the embedder
+    vector of each line; the export stores `K = P E` as int8. The candidate lines are:
+    - 602 knowledge-card answer lines;
+    - 240 course prompt / hint / success / fail / reveal lines;
+    - 35 fixed Director / CAPCOM / narration / offer lines;
+    - 726 lines the rules engine spoke in the TRAIN sets, with numbers masked. These are the data-driven form of the
+      Director's templates; val and test lines are never used.
+  - **ent**: a pointer over "none" plus the 69 gazetteer places.
+  - **opt**: which of the screen's options the words name (0 = none, up to 6).
+  - **nav_arg**: the kind of argument a navigation carries (none / offer / option / site / lesson / a11y / gauge /
+    warp / site_ctl / task_text / other). The value comes from the opt or ent pointer.
+  - Labels come from the teacher, which is the clean run's engine. The reply label is the line it spoke, matched to a
+    candidate. Coverage on the gated sets: test_clean 1,243 / 1,256 spoken lines matched, test_asr 1,193 / 1,255,
+    test_q80_asr 56 / 74. The entity label is `r.place` or the router's `pick_site` arg.
+  - Course lines get no labels: the client speaks them, not the engine.
+- **The style head goes to steering in shadow.** At each say decision, `Shadow.emitted` compares the raw model's style
+  tag with the tag steering chose. The result goes to `/api/director/stats` (`r15.style_agreement`) and is never used.
+- **Runtime** (shadow only).
+  - Every event steps `weights_r15` on its own state.
+  - The turn log gets `director.r15`: act / p, the reply index / kind / top 3, the entity id, the option, the nav-arg
+    kind and the style tag. These are numbers, enums and our own ids only, never the kid's words.
+  - `/api/director/stats` gets `r15`: turns, act agreement with the rules, style agreement, perceive counts, the
+    recent picks, and latency.
+  - `DIRECTOR_R15=off` unloads the file and stops perceive.
+  - `test_director_r15.py` runs the same scripted session with the file on and off and checks that the Session's
+    output is identical.
+- Fixes:
+  - `gen_sessions.embedder_problem` read `/health` at the top level, but the model server nests `embedder` under
+    `models`. Round 14's check therefore refused a server whose embedder WAS loaded.
+  - Added `real_ear.py relist --all` (a fresh job list, given today's names lists).
+
+### Data (reduced, and why)
+
+Rounds 12 and 13's decode caches were no longer on this machine, so every clip had to be decoded fresh.
+
+- **Ear:** the ABI 2 ear, libarc `1.3.0-outpost.2` with Arc Transcriber Space 176d324, downloaded from the asset
+  mirror and sha-verified.
+- **Machine:** a shared Mac at load 40-120, throttled mid-run at the lead's request to at most 4 workers with 1
+  thread each.
+- **Decoded:** 4,644 clips, all held-out groups in full:
+  - test (1,407 clips);
+  - voice_ho (399);
+  - app / app_os echo (376);
+  - overplay test / val (192);
+  - val (333);
+  - train (1,277) plus overplay_train (544).
+- **Cut:**
+  - the train Mac-voice decodes went from round 12's ~3.5k to 600 new texts, with no train / val second-voice
+    variants;
+  - the echo-bank (ear analysis only) and the stress sets were not decoded.
+- **Not rendered:** the 131 NASA-video jobs. `APP_ASSETS` pointed at an empty folder, because the app's asset folder
+  must not be read, so the video / crew beds fell back to room noise.
+- **Generated with the embedder AND Arc Tagger loaded** (first round with the embedder):
+  - train 1,600 + 800 coverage sessions (2,400 sessions / 225,049 steps; round 12 had 3,600 / 301,911);
+  - val 200;
+  - the 29 gate sets: 12,215 policy turns. The set sizes are as in round 13, but every set was regenerated on the new
+    decodes and on main's turn graph engine, so absolute numbers are not comparable with earlier rounds.
+- Disk: dataset 164 MB, decodes 80 MB.
+- A full round needs:
+  - the round-12 decode budget (~9k train + val clips, plus 2k stress clips): about 3.5 h of decode at 4 workers on
+    an idle machine;
+  - the app's video / crew assets (a copy, not the app's folder);
+  - 3,600 train sessions.
+
+### Model
+
+- **r15 xl raw:** 860,463 params, round 12's recipe (`--fp-exec 0.5`, 2,200 steps).
+  - Best val at step 1,200; train loss 0.21 at the end, so it overfits like every round since 9.
+  - Val per head at best: act 0.154, reply 2.09, ent 0.26, opt 0.53, nav_arg 0.33.
+- **Export:** `weights_r15.npz` 1.22 MB plus a 64 KB json.
+  - The input layer stays f32: the embedding takes 384 of its 644 inputs.
+  - int8 vs float: max |dp| 0.025.
+  - numpy streaming vs torch: ≤ 1e-6 on the class heads, 0.011 on the reply pointer (its int8 candidate keys).
+  - Cost: numpy 0.53 ms per event p50. That is a third model stepped on every event, on top of r12 + r10's ~1.2 ms.
+
+### Class gate vs what ships (12,215 turns; act ok, wrong in brackets)
+
+- **ship:** r12 routed (r12 xl in quiet, r10 in hot + echo).
+- **r15:** ship with that ONE class handed to the raw model.
+- **Val-fitted policy:** cmd 0.98, ask 0.8, ignore 0.95.
+- **Ignore-only policy:** r12's own policy (cmd / ask off, ignore 0.95, min words 3).
+
+| class | turns | rules | ship | r15 val-fitted | r15 ignore-only | passes |
+|---|---|---|---|---|---|---|
+| hot | 5,517 | 4,790 (332) | 4,791 (331) | 4,804 (330) | **4,808 (331)** | no. Val-fitted: asks on test_ear (−6), test_h40_asr −1, cls_voice_echo_os −1. Ignore-only: cls_voice_echo_os −1 vs ship (+1 vs rules) |
+| short | 2,095 | 1,616 (52) | 1,616 (52) | 1,615 (52) | 1,616 (52) | no gain |
+| echo | 952 | 773 (39) | 779 (39) | 782 (38) | 780 (39) | no. test_clean −2 / +1 wrong (val-fitted), −1 (ignore-only: "wait whose turn is it" answered where r10 silenced it) |
+| quiet | 3,651 | 2,266 (408) | 2,274 (407) | 2,285 (404) | 2,279 (408) | no. Val-fitted: 5 extra wrong vs ship (command fill: "pump up the breath ing machine", "we get more live support"). Ignore-only: 1 extra wrong vs ship ("i ve got it" → the rules' command, which r12 silenced) |
+| video | 0 | – | – | – | – | no turn reaches it |
+| nav, answer | 12,215 | 9,445 (831) | 9,460 (829) | 9,460 | 9,460 | val fit leaves both off |
+| **routed** | 12,215 | 9,445 (831) | **9,460 (829)** | = ship | = ship | nothing passes, nothing to route |
+
+- **Per class, right / wrong vs ship:**
+  - Ignore-only, all sets summed: hot +17 / 0 extra wrong, echo +1 / 0, quiet +5 / +1.
+  - Val-fitted: hot +13 / 0, echo +3 / +1, quiet +11 / +5, short −1 / 0.
+- **Where the gains are:**
+  - hot gains mostly on cls_prep_roomtalk: +16, i.e. room talk naming a control, silenced (r12's old weak spot);
+  - quiet / echo gains are on test_clean / test_real / cls_roomtalk room talk.
+- So without a regex flag or a router outcome, the raw model matches or beats ship in total in every class it may
+  act in. It fails the every-set rule by one or two turns.
+- **Act head alone** (argmax vs gold, no policy, all sets): rules 9,480, r12 xl 11,008, r15 raw 10,911. This
+  unguarded read is not a ship criterion (it counts no wrong actions). It shows that the raw model, without the rules'
+  own outputs as inputs, gets within 1 % of r12 at imitating the teacher.
+
+### The new heads (r15 xl, all 29 gated sets)
+
+| head | turns | r15 | baseline |
+|---|---|---|---|
+| reply top-1 / top-3 | 3,916 | **52.1 % / 63.3 %** | nearest line to the kid's words (embedder cosine): 5.5 % / 13.6 % |
+| — by label kind | | card answers 38.7 % / 50.4 % (692); fixed lines 61.0 % / 66.4 % (318); seen templates 54.3 % / 66.0 % (2,906) | |
+| — by set | | test_clean 62.7 / 74.0; test_asr 52.6 / 64.2; test_real 49.2 / 60.1; test_voice_heldout 29.8 / 37.8; test_ear 12.7 / 25.5; test_q80_asr 23.2 / 32.1 | |
+| ent (all labeled) | 10,074 | 94.8 % | always "none" 90.7 % |
+| ent (turns naming a place) | 935 | **50.7 %** | 0 % |
+| opt (frames with options) | 2,183 | 90.7 % | always "none" 70.1 % |
+| opt (turns naming an option) | 653 | **79.5 %** (cls_lesson_answer 67.0 %, test_clean 94.8 %) | 0 % |
+| nav_arg kind (gold navigate) | 3,906 | **95.8 %** | majority 81.9 % |
+| nav_arg full slot (kind + option / site pointer) | 3,906 | 93.8 % | |
+| style vs steering's tag | 3,840 | **88.3 %** | r12's own style head 84.7 % |
+
+- The reply head is a ranking of the engine's next line. It is right half the time on clean text, and it falls apart
+  on held-out voices and the ear-eval set (12.7 %).
+- The card-answer lines (the brain's job: which card, which attribute) are its weakest kind.
+
+### What blocks switching anything on
+
+1. **Act / silencing.** No class passes the every-set rule, though ignore-only hot is +17 with 0 extra wrong and
+   misses on one turn. A class could only ship after a full-scale round (this one is reduced) passed the gate AND the
+   backend suite, as round 12 showed.
+2. **The reply head cannot act.** There is no runtime path that speaks a ranked line, and none should exist until:
+   - it is scored on real turns;
+   - the brain's card choice (38.7 % top-1 here) is far better;
+   - a wrong line costs no more than the rules' answer. The cost model for "said the wrong thing" does not exist yet.
+3. **The slots.**
+   - The entity pointer is 50.7 % on turns that name a place, worse than the ear's own linker plus gazetteer, which the
+     raw model deliberately cannot see.
+   - opt is 79.5 % and nav_arg 93.8 %. These are teacher-labelled and route-derived, so they measure imitation of the
+     router, not ground truth.
+4. **Style:** 88 % agreement with steering's tag says it learned steering's table. It is not a better voice.
+5. **Everything here is synthetic.** The adult collection (#217) is the first chance to see real turns, through
+   `director.r15` in the turn log and `/api/director/stats` `r15`.
+
+### Next
+
+- Run the full-scale round with the app's assets copied and an idle machine. Gate ignore-only hot first: −1 on one set
+  is within one turn of passing.
+- Read `director.r15` on the first adult-collection logs: act agreement, the reply pick vs what was said, and style
+  agreement.
+- Give the entity pointer the ear's link candidates as pointer candidates (perception, not the rules' answer).
+- A raw model only needs to beat the rules where the rules are weak. Train on reviewed real turns once they exist.

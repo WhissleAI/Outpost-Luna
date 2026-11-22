@@ -547,7 +547,10 @@ def nlu_view(ws: list[str]) -> dict:
             "conf": float(r["confidence"] or 0.0)}
 
 
-def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
+def step_feats(rec: dict, prev: dict | None, raw: bool = False) -> np.ndarray:
+    """raw (round 15, raw_feats): the rules' slots the raw set drops are not computed at all (the mission NLU and the
+    Academy grader never see the words: a navigation turn never reaches the NLU, tests/test_router_panels.py); every
+    slot the raw set keeps is the same either way."""
     x = np.zeros(F, np.float32)
 
     def s(k, v):
@@ -584,7 +587,7 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
         s(key, v)
     # a turn the router already took as navigation never reaches the mission NLU, not even as evidence ("open the comm
     # panel" once turned the radio off; tests/test_router_panels.py)
-    nv = nlu_view(ws) if (rec.get("route") or {}).get("outcome") != "navigate" else nlu_view([])
+    nv = nlu_view(ws) if (rec.get("route") or {}).get("outcome") != "navigate" and not raw else nlu_view([])
     s("nlu_n", min(nv["n"], 3) / 3)
     s("nlu_clarify", nv["clarify"])
     s("nlu_conf", nv["conf"])
@@ -631,10 +634,10 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
             s(f"acc_{ls['accept']}", 1)
         if ls.get("status") in LESSON_ST:
             s(f"ls_{ls['status']}", 1)
-        g = lesson_grade(ls, rec.get("text") or "")
+        g = lesson_grade(ls, rec.get("text") or "") if not raw else None
         if g is not None:
             s("lesson_graded", 1); s("lesson_pass", g)
-    _handsfree_feats(rec, ws, s)
+    _handsfree_feats(rec, ws, s, raw)
     return x
 
 
@@ -648,7 +651,7 @@ CHATTER_W = {"oh", "it", "it s", "its", "okay", "ok", "alright", "all", "right",
              "wait", "hmm", "mm", "like", "well", "the", "a", "is", "that", "this", "s", "huh", "what", "now", "hey"}
 
 
-def _handsfree_feats(rec: dict, ws: list[str], s):
+def _handsfree_feats(rec: dict, ws: list[str], s, raw: bool = False):
     fr = rec.get("frame")
     if fr is None:          # a record from before round 6
         return
@@ -687,13 +690,13 @@ def _handsfree_feats(rec: dict, ws: list[str], s):
     s("on_air", bool(rec.get("on_air")))
     s("speaking", bool(rec.get("speaking")))
     s("line_gap", _clip_log(rec.get("line_gap"), 30.0) if rec.get("line_gap") is not None else 1.0)
-    _round7_feats(rec, ws, s)
+    _round7_feats(rec, ws, s, raw)
 
 
 NEG = re.compile(r"^(?:no|nope|stop|not that|no no|wait no|go back|back|cancel|wrong|that s wrong|undo)\b")
 
 
-def _round7_feats(rec: dict, ws: list[str], s):
+def _round7_feats(rec: dict, ws: list[str], s, raw: bool = False):
     fr = rec.get("frame") or {}
     s("scr_video", fr.get("screen") == "video")
     s("scr_prep", fr.get("screen") == "prep")
@@ -729,7 +732,7 @@ def _round7_feats(rec: dict, ws: list[str], s):
                 s("nav_fuzzy", 1)
                 s("nav_fuzzy_offer", R.answers_offer(fz[:2], ctx))
     ls = rec.get("lesson")
-    if ls and ls.get("active") and t and rec["kind"] in ("turn_end", "typed"):
+    if ls and ls.get("active") and t and rec["kind"] in ("turn_end", "typed") and not raw:
         g = lesson_grade_sa(ls, rec.get("text") or "")
         if g:
             s("lesson_pass_sa", 1)
@@ -1061,3 +1064,132 @@ def same_command(a: dict | None, b: dict | None) -> bool:
     if t == "rule":
         return a.get("when") == b.get("when") and same_command(a.get("then"), b.get("then"))
     return True
+
+
+# ---------------------------------------------------------------------------------------------------- round 15: "raw"
+# A second, selectable feature set (weights.json "feat_set": "raw"; the default "full" above is untouched, so every
+# shipped file reads exactly what it was trained on). It keeps only PERCEPTION and STATE: the ear (words via the hashed
+# tokens, partial-word stats, dd, names + link p, decoder agreement, the ABI 2 read-outs: confidence, quantities,
+# playback leak / barge, eot), Arc Tagger's own read-out (acts, intents, span types, PII), the embedder's vector of
+# the turn's words, the entity layer, our own audio (what plays, on air, echo overlap) and the screen / lesson /
+# mission state + timing. It drops every rules output: the regex flags (lx_*, has_num, n_loads, gaz_*, last_stop,
+# opt_named, neg_now, lx_chatter / lx_filler), the mission NLU (nlu_*), the router's outcome and reasons (rt_*, rw_*,
+# nav_*, nav_fuzzy*, prev_ignored / prev_acted), the hot-list matcher (hot_*), the Academy grader (lesson_graded /
+# _pass / _pass_sa) and the dead / frozen slots (cc, emo_*, the round-7 ear slots, n-best).
+#
+# Route independence: the legacy record at a turn end is taken AFTER the router (the routed path steps before the
+# floor / pending / open-turn bookkeeping, the direct path after it), so its floor, n_pending and kid_open leak the
+# route. A raw turn end reads `rec["raw"]` instead: the record the Session snapshots BEFORE routing
+# (runtime.Shadow.perceive, one call in session._turn), with the tagger + embedder perception of the words (`perc`)
+# fetched there for every turn on either path. ONE definition (raw_feats) for training (gen_sessions) and serving.
+TAG_ACTS = ["statement", "question", "opinion_assessment", "suggestion_proposal", "commitment_offer",
+            "command_request", "ritual_procedural"]
+TAG_INTENTS = ["request_information", "request_action", "request_permission", "offer_help", "propose_plan",
+               "schedule_arrange", "assign_task", "decide_agree", "disagree_object", "confirm", "deny_refuse",
+               "clarify_correct", "complain_criticize", "thank_apologize", "greet_close", "purchase_order",
+               "report_inform", "predict_speculate", "persuade_argue", "warn_threaten", "segue_handoff",
+               "call_to_action", "shout_out", "elicit_input", "advise_recommend",
+               # the assistant (SLURP-style) intents the kids' turns hit; any other discourse.intent.* -> int_other
+               "qa_factoid", "qa_definition", "qa_maths", "general_quirky", "general_greet", "general_joke",
+               "play_game", "play_music", "weather_query", "datetime_query", "news_query", "audio_volume_up",
+               "audio_volume_down", "audio_volume_mute", "iot_hue_lightoff", "iot_hue_lighton", "transport_query",
+               "recommendation_locations", "lists_query", "music_query"]
+TAG_SPANS = ["entity.mention.person", "entity.mention.place", "entity.mention.organization", "entity.mention.term",
+             "entity.mention.work_product", "entity.mention.event_name", "entity.mention.game_entity",
+             "entity.numeral", "entity.number.percent", "entity.number.count", "entity.number.ordinal",
+             "entity.number.measure", "entity.number.duration", "entity.number.time_of_day", "entity.number.date",
+             "entity.number.score", "safety.pii", "safety.profanity", "safety.toxicity"]
+EMB_DIM = 384                      # the app's MiniLM embedder (model_server/app/embed.py)
+
+RAW_KEEP = ([f"ev_{e}" for e in EVENTS] + [f"ui_{u}" for u in UI_EVENTS] + ["src_voice"]
+            + ["dt_prev", "since_turn_start", "since_speech", "since_nudge", "since_play"]
+            + [f"mode_{m}" for m in MODES] + ["mission_on", "role_set"]
+            + [f"floor_{f}" for f in FLOOR] + ["kid_open", "play_guide", "play_crew", "n_pending", "n_held"]
+            + ["nw", "n_changed", "revised", "changed", "echo_share"]
+            + ["dd_avail", "dd"]
+            + ["st_avail", "power", "life", "dose_frac", "dose_rate", *[f"load_{x}" for x in nlu.LOADS], "storm",
+               "storm_sev", "in_sun", "earth_vis", "next_comm", "shelter", "rover_busy", "alerts", "day", "over",
+               "pending_confirm", "d_power", "d_life", "d_dose", "low_power_night", "referent", "last_place"]
+            + [f"sim_{e}" for e in SIM_EVENTS]
+            + ["lesson_on", "lesson_step"] + [f"acc_{a}" for a in ACCEPT] + [f"ls_{s}" for s in LESSON_ST]
+            + [f"scr_{x}" for x in SCREENS] + [f"st_{x}" for x in STEP_TYPES] + ["offer_on", "n_options"]
+            + ["on_air", "speaking", "line_gap", "echo_recent"]
+            + ["rep_prev", "prev_recent", "gesture_now", "video_on", "scr_video", "scr_prep", "st_video"]
+            + ["ear_names_avail", "ear_linked", "ear_link_p", "ear_link_sure", "ear_abstain", "ear_not_in_list",
+               "ear_link_step", "ear_link_screen", "ear_dec_avail", "ear_agree", "ear_dec_name"]
+            + ["ent_any", "ent_step_target", "ent_seen_before", "ent_recency", "ent_guide_said", "ent_state_rel",
+               "ent_mishear", "ent_control"]
+            + ["e13_avail", "e13_uconf", "e13_min_wconf", "e13_almost", "e13_almost_p", "e13_qty", "e13_disfl",
+               "e13_dropped", "e13_leak", "e13_playback", "e13_barge", "e13_eot"])
+RAW_NEW = (["perc_avail", "tag_avail_raw", "tag_complete_raw", "tag_n_spans"]
+           + [f"tact_{a}" for a in TAG_ACTS] + [f"tint_{i}" for i in TAG_INTENTS] + ["tint_other"]
+           + [f"tspan_{s}" for s in TAG_SPANS]
+           + ["emb_avail"] + [f"emb_{i}" for i in range(EMB_DIM)])
+RAW_FEATS = RAW_KEEP + RAW_NEW
+F_RAW = len(RAW_FEATS)
+_RAW_SEL = np.array([_IDX[k] for k in RAW_KEEP], np.int64)
+_RIDX = {k: i for i, k in enumerate(RAW_FEATS)}
+_EMB0 = _RIDX["emb_0"]
+FEATURE_SETS = ("full", "raw")
+
+
+def tag_view(out: dict | None) -> dict | None:
+    """Arc Tagger's raw /v1/tag output -> the raw set's tagger read-out (labels and counts only, no words)."""
+    if not out:
+        return None
+    utt = (out.get("utterances") or [{}])[-1]
+    on = lambda key: sorted({x["tag"] for x in utt.get(key) or [] if x.get("on")})  # noqa: E731
+    spans: dict = {}
+    for s in out.get("spans") or []:
+        ty = str(s.get("type") or "")
+        key = next((k for k in TAG_SPANS if ty == k or ty.startswith(k + ".")), None)
+        if key:
+            spans[key] = spans.get(key, 0) + 1
+    return {"act": [a.split(".")[-1] for a in on("act")], "intent": [i.split(".")[-1] for i in on("intent")],
+            "spans": spans, "n_spans": len(out.get("spans") or []),
+            "complete": any(e.get("type") == "discourse.assistant.command_complete" for e in out.get("events") or [])}
+
+
+def raw_feats(rec: dict, prev: dict | None) -> np.ndarray:
+    """The round-15 raw feature vector (F_RAW floats) of one step. A turn end reads its pre-routing snapshot."""
+    r = rec.get("raw") or rec
+    p = (prev or {}).get("raw") or prev       # the previous step as the raw set saw it
+    x = np.zeros(F_RAW, np.float32)
+    x[:len(RAW_KEEP)] = step_feats(r, p, raw=True)[_RAW_SEL]
+    pc = r.get("perc")
+    if not pc:
+        return x
+
+    def s(k, v):
+        x[_RIDX[k]] = float(v)
+    s("perc_avail", 1)
+    tv = pc.get("tag")
+    if tv:
+        s("tag_avail_raw", 1)
+        s("tag_complete_raw", bool(tv.get("complete")))
+        s("tag_n_spans", min(int(tv.get("n_spans") or 0), 4) / 4)
+        for a in tv.get("act") or []:
+            if a in TAG_ACTS:
+                s(f"tact_{a}", 1)
+        for i in tv.get("intent") or []:
+            s(f"tint_{i}" if i in TAG_INTENTS else "tint_other", 1)
+        for k, n in (tv.get("spans") or {}).items():
+            if k in TAG_SPANS:
+                s(f"tspan_{k}", min(int(n), 3) / 3)
+    e = pc.get("emb")
+    if e is not None and len(e) == EMB_DIM:
+        s("emb_avail", 1)
+        x[_EMB0:_EMB0 + EMB_DIM] = np.asarray(e, np.float32)
+    return x
+
+
+def feats_for(feat_set: str, rec: dict, prev: dict | None) -> np.ndarray:
+    return raw_feats(rec, prev) if feat_set == "raw" else step_feats(rec, prev)
+
+
+# ---------------------------------------------------------------------------------------------------- round 15 heads
+# Pointer / slot heads of a raw-set model (shadow only): which option of the screen the turn names (0 = none), and the
+# kind of argument a navigation carries (its value comes from the option / entity pointers, or from the words).
+OPT_SLOTS = 7                      # 0 none, 1..6 the frame's options in the order the client shows them
+NAV_ARGS = ["none", "offer", "option", "site", "lesson", "a11y", "gauge", "warp", "site_ctl", "task_text", "other"]
+HEADS_R15 = {"opt": OPT_SLOTS, "nav_arg": len(NAV_ARGS)}

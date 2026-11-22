@@ -40,7 +40,8 @@ SIZES = {"s": dict(d=32, layers=1, d_state=16, head_dim=16, buckets=1024, emb=8)
          "xl": dict(d=128, layers=4, d_state=16, head_dim=32, buckets=8192, emb=16)}
 HEADS = list(FX.HEADS.items())
 NH = sum(n for _, n in HEADS)
-W_LOSS = {"act": 1.0, "when": 0.5, "cmd_type": 0.6, "sub_type": 0.3, "amount": 0.5, "load_to": 0.5, "load_from": 0.3,
+W_LOSS = {"opt": 0.3, "nav_arg": 0.3, "reply": 0.5, "ent": 0.3,    # round 15 (raw set): slot + pointer heads
+          "act": 1.0, "when": 0.5, "cmd_type": 0.6, "sub_type": 0.3, "amount": 0.5, "load_to": 0.5, "load_from": 0.3,
           "task": 0.4, "query": 0.4, "rule_when": 0.3, "card_attr": 0.5, "style": 0.2, "s_rate": 0.1, "s_loud": 0.1,
           "s_f0_iqr": 0.1, "barge": 0.5, "nav": 0.6, "w_load": 0.2, "w_num": 0.3, "w_task": 0.2, "fp_exec": 1.0}
 ACT_END_W = 3.0
@@ -49,8 +50,13 @@ FP_EXEC = 0.0             # --fp-exec: weight of the false-execution penalty    
 
 
 class Director(nn.Module):
-    def __init__(self, F, d=48, layers=2, d_state=16, head_dim=16, buckets=2048, emb=8, drop=0.1):
+    def __init__(self, F, d=48, layers=2, d_state=16, head_dim=16, buckets=2048, emb=8, drop=0.1, heads=None,
+                 ptr=None):
+        """heads: [(name, n)] class heads (default the legacy HEADS); ptr (round 15): {name: (E [N, 384] fixed
+        candidate embeddings, r)}: pointer heads scoring each candidate by (P e_c) . q(h) / sqrt(r)."""
         super().__init__()
+        self.heads = list(heads or HEADS)
+        nh = sum(n for _, n in self.heads)
         self.buckets = buckets
         self.register_buffer("mu", torch.zeros(F))
         self.register_buffer("sd", torch.ones(F))
@@ -61,7 +67,13 @@ class Director(nn.Module):
                                                  nn.Dropout(drop)) for _ in range(layers)])
         self.drop = nn.Dropout(drop)
         self.norm = nn.LayerNorm(d)
-        self.head = nn.Linear(d, NH)
+        self.head = nn.Linear(d, nh)
+        self.ptr_r = {}
+        for name, (E, r) in (ptr or {}).items():
+            self.register_buffer(f"ptr_{name}_E", torch.as_tensor(np.asarray(E), dtype=torch.float32))
+            setattr(self, f"ptr_{name}_P", nn.Linear(int(np.asarray(E).shape[1]), r, bias=False))
+            setattr(self, f"ptr_{name}_q", nn.Linear(d, r))
+            self.ptr_r[name] = r
         nw = len(FX.WORD_HEADS)
         self.wq = nn.Linear(d, nw * emb)
         self.wf = nn.Linear(FX.WF, nw)
@@ -81,9 +93,12 @@ class Director(nn.Module):
         h = self.norm(h)
         o = self.head(h)
         r, j = {}, 0
-        for name, n in HEADS:
+        for name, n in self.heads:
             r[name] = o[..., j] if n == 1 else o[..., j:j + n]
             j += n
+        for name, rr in self.ptr_r.items():
+            K = getattr(self, f"ptr_{name}_P")(getattr(self, f"ptr_{name}_E"))          # N r
+            r[name] = getattr(self, f"ptr_{name}_q")(h) @ K.T / float(np.sqrt(rr))     # ... N
         we = self.emb(self._tok(wtok))                                    # ... W E
         q = self.wq(h).unflatten(-1, (len(FX.WORD_HEADS), self.emb_dim))  # ... 3 E
         wl = torch.einsum("...we,...ke->...wk", we, q) + self.wf(wfeat) + self.wb(h).unsqueeze(-2)
@@ -112,22 +127,51 @@ class Director(nn.Module):
         return {k: v[0] for k, v in o.items()}, new
 
 
-def make(F, size, drop=0.1):
-    return Director(F, **SIZES[size], drop=drop)
+def make(F, size, drop=0.1, heads=None, ptr=None):
+    return Director(F, **SIZES[size], drop=drop, heads=heads, ptr=ptr)
+
+
+PTR_R = 64
+
+
+def r15_spec(data_dir: Path) -> tuple[list, dict]:
+    """Round 15: the raw model's heads: the legacy class heads + opt / nav_arg, and the reply / entity pointers over
+    the candidate embeddings r15_labels.py wrote (data_dir / r15_cands.npz)."""
+    z = np.load(Path(data_dir) / "r15_cands.npz")
+    return HEADS + list(FX.HEADS_R15.items()), {"reply": (z["reply_emb"], PTR_R), "ent": (z["ent_emb"], PTR_R)}
+
+
+def make_from_cfg(cfg: dict, data_dir: Path | None = None, drop: float = 0.1):
+    """A model as train.json describes it (round 15: feat_set raw + its heads; older runs: the legacy Director)."""
+    if cfg.get("r15"):
+        heads, ptr = r15_spec(Path(cfg.get("cands_dir") or data_dir))
+        return make(cfg["F"], cfg["size_name"], drop, heads, ptr)
+    return make(cfg["F"], cfg["size_name"], drop)
 
 
 # ------------------------------------------------------------------------------------------------- data
 YKEYS = [k for k, _ in HEADS] + list(FX.WORD_HEADS)
+PTR_KEYS = ["reply", "ent"]          # round 15 pointer heads (labels: <set>.r15.npz)
 
 
-def load_split(path: Path) -> list[dict]:
+def load_split(path: Path, feat_set: str = "full") -> list[dict]:
+    """Sessions of one set. feat_set "raw" (round 15): `feats` is the raw set (features.raw_feats, stored f16), and the
+    reply / entity labels come from the side file r15_labels.py wrote (<set>.r15.npz)."""
     z = np.load(path)
     off = z["off"]
-    arrs = {k: z[k] for k in z.files if k != "off"}
+    keep = [k for k in z.files if k != "off" and not (k == "feats_raw" and feat_set != "raw")
+            and not (k == "feats" and feat_set == "raw")]
+    arrs = {k: z[k] for k in keep}
+    if feat_set == "raw":
+        arrs["feats"] = arrs.pop("feats_raw").astype(np.float32)
+        side = Path(str(path)[:-4] + ".r15.npz")
+        if side.exists():
+            zs = np.load(side)
+            arrs.update({k: zs[k] for k in zs.files})
     return [{k: v[off[i]:off[i + 1]] for k, v in arrs.items()} | {"i": i} for i in range(len(off) - 1)]
 
 
-def batch(ss, crop=0, rng=None):
+def batch(ss, crop=0, rng=None, heads=None):
     if crop:
         out = []
         for s in ss:
@@ -139,22 +183,25 @@ def batch(ss, crop=0, rng=None):
         ss = out
     T = max(len(s["feats"]) for s in ss)
     B = len(ss)
-    feats = np.zeros((B, T, FX.F), np.float32); toks = np.zeros((B, T, FX.K), np.int64)
+    Fd = ss[0]["feats"].shape[1]          # the set's own width (legacy prefix, or the round-15 raw set)
+    feats = np.zeros((B, T, Fd), np.float32); toks = np.zeros((B, T, FX.K), np.int64)
     wtok = np.zeros((B, T, FX.W), np.int64); wfeat = np.zeros((B, T, FX.W, FX.WF), np.float32)
-    lab = {k: np.full((B, T), -1, np.int64) for k, _ in HEADS}
+    keys = [k for k, _ in (heads or HEADS)] + PTR_KEYS * bool(heads)
+    lab = {k: np.full((B, T), -1, np.int64) for k in keys}
     lab.update({k: np.full((B, T, FX.W), -1, np.int64) for k in FX.WORD_HEADS})
     for i, s in enumerate(ss):
         n = len(s["feats"])
         feats[i, :n] = s["feats"]; toks[i, :n] = s["toks"]; wtok[i, :n] = s["wtok"]; wfeat[i, :n] = s["wfeat"]
-        for k in YKEYS:
-            lab[k][i, :n] = s[f"y_{k}"]
+        for k in keys + list(FX.WORD_HEADS):
+            if f"y_{k}" in s:             # a label the set does not carry stays masked (-1)
+                lab[k][i, :n] = s[f"y_{k}"]
     t = torch.from_numpy
     return t(feats), t(toks), t(wtok), t(wfeat), {k: t(v) for k, v in lab.items()}
 
 
-def losses(o, lab):
+def losses(o, lab, heads=None):
     L = {}
-    for k, n in HEADS:
+    for k, n in list(heads or HEADS) + [(p, 0) for p in PTR_KEYS if p in o]:
         y = lab[k]
         m = y >= 0
         if not m.any():
@@ -184,11 +231,14 @@ def predict(model, ss, device="cpu"):
     """-> per session {head: probs [T, ...]} (softmax / sigmoid)."""
     model.eval()
     res = []
+    hs = getattr(model, "heads", HEADS)
     for s in ss:
-        f, tk, wt, wf, _ = batch([s])
+        f, tk, wt, wf, _ = batch([s], heads=hs if hs is not HEADS else None)
         o = model(f.to(device), tk.to(device), wt.to(device), wf.to(device))
         r = {}
-        for k, n in HEADS:
+        for k in getattr(model, "ptr_r", {}):
+            r[k] = torch.softmax(o[k][0], -1).cpu().numpy()
+        for k, n in hs:
             r[k] = (torch.sigmoid(o[k][0]) if n == 1 else torch.softmax(o[k][0], -1)).cpu().numpy()
         for k in FX.WORD_HEADS:
             r[k] = torch.sigmoid(o[k][0]).cpu().numpy()
@@ -214,6 +264,10 @@ def main():
     ap.add_argument("--feat-noise", type=float, default=0.03)
     ap.add_argument("--patience", type=int, default=8, help="evals (every 200 steps) without val improvement")
     ap.add_argument("--fp-exec", type=float, default=0.0, help="weight of the false-execution penalty")
+    ap.add_argument("--feats", default="full", choices=list(FX.FEATURE_SETS), help="round 15: the feature set "
+                    "(full = the legacy vector every shipped file reads; raw = perception + state only)")
+    ap.add_argument("--r15", action="store_true", help="round 15: the reply / entity pointer heads and the opt / "
+                    "nav_arg slot heads (needs r15_labels.py's r15_cands.npz and <set>.r15.npz in --data)")
     a = ap.parse_args()
     global FP_EXEC
     FP_EXEC = a.fp_exec
@@ -223,13 +277,17 @@ def main():
     rng = random.Random(a.seed)
     d = Path(a.data)
     # train.npz, or the generator's shards train_s*.npz (gen_sessions.py --shard; no merged copy on disk)
-    tr = load_split(d / "train.npz") if (d / "train.npz").exists() else \
-        [s for f in sorted(d.glob("train_s*.npz")) for s in load_split(f)]
+    fs = a.feats
+    tr = load_split(d / "train.npz", fs) if (d / "train.npz").exists() else \
+        [s for f in sorted(d.glob("train_s*.npz")) if not f.name.endswith(".r15.npz") for s in load_split(f, fs)]
     # round 8: the coverage sweep sessions (gen_sessions.py --cov-sessions), one file or its shards
-    tr += [s for f in sorted(d.glob("train_cov*.npz")) for s in load_split(f)]
-    va = load_split(d / "val.npz")
+    tr += [s for f in sorted(d.glob("train_cov*.npz")) if not f.name.endswith(".r15.npz") for s in load_split(f, fs)]
+    va = load_split(d / "val.npz", fs)
     print(f"train {len(tr)} sessions {sum(len(s['feats']) for s in tr)} steps; val {len(va)}", flush=True)
-    model = make(FX.F, a.size, a.drop)
+    Fd = int(tr[0]["feats"].shape[1])
+    heads, ptr = r15_spec(d) if a.r15 else (None, None)
+    model = make(Fd, a.size, a.drop, heads, ptr)
+    hs = model.heads if a.r15 else None
     allf = np.concatenate([s["feats"] for s in tr])
     model.mu.copy_(torch.from_numpy(allf.mean(0)))
     model.sd.copy_(torch.from_numpy(allf.std(0) + 1e-2))
@@ -245,9 +303,9 @@ def main():
         tot, n_ = {}, 0
         with torch.no_grad():
             for i in range(0, len(va), 32):
-                f, tk, wt, wf, lab = batch(va[i:i + 32])
+                f, tk, wt, wf, lab = batch(va[i:i + 32], heads=hs)
                 _, parts = losses(model(f.to(a.device), tk.to(a.device), wt.to(a.device), wf.to(a.device)),
-                                  {k: v.to(a.device) for k, v in lab.items()})
+                                  {k: v.to(a.device) for k, v in lab.items()}, hs)
                 k_ = len(va[i:i + 32])
                 for k, v in parts.items():
                     tot[k] = tot.get(k, 0) + v * k_
@@ -257,13 +315,13 @@ def main():
     model.train()
     for step in range(1, a.steps + 1):
         ss = [tr[rng.randrange(len(tr))] for _ in range(a.bs)]
-        f, tk, wt, wf, lab = batch(ss, a.crop, rng)
+        f, tk, wt, wf, lab = batch(ss, a.crop, rng, heads=hs)
         if a.tok_drop > 0:
             tk = tk * (torch.rand(tk.shape) >= a.tok_drop)
         f, tk, wt, wf = f.to(a.device), tk.to(a.device), wt.to(a.device), wf.to(a.device)
         if a.feat_noise > 0:
             f = f + torch.randn_like(f) * model.sd * a.feat_noise
-        loss, parts = losses(model(f, tk, wt, wf), {k: v.to(a.device) for k, v in lab.items()})
+        loss, parts = losses(model(f, tk, wt, wf), {k: v.to(a.device) for k, v in lab.items()}, hs)
         opt.zero_grad(); loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step(); sched.step()
@@ -271,6 +329,9 @@ def main():
             v = val_loss()
             tot = sum(W_LOSS[k] * x for k, x in v.items())
             hist.append(dict(step=step, train=parts, val=v, val_total=tot))
+            if a.r15:
+                print("  r15 val " + " ".join(f"{k} {v[k]:.3f}" for k in ("opt", "nav_arg", "reply", "ent") if k in v),
+                      flush=True)
             print(f"step {step} train {float(loss):.3f} val {tot:.3f} act {v['act']:.3f} cmd {v['cmd_type']:.3f} "
                   f"attr {v['card_attr']:.3f} when {v['when']:.3f} barge {v['barge']:.3f} ({time.time() - t0:.0f} s)",
                   flush=True)
@@ -283,7 +344,8 @@ def main():
                     break
     os.makedirs(a.out, exist_ok=True)
     torch.save(best[2], f"{a.out}/model.pt")
-    json.dump(dict(args=vars(a), size=SIZES[a.size], size_name=a.size, params=n, F=FX.F, best_step=best[1],
+    json.dump(dict(args=vars(a), size=SIZES[a.size], size_name=a.size, params=n, F=Fd, feat_set=fs, r15=bool(a.r15),
+                   cands_dir=str(d.resolve()) if a.r15 else None, best_step=best[1],
                    best_val=best[0], hist=hist, n_train_sessions=len(tr),
                    n_train_steps=int(sum(len(s["feats"]) for s in tr))), open(f"{a.out}/train.json", "w"), indent=1)
     print("saved", a.out, "best step", best[1], flush=True)

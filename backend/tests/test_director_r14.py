@@ -186,6 +186,8 @@ def test_gen_sessions_embedder_problem_names_why():
             "assert 'EMBED_MODEL_DIR' in G.embedder_problem({'embedder': {'loaded': False}})\n"
             "assert G.embedder_problem({'embedder': {'loaded': False, 'error': 'gone'}}) == 'gone'\n"
             "assert G.embedder_problem({'embedder': {'loaded': True}}) is None\n"
+            "assert G.embedder_problem({'ok': True, 'models': {'embedder': {'loaded': True}}}) is None\n"
+            "assert 'EMBED_MODEL_DIR' in G.embedder_problem({'ok': True, 'models': {'embedder': {'loaded': False}}})\n"
             "print('ok')\n")
     env = {**os.environ, "MODEL_SERVER_URL": "http://127.0.0.1:1"}
     r = subprocess.run([sys.executable, "-c", code], cwd=dm, env=env, capture_output=True, text=True, timeout=180)

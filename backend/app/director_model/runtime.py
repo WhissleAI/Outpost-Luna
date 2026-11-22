@@ -176,13 +176,22 @@ class Model:
         # Features are only ever APPENDED (round 6 added the hands-free block after F_R5): older weights read the
         # prefix they were trained on. A model wider than features.py is stale code, not stale weights.
         self.F = int(meta["F"])
+        # Round 15: which feature set the weights read. "full" (every file up to round 14): the legacy vector's
+        # prefix. "raw": features.raw_feats (perception + state only), its own fixed width.
+        self.feat_set = meta.get("feat_set") or "full"
         # Round 12: the slots these weights were trained with at 0 (the dead round-7 ear slots, `trained_zero` in
         # weights.json). An ear that fills them later (libarc ABI 2: per-word conf, n-best alts) must not move these
         # weights' inputs: they are forced back to 0 here, whatever features.py computes.
         self.zero = np.array([FX._IDX[k] for k in meta.get("trained_zero") or [] if FX._IDX.get(k, self.F) < self.F],
-                             np.int64)
-        assert self.F <= FX.F and self.F >= FX.F_R5, \
-            f"feature width {meta['F']} vs {FX.F}: retrain/export the model for this features.py"
+                             np.int64) if self.feat_set == "full" else np.zeros(0, np.int64)
+        if self.feat_set == "raw":
+            assert self.F == FX.F_RAW, f"raw feature width {meta['F']} vs {FX.F_RAW}: retrain/export for this features.py"
+        else:
+            assert self.F <= FX.F and self.F >= FX.F_R5, \
+                f"feature width {meta['F']} vs {FX.F}: retrain/export the model for this features.py"
+        # Round 15: pointer heads (shadow only): score each candidate (a reply line, an entity) by a dot product of the
+        # model state's query with the candidate's precomputed key (the embedder's vector, projected; exported int8)
+        self.ptr = [(n, int(k), int(r)) for n, k, r in meta.get("ptr_heads") or []]
 
     def lin(self, name, x):
         y = x @ self.p[name + ".weight"].T
@@ -261,7 +270,14 @@ class Model:
         wl = we @ q.T + self.lin("wf", wfeat) + self.lin("wb", hN)[None, :]  # W, 3
         for i, name in enumerate(FX.WORD_HEADS):
             out[name] = np.where(wtok > 0, _sigmoid(wl[:, i]), 0.0)
+        for name, _, r in self.ptr:          # round 15: reply-line / entity pointers (dot product over candidates)
+            q = self.lin(f"ptr_{name}_q", hN)
+            out[name] = _softmax(self.p[f"ptr_{name}_K"] @ q / math.sqrt(r))
         return out, new
+
+    def feats(self, rec: dict, prev: dict | None) -> np.ndarray:
+        """This file's own input vector for a step (its feature set)."""
+        return FX.feats_for(self.feat_set, rec, prev)
 
 
 _model: Model | None = None
@@ -304,6 +320,29 @@ def model() -> Model | None:
     return _model
 
 
+_r15: dict = {}               # round 15: {"model": Model | None, "error": str | None} (weights_r15.*, SHADOW only)
+R15_FILE = "weights_r15"
+PERCEIVE_TIMEOUT_S = 0.5      # the pre-routing tagger + embedder read for the raw model (shadow): never blocks longer
+
+
+def r15_model() -> Model | None:
+    """Round 15: the raw-feature model with the reply / slot heads, loaded only to LOG what it would do (shadow). It is
+    never consulted by any decide_* path: the shipped policy (weights.json + its routes) is unchanged. Off with
+    DIRECTOR_R15=off, or when DIRECTOR_MODEL=off, or when the file is absent."""
+    if mode() == "off" or (os.environ.get("DIRECTOR_R15") or "on").strip().lower() == "off":
+        return None
+    if "model" not in _r15:
+        _r15["model"], _r15["error"] = None, None
+        if (MODEL_DIR / f"{R15_FILE}.json").exists():
+            try:
+                m = Model(MODEL_DIR, R15_FILE)
+                _r15["model"] = m
+                LATENCY["r15"] = measure_latency(m, 30)
+            except Exception as e:  # noqa: BLE001 (a stale / broken shadow file: nothing is logged, nothing changes)
+                _r15["error"] = f"{type(e).__name__}: {e}"
+    return _r15["model"]
+
+
 def routed_models() -> dict:
     """{name: Model} of the routed weight files (loaded with the primary; empty without `routes`)."""
     model()
@@ -329,6 +368,13 @@ def stats() -> dict:
                    for n, m in _routed.items()} if _model is not None else None
     s["latency"] = dict(LATENCY) or None
     s["model_error"] = _failed
+    m15 = r15_model()
+    s["r15"] = None if m15 is None and not _r15.get("error") else {
+        "shadow_only": True, "error": _r15.get("error"),
+        "model": None if m15 is None else {k: m15.meta.get(k) for k in ("size_name", "params", "trained", "feat_set")},
+        **{k: v for k, v in R15_STATS.items() if k != "recent"}, "recent": list(R15_STATS["recent"]),
+        "act_agreement": round(R15_STATS["act_agree"] / R15_STATS["turns"], 4) if R15_STATS["turns"] else None,
+        "style_agreement": round(R15_STATS["style_agree"] / R15_STATS["style_n"], 4) if R15_STATS["style_n"] else None}
     s["act_agreement"] = round(s["act_agree"] / s["decisions"], 4) if s["decisions"] else None
     s["turn_agreement"] = round(s["turn_agree"] / s["turns"], 4) if s["turns"] else None
     s["command_agreement"] = round(s["command_agree"] / s["commands"], 4) if s["commands"] else None
@@ -342,6 +388,47 @@ def reset_stats():
         STATS[k] = 0
     STATS["pairs"].clear()
     STATS["recent"].clear()
+    for k in ("steps", "turns", "act_agree", "style_n", "style_agree", "perceived", "perceive_fail"):
+        R15_STATS[k] = 0
+    R15_STATS["recent"].clear()
+
+
+# Round 15 (shadow only): what the raw model would have done at each turn end, next to what ran. Counts and our own
+# candidate lines only (never the kid's words).
+R15_STATS: dict = {"steps": 0, "turns": 0, "act_agree": 0, "style_n": 0, "style_agree": 0, "perceived": 0,
+                   "perceive_fail": 0, "recent": deque(maxlen=30)}
+
+
+def r15_view(m: Model, out: dict | None) -> dict | None:
+    """The raw model's outputs at a step as the turn log / stats show them: act + p, the reply line it ranks first
+    (candidate index, kind, p; top 3 indices), the slots (entity, option, nav arg kind) and its style tag. Numbers,
+    enums and our own candidate ids only."""
+    if not out:
+        return None
+    i = int(np.argmax(out["act"]))
+    v: dict = {"act": FX.ACTS[i], "p": round(float(out["act"][i]), 3)}
+    cands = m.meta.get("ptr_cands") or {}
+    for name in ("reply", "ent"):
+        if name in out:
+            pr = np.asarray(out[name])
+            top = [int(j) for j in np.argsort(-pr)[:3]]
+            ids = cands.get(name) or []
+            v[name] = {"i": top[0], "p": round(float(pr[top[0]]), 3), "top3": top,
+                       "id": ids[top[0]][0] if top[0] < len(ids) and isinstance(ids[top[0]], list) else
+                       (ids[top[0]] if top[0] < len(ids) else None)}
+    if "opt" in out:
+        j = int(np.argmax(out["opt"]))
+        v["opt"] = {"i": j, "p": round(float(out["opt"][j]), 3)}
+    if "nav_arg" in out:
+        j = int(np.argmax(out["nav_arg"]))
+        v["nav_arg"] = {"kind": FX.NAV_ARGS[j], "p": round(float(out["nav_arg"][j]), 3)}
+    if "nav" in out:
+        j = int(np.argmax(out["nav"]))
+        v["nav"] = FX.NAV_INTENTS[j]
+    if "style" in out:
+        j = int(np.argmax(out["style"]))
+        v["style"] = {"tag": FX.STYLE_TAGS[j], "p": round(float(out["style"][j]), 3)}
+    return v
 
 
 # ---------------------------------------------------------------------------------------------- the per-session hook
@@ -374,12 +461,60 @@ class Shadow:
         self.cur: dict | None = None
         self.n = 0
         self.turn_words = 0                # round 14: partial / final words seen since the current turn started
+        self.snap: dict | None = None      # round 15: the pre-routing record of the turn being decided (perceive)
+        self.state15 = None                # round 15: the raw shadow model's own recurrent state
+        self.out15: dict | None = None     # ... and its outputs at the latest step
+
+    def wants_perception(self) -> bool:
+        """Round 15: the pre-routing snapshot is taken for the generator (a sink: training data) and when the raw
+        shadow model is loaded; otherwise perceive() is a no-op (no extra model-server calls in the app)."""
+        return self.sink is not None or (self.run_model and r15_model() is not None)
+
+    async def perceive(self, ev: dict):
+        """Round 15, called by the Session once per kid turn BEFORE the router decides (session._turn): the record of
+        this turn end as it stands before any routing bookkeeping, plus Arc Tagger's read and the embedder's vector of
+        the words, fetched for every turn on every path. The raw feature set reads this snapshot at the turn end, so
+        its inputs never depend on the route. Shadow only: a timeout or a model-server error leaves `perc` empty."""
+        self.snap = None
+        if not self.wants_perception():
+            return
+        import asyncio
+        from .. import models_client
+        text = ev.get("text") or ""
+        perc: dict = {}
+        try:
+            out, vec = await asyncio.wait_for(asyncio.gather(models_client.tag(text, "assistant"),
+                                                             models_client.embed([text], "query")),
+                                              timeout=None if self.sink is not None else PERCEIVE_TIMEOUT_S)
+            perc = {"tag": FX.tag_view(out), "emb": (vec or [None])[0]}
+            R15_STATS["perceived"] += 1
+        except Exception:  # noqa: BLE001 (shadow: never let the perception read touch the turn)
+            R15_STATS["perceive_fail"] += 1
+        keep = getattr(self.sess, "_r7_prev", None)     # features.record remembers the previous turn: not twice
+        try:
+            rec = FX.record(self.sess, ev, None)
+        finally:
+            self.sess._r7_prev = keep
+        rec["perc"] = perc
+        self.snap = rec
 
     def step(self, ev: dict, read: dict | None = None) -> dict | None:
         self._close()
         rec = FX.record(self.sess, ev, read)
+        if rec["kind"] in ("turn_end", "typed"):
+            sn, self.snap = self.snap, None
+            if sn is not None and (sn.get("text") or "") == (rec.get("text") or ""):
+                rec["raw"] = sn          # round 15: the raw set reads the pre-routing snapshot of this turn end
         self.turn_words = turn_words_next(rec["kind"], self.turn_words)
         out = None
+        if self.run_model:
+            m15 = r15_model()
+            if m15 is not None:          # round 15: shadow only, its own state; never consulted by a decision
+                try:
+                    self.out15, self.state15 = m15.step(self.state15, m15.feats(rec, self.prev), *FX.step_tokens(rec))
+                    R15_STATS["steps"] += 1
+                except Exception:  # noqa: BLE001
+                    self.out15 = None
         if self.run_model:
             m = model()
             if m is not None:
@@ -393,7 +528,7 @@ class Shadow:
                         ro[name], self.rstate[name] = mr.step(self.rstate.get(name), x, toks, wtok, wfeat)
                     out = {**out, "_routed": ro}
         self.cur = {"rec": rec, "out": out, "decisions": [], "r": None, "i": self.n,
-                    "bare": bare_turn(rec, self.turn_words)}
+                    "bare": bare_turn(rec, self.turn_words), "out15": self.out15 if self.run_model else None}
         if rec["kind"] in ("turn_end", "typed"):
             self.turn_words = 0
         self.prev = rec
@@ -404,11 +539,23 @@ class Shadow:
     def emitted(self, ds: list[dict]):
         if self.cur is not None:
             self.cur["decisions"] += ds
+            o15 = self.cur.get("out15")
+            if o15 is not None and "style" in o15 and self.cur["rec"]["kind"] in ("turn_end", "typed"):
+                # round 15 (shadow): the style head next to what steering chose for the line we say; logged, never used
+                for d in ds:
+                    tag = (d.get("style") or {}).get("tag") if d.get("t") == "say" else None
+                    if tag:
+                        R15_STATS["style_n"] += 1
+                        R15_STATS["style_agree"] += int(FX.STYLE_TAGS[int(np.argmax(o15["style"]))] == tag)
+                        self.cur["style_used"] = tag
+                        break
 
     def turn_result(self, r: dict):
         if self.cur is not None:
             self.cur["r"] = {k: r.get(k) for k in ("action", "command", "nlu", "source", "needs_confirm", "place")}
             self.cur["r"]["brain"] = (r.get("readout") or {}).get("brain")
+            if r.get("say"):         # round 15: the line the engine speaks (the reply head's teacher label)
+                self.cur["r"]["say"] = str(r["say"])[:400]
 
     def flush(self):
         self._close()
@@ -434,6 +581,10 @@ class Shadow:
             ro = out.get("_routed") or {}
             if ro:
                 d["routed"] = {n: {"act": self.model_act(o)[0], "p": round(self.model_act(o)[1], 3)} for n, o in ro.items()}
+        m15 = r15_model() if md != "off" else None
+        o15 = (self.cur or {}).get("out15")
+        if m15 is not None and o15 is not None:      # round 15: shadow only, what the raw model would do
+            d["r15"] = r15_view(m15, o15)
         if md == "guarded" and m is not None:
             thr = m.meta.get("policy") or DEFAULT_POLICY
             who = lambda c: (thr.get("routes") or {}).get(c) or ("weights" if c in (thr.get("classes") or ()) else None)  # noqa: E731
@@ -469,6 +620,19 @@ class Shadow:
                     STATS["commands"] += 1
                     STATS["command_agree"] += int(bool(rc and mc and FX.same_command(rc, mc)) or (not rc and not mc))
                 STATS["recent"].append({"text": cur["rec"]["text"][:80], "rules": ra, "model": ma, "p": round(p, 3)})
+        o15 = cur.get("out15")
+        if o15 is not None and cur["rec"]["kind"] in ("turn_end", "typed"):
+            m15 = r15_model()
+            v = r15_view(m15, o15) if m15 is not None else None
+            if v is not None:
+                R15_STATS["turns"] += 1
+                R15_STATS["act_agree"] += int(v["act"] == ra)
+                rp = v.get("reply") or {}
+                cands = ((m15.meta.get("ptr_cands") or {}).get("reply") or [])
+                R15_STATS["recent"].append({"rules": ra, "r15": v["act"], "p": v["p"], "nav_arg": (v.get("nav_arg") or {}).get("kind"),
+                                            "opt": (v.get("opt") or {}).get("i"), "ent": (v.get("ent") or {}).get("id"),
+                                            "reply": cands[rp["i"]] if rp and rp.get("i", 1 << 30) < len(cands) else None,
+                                            "style": (v.get("style") or {}).get("tag"), "style_used": cur.get("style_used")})
         if self.sink is not None:
             self.sink.append({"rec": cur["rec"], "r": cur["r"], "rules_act": ra,
                               "decisions": [_slim(d) for d in cur["decisions"]]})
@@ -655,7 +819,8 @@ def clarify_options(out: dict) -> list[str]:
 
 
 def _slim(d: dict) -> dict:
-    keep = ("t", "priority", "style", "nudge", "hint", "action", "source", "level", "holder", "voice", "proactive")
+    keep = ("t", "priority", "style", "nudge", "hint", "action", "source", "level", "holder", "voice", "proactive",
+            "text")      # round 15: a say line's text (the reply head's teacher label; the generator's sink only)
     return {k: d[k] for k in keep if k in d}
 
 

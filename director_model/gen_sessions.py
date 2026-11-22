@@ -508,6 +508,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         if rd is not rd0:        # round 14: a replay replaced the round-13 turn: burn its draws, jitter on its own stream
             burn_turn(rng, rd0, hw0, u_typed < typed_p and not playing and op != "echo" and rd0 is None, it.get("bare"))
             jr = orng
+        n_routes = len(sess.routes)
         if typed:
             i0 = sess.dm.n
             await sess.handle({"t": "typed", "text": " ".join(hw), "source": "typed"})
@@ -558,7 +559,6 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 await sess.handle({"t": "turn", "state": "eager", "text": " ".join(hw)})
             clock.t += rng.uniform(0.3, 0.6)
             i0 = sess.dm.n
-            n_routes = len(sess.routes)
             await sess.handle({"t": "turn", "state": "end", "text": end_text})
             ann["end"] = i0 if sess.dm.n > i0 else None
             g_act = (it.get("gold") or {}).get("act") or ("answer" if it.get("lesson") else None)
@@ -567,6 +567,8 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 queue.insert(0, (1000 + tid, {**it, "op": None, "cat": f"{it.get('cat')}_repeat",
                                               "gold": it.get("gold") or None, "repeat_of": tid}))
         ann["t_end"] = clock.t
+        if len(sess.routes) > n_routes:      # round 15: the router's full decision (its nav arg: the nav_arg slot label)
+            ann["route"] = {k: sess.routes[-1].get(k) for k in ("outcome", "intent", "arg")}
         if op == "echo2":
             if pend_line is not None:
                 await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
@@ -592,7 +594,9 @@ def turn_info(sink, ann) -> dict:
     say = next((d for d in st["decisions"] if d["t"] == "say"), None)
     r = st["r"] or {}
     return {"act": st["rules_act"], "cmd": FX.rules_command(r), "style": (say or {}).get("style"),
-            "brain": (r.get("brain") or None), "place": r.get("place")}
+            "brain": (r.get("brain") or None), "place": r.get("place"),
+            # round 15: the line the engine spoke (the reply head's teacher) and the router's full decision
+            "say": r.get("say") or (say or {}).get("text") or None, "route": ann.get("route")}
 
 
 def gold_turn(ann, clean: dict, mode: str) -> dict:
@@ -620,6 +624,8 @@ def gold_turn(ann, clean: dict, mode: str) -> dict:
 def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
     T = len(sink)
     feats = np.zeros((T, FX.F), np.float32)
+    feats_raw = np.zeros((T, FX.F_RAW), np.float16)       # round 15: the raw set (features.raw_feats)
+    y15 = {k: np.full(T, -1, np.int64) for k in FX.HEADS_R15}
     toks = np.zeros((T, FX.K), np.int64)
     wtok = np.zeros((T, FX.W), np.int64)
     wfeat = np.zeros((T, FX.W, FX.WF), np.float32)
@@ -632,6 +638,7 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
         rec = st["rec"]
         n_words = RT.turn_words_next(rec["kind"], n_words)
         feats[t] = FX.step_feats(rec, prev)
+        feats_raw[t] = FX.raw_feats(rec, prev)
         toks[t], wtok[t], wfeat[t] = FX.step_tokens(rec)
         prev = rec
         y["act"][t] = FX.ACTS.index(st["rules_act"])
@@ -702,6 +709,13 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
             L = AC.lesson(ann["lesson"][0])
             ok, _ = AG.grade(L["steps"][ann["lesson"][1]], {"text": " ".join(final)})
             metas[i]["rules_act"] = "answer" if ok else "nudge"
+        # round 15: the slot labels (teacher: the clean run's router / rules; gold where the item has it) and the
+        # reply / entity teacher strings (mapped to candidate indices by r15_labels.py)
+        y15["opt"][i] = opt_label(" ".join(ann["clean"]), fr_it, ann.get("lesson"), clean.get("route"))
+        if g["act"] == "navigate":
+            y15["nav_arg"][i] = FX.NAV_ARGS.index(nav_arg_kind(clean.get("route"), fr_it))
+        metas[i]["r15"] = {"say": clean.get("say"), "place": clean.get("place") or _site_arg(clean.get("route")),
+                           "route": clean.get("route"), "has_raw": "raw" in st["rec"]}
         metas[i].update(tid=tid, end=True, cat=it.get("cat"), clean=" ".join(ann["clean"]), heard=" ".join(final),
                         gold_act=g["act"], gold_cmd=g["cmd"], gold_src=g["src"], gold_attr=g["attr"],
                         rules_cmd=FX.rules_command(r), rules_attr=rattr, rules_place=r.get("place"),
@@ -714,8 +728,59 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
                         situ=RT.situation(st["rec"], " ".join(final)))
     for m in metas:
         m.update(meta_base)
-    return {"feats": feats, "toks": toks, "wtok": wtok, "wfeat": wfeat, **{f"y_{k}": v for k, v in y.items()},
-            **{f"y_{k}": v for k, v in yw.items()}}, metas
+    return {"feats": feats, "feats_raw": feats_raw, "toks": toks, "wtok": wtok, "wfeat": wfeat,
+            **{f"y_{k}": v for k, v in y.items()}, **{f"y_{k}": v for k, v in yw.items()},
+            **{f"y_{k}": v for k, v in y15.items()}}, metas
+
+
+def _site_arg(route: dict | None) -> str | None:
+    return (route or {}).get("arg") if (route or {}).get("intent") == "pick_site" else None
+
+
+def opt_label(text: str, frame: dict | None, lesson, route: dict | None) -> int:
+    """Round 15, the option pointer's label: which of the screen's options (1-based, in the client's order) the CLEAN
+    words name: a lesson step's options by number / letter or by their words (academy.grade), a task card's options by
+    the router's task_choice; 0 = none named; -1 = the frame shows no options (masked)."""
+    fr = frame or {}
+    opts = list(fr.get("step_options") or fr.get("options") or [])
+    st = None
+    lid, si = (fr.get("lesson_id"), fr.get("step")) if fr.get("lesson_id") else (lesson or (None, None))
+    if lid is not None and si is not None:
+        L = AC.lesson(lid)
+        st = L["steps"][si] if L and 0 <= si < len(L["steps"]) else None
+    if st is not None:
+        so = AG.step_options(st["accept"])
+        if so:
+            n = min(len(so), FX.OPT_SLOTS - 1)
+            k = AG.option_index(text, n)
+            if k is not None:
+                return k + 1
+            t = AG._norm(text)
+            hits = [j for j, (_, ws) in enumerate(so[:n]) if any(w and AG._has(t, w) for w in ws)]
+            return hits[0] + 1 if len(hits) == 1 else 0
+    if not opts:
+        return -1
+    rt = route or {}
+    if rt.get("intent") == "task_choice" and rt.get("arg") in opts[:FX.OPT_SLOTS - 1]:
+        return opts.index(rt["arg"]) + 1
+    return 0
+
+
+def nav_arg_kind(route: dict | None, frame: dict | None) -> str:
+    """Round 15, the nav_arg slot's label: what kind of argument the clean run's navigation carried."""
+    rt = route or {}
+    if rt.get("outcome") != "navigate":
+        return "none"
+    it, arg = rt.get("intent"), rt.get("arg")
+    if arg in (None, ""):
+        return "none"
+    opts = list((frame or {}).get("step_options") or [])
+    if it in ("accept_offer", "decline_offer") or arg == (frame or {}).get("offer"):
+        return "offer"
+    if it == "task_choice":
+        return "option" if arg in opts else "task_text"
+    return {"pick_site": "site", "lesson": "lesson", "a11y": "a11y", "why": "gauge", "time_warp": "warp",
+            "site_layer": "site_ctl", "site_query": "site_ctl", "site_preset": "site_ctl"}.get(it, "other")
 
 
 def _rules_nav(route: dict | None, frame: dict | None) -> str | None:
@@ -788,7 +853,9 @@ def embedder_problem(h: dict | None) -> str | None:
     `h` is GET /health from the private model server (models_client.health); {} / None = not reachable."""
     if not h:
         return f"no model server at {os.environ.get('MODEL_SERVER_URL')}"
-    e = h.get("embedder")
+    # the model server's /health nests it under "models" (round 15: round 14's check read only the top level, so it
+    # refused a server whose embedder WAS loaded)
+    e = h.get("embedder") if h.get("embedder") is not None else (h.get("models") or {}).get("embedder")
     if e is None and h.get("error"):
         return str(h["error"])
     if not isinstance(e, dict):
