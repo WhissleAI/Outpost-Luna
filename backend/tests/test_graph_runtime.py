@@ -282,3 +282,45 @@ def test_errors_in_a_node_propagate_unchanged():
     g.node("bad", bad)
     with pytest.raises(KeyError):
         run(g.run(S()))
+
+
+def test_a_cancel_before_the_task_starts_still_gives_a_cancelled_result_and_cleans_up():
+    g = Graph("t")
+    g.node("a", lambda s, r: s.path.append("a"))
+    g.on_cancel(lambda s, r: s.path.append("cleanup"))
+
+    async def main():
+        h = g.start(S())
+        assert h.cancel() is True            # before the task ran a single step
+        return await h
+    res = run(main())
+    assert res.status == "cancelled" and res.state.path == ["cleanup"] and res.trace[-1]["cancelled"]
+
+
+def test_an_interrupt_inside_a_subgraph_pauses_the_parent_and_resumes_there():
+    inner = Graph("inner")
+    calls = []
+
+    def first(s, r):
+        calls.append("first")              # runs once: resume re-enters the paused node, not the subgraph's entry
+
+    def ask(s, r):
+        s.x = r.interrupt({"ask": "Sure?"})
+
+    inner.node("first", first)
+    inner.node("ask", ask)
+    inner.edge("first", "ask")
+    outer = Graph("outer")
+
+    async def call(s, r):
+        await r.subgraph(inner, s)
+        s.path.append(f"after:{s.x}")
+
+    outer.node("call", call)
+    outer.node("end", lambda s, r: s.path.append("end"))
+    outer.edge("call", "end")
+    res = run(outer.run(S()))
+    assert res.status == "interrupted" and res.checkpoint.node == "call" and res.state.path == []
+    assert res.checkpoint.value == {"ask": "Sure?"} and res.checkpoint.sub.node == "ask"
+    done = run(outer.run(None, resume=res.checkpoint, value="yes"))
+    assert done.status == "done" and done.state.path == ["after:yes", "end"] and calls == ["first"]

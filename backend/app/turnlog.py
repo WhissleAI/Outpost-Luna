@@ -89,8 +89,10 @@ _NAME = re.compile(r"\b(my name is|my name s|i m called|call me|they call me|my 
 _ADDR = re.compile(r"\b(i live (?:at|on|in|near)|my address is|my house is (?:at|on)|my school is)\b.*$")
 _PHONE = re.compile(r"\b(my (?:phone|phone number|number|mom s number|dad s number) is)\b.*$")
 _LONGNUM = re.compile(r"\b\d{5,}\b|\b(?:\d+\s+){3,}\d+\b")
+# "I said ..." only at the start of the turn ("I said Tycho", "no I said shields"): inside a sentence it is a recall
+# ("remember what i said about tycho"), not a correction
 MISHEARD = re.compile(r"\b(?:not what i said|i didn t say that|i did not say that|you misheard|you heard wrong|"
-                      r"that s not what i said|no i said|i said)\b")
+                      r"that s not what i said|no i said)\b|^(?:(?:no|wait|no wait|no no) )?i said\b")
 BACK_INTENTS = ("back", "panel_back", "map", "decline_offer")
 _ARG = re.compile(r"^[a-z0-9_:.\-]{1,48}$")
 

@@ -242,6 +242,48 @@ def test_barge_in_cancels_the_turn_before_it_commits_when_switched_on(monkeypatc
     assert tr[-1].get("cancelled") and tr[-1]["n"] == "readout"
 
 
+def test_barge_in_cancels_inside_the_director_handlers_outside_mission_mode(monkeypatch, tmp_path):
+    """The mission handler is no commit node by itself: an explorer turn waiting on a slow handler (here the place's
+    claim-checked line) is still cancellable."""
+    monkeypatch.setenv("TURN_GRAPH_BARGE_CANCEL", "1")
+    monkeypatch.setenv("TURNLOG_DIR", str(tmp_path))
+    real = director.claims.guide_line
+
+    async def slow_line(*a, **k):
+        await asyncio.sleep(0.3)
+        return await real(*a, **k)
+    monkeypatch.setattr(director.claims, "guide_line", slow_line)
+    s = new_sess()
+    s.belief["kid"]["safety"] = []
+
+    async def main():
+        t = asyncio.ensure_future(s.handle({"t": "typed", "text": "tell me about tycho", "source": "ptt"}))
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if s._run is not None and any(x["n"].endswith("/place") for x in s._run.run.trace):
+                break
+        assert s._run is not None and any(x["n"].endswith("/mission") for x in s._run.run.trace)
+        assert not s._run.run.committed, "an explorer turn never committed at the mission handler"
+        await s.barge_in()
+        await t
+    asyncio.run(main())
+    assert not any(d["t"] in ("say", "card", "answer") for d in s.outbox) and s._run is None
+
+
+def test_a_mission_order_commits_the_turn_before_it_reaches_the_sim(monkeypatch):
+    seen = []
+    real = director._sim_apply
+
+    async def spy(reg, mid, cmd):
+        run = director.RUN.get()
+        seen.append(run is not None and run.committed)
+        return await real(reg, mid, cmd)
+    monkeypatch.setattr(director, "_sim_apply", spy)
+    s = new_sess(mission=True)
+    asyncio.run(s.handle({"t": "typed", "text": "turn on power save"}))
+    assert seen and all(seen)
+
+
 def test_the_poll_is_a_graph_run_and_matches_legacy(monkeypatch):
     got = {}
     for eng in ("legacy", "graph"):

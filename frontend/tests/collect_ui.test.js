@@ -113,6 +113,47 @@ test("bind: Turn on posts consent + adult + this profile; Turn off posts off; ne
   assert.ok(calls.every(c => c.url.startsWith("/api/collect")), "only this app's own backend");
 });
 
+test("bind: the audio switch never turns collection on; once it is off, the consent screen comes back", async () => {
+  const calls = [];
+  let st = { on: true, audio: false, profile: "p1", until: Date.now() / 1000 + 3600, turns: 0, clips: 0 };
+  const fetchFn = async (url, opt = {}) => {
+    calls.push({ url, opt });
+    if (url === "/api/collect" && opt.method === "POST") {
+      const b = JSON.parse(opt.body);
+      if (b.audio_only && !(st.on && st.profile === b.profile)) return { ok: false, status: 409, json: async () => ({}) };
+      st = { ...st, audio: !!b.audio };
+      return { ok: true, json: async () => st };
+    }
+    return { ok: true, json: async () => st };
+  };
+  const els = {};
+  const mk = (attrs = {}) => ({ ...attrs, focus() {}, set onclick(f) { this._c = f; }, get onclick() { return this._c; }, set onchange(f) { this._ch = f; }, get onchange() { return this._ch; } });
+  const zone = {
+    set innerHTML(h) { this._h = h; for (const k of Object.keys(els)) delete els[k];
+      for (const m of h.matchAll(/data-(col-[a-z]+)/g)) els[m[1]] = mk({ checked: false, disabled: false }); },
+    get innerHTML() { return this._h; },
+    querySelector: s => els[(s.match(/data-(col-[a-z]+)/) || [])[1]] || null,
+  };
+  const el = { querySelector: s => (s === "[data-col-zone]" ? zone : null) };
+  const sec = window.__outpost.settingsSections.find(x => x.id === "collect");
+  sec.bind(el, { fetchFn });
+  const tick = async () => { for (let i = 0; i < 4; i++) await new Promise(r => setTimeout(r, 0)); };
+  await tick();
+  assert.ok(els["col-audio"], "on: the audio switch");
+  await els["col-audio"].onchange({ target: { checked: true } });
+  await tick();
+  const first = JSON.parse(calls.filter(c => c.opt.method === "POST").pop().opt.body);
+  assert.deepEqual(first, { audio_only: true, audio: true, profile: "p1" }, "no consent / adult / on in an audio change");
+  assert.equal(st.audio, true);
+  st = { ...st, on: false, audio: false, until: null };          // it switched itself off meanwhile
+  await els["col-audio"].onchange({ target: { checked: false } });
+  await tick();
+  assert.equal(st.on, false, "the audio switch did not turn it back on");
+  assert.ok(els["col-agree"] && els["col-go"], "the consent screen again");
+  assert.ok(!els["col-audio"]);
+  els["col-cancel"].onclick();                                  // the shared view back to the main row for later tests
+});
+
 test("export: the desktop hands over to the shell; the browser downloads; a failure says so", async () => {
   const w = { navigator: { userAgent: "Mozilla/5.0 Electron/44.10.0" }, location: { href: "/" } };
   const states = [];

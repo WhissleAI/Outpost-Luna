@@ -55,6 +55,8 @@ test("Help improve Outpost Luna: its own export URL, file name and backend route
   const fetchFn = async (url, opt) => { seen = { url, opt }; return { ok: true, arrayBuffer: async () => ZIP }; };
   await P.saveExport({ backend: ORIGIN, token: "t0k", appVersion: "0.5.8", file, fetchFn, api: "/api/collect/export" });
   assert.strictEqual(seen.url, `${ORIGIN}/api/collect/export`);
+  assert.strictEqual(seen.opt.headers["X-Outpost-Reset"], "1", "the backend's collect export needs the page header");
+  assert.strictEqual(seen.opt.headers["X-Luna-Token"], "t0k");
   assert.ok(fs.readFileSync(file).equals(ZIP));
   await assert.rejects(P.saveExport({ backend: ORIGIN, token: "", appVersion: "x", file, fetchFn, api: "/api/turnlog" }));
 });

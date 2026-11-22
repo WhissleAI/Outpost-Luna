@@ -1096,7 +1096,8 @@ class Session:
                           source=r.get("source"), _cmd=fc,
                           confirm=bool(r.get("needs_confirm")) or any(d.get("t") == "ask_confirm"
                                                                        for d in r.get("decisions") or []))
-            self._tl["_guard"] = guard or r.get("action") == "guard"
+            # or-ed: the safety step may already have marked it private (Arc's PII / mask tags)
+            self._tl["_guard"] = bool(self._tl.get("_guard")) or guard or r.get("action") == "guard"
         if r.get("action") == "none":
             await self.emit(pre)
             return

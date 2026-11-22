@@ -28,10 +28,12 @@ Settings → For grown-ups (the 3-second hold, then the teacher PIN when one is 
 - **While it is on** a small **Improving** tag shows in the top bar. The panel says **On until HH:MM** and counts the
   turns and clips kept.
 - **It switches itself off** 4 hours after it was turned on, or when the app quits, whichever comes first (like the
-  Playtest). Changing the audio switch does not restart the clock. The turns it collected stay until they are exported
+  Playtest). Changing the audio switch does not restart the clock, and never turns it on again: once it is off, the
+  audio switch is refused and the consent screen comes back. The turns it collected stay until they are exported
   or deleted (and the turn log's own 30-day limit). A session that runs long, or restarts the app, turns it on again.
 - **Export to share…** writes one zip where the tester chooses (a save dialog in the desktop app). It holds only the
   collected turns, redacted again on the way out, their outcome signals and clips, and a manifest. Nothing is sent.
+  The Playtest export never holds them (nor their clips), and their clips do not use up the Playtest's audio cap.
 - **Hold to delete everything** removes the collected turns and clips (the rest of the turn log stays).
 - Reset (either level) also deletes it and turns it off.
 
