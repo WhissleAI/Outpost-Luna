@@ -195,14 +195,17 @@ def test_weights_r15_parity_fixture():
     z = np.load(f)
     m = RT.Model(RT.MODEL_DIR, RT.R15_FILE)
     off = z["off"]
-    worst = 0.0
+    worst = ptr = 0.0
     for i in range(len(off) - 1):
         st = None
         for t in range(off[i], off[i + 1]):
             o, st = m.step(st, z["feats"][t], z["toks"][t], z["wtok"][t], z["wfeat"][t])
-            for k in ("act", "nav", "reply", "opt", "nav_arg"):
+            for k in ("act", "nav", "opt", "nav_arg", "style"):
                 worst = max(worst, float(np.abs(np.asarray(o[k]) - z[f"p_{k}"][t]).max()))
+            # the pointers' candidate keys are int8 in the file (float in the torch reference): a looser bound
+            ptr = max(ptr, float(np.abs(np.asarray(o["reply"]) - z["p_reply"][t]).max()))
     assert worst < 2e-3, worst
+    assert ptr < 0.03, ptr
 
 
 def _app_session(world, sid, clock):
@@ -241,10 +244,11 @@ def test_the_raw_model_never_changes_a_decision(world, clean, monkeypatch):
         outs[flag] = _script(s, clock)
         if flag == "on":
             assert s.dm.wants_perception()
+            ex = s.dm.explain((s.dm.cur or {}).get("out"), "what is regolith")
+            s.dm.flush()             # the last turn end is scored when it closes
             st = RT.stats()["r15"]
             assert st["shadow_only"] and st["turns"] == 5 and st["perceived"] == 5, st
             rc = st["recent"][-1]
             assert set(rc) >= {"rules", "r15", "reply", "opt", "ent", "nav_arg", "style"}
-            ex = s.dm.explain(s.dm.cur and s.dm.cur.get("out"), "what is regolith")
             assert "r15" in ex and "regolith" not in json.dumps(ex["r15"])
     assert outs["on"] == outs["off"], "the raw shadow model changed what the Session did"

@@ -547,7 +547,10 @@ def nlu_view(ws: list[str]) -> dict:
             "conf": float(r["confidence"] or 0.0)}
 
 
-def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
+def step_feats(rec: dict, prev: dict | None, raw: bool = False) -> np.ndarray:
+    """raw (round 15, raw_feats): the rules' slots the raw set drops are not computed at all (the mission NLU and the
+    Academy grader never see the words: a navigation turn never reaches the NLU, tests/test_router_panels.py); every
+    slot the raw set keeps is the same either way."""
     x = np.zeros(F, np.float32)
 
     def s(k, v):
@@ -584,7 +587,7 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
         s(key, v)
     # a turn the router already took as navigation never reaches the mission NLU, not even as evidence ("open the comm
     # panel" once turned the radio off; tests/test_router_panels.py)
-    nv = nlu_view(ws) if (rec.get("route") or {}).get("outcome") != "navigate" else nlu_view([])
+    nv = nlu_view(ws) if (rec.get("route") or {}).get("outcome") != "navigate" and not raw else nlu_view([])
     s("nlu_n", min(nv["n"], 3) / 3)
     s("nlu_clarify", nv["clarify"])
     s("nlu_conf", nv["conf"])
@@ -631,10 +634,10 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
             s(f"acc_{ls['accept']}", 1)
         if ls.get("status") in LESSON_ST:
             s(f"ls_{ls['status']}", 1)
-        g = lesson_grade(ls, rec.get("text") or "")
+        g = lesson_grade(ls, rec.get("text") or "") if not raw else None
         if g is not None:
             s("lesson_graded", 1); s("lesson_pass", g)
-    _handsfree_feats(rec, ws, s)
+    _handsfree_feats(rec, ws, s, raw)
     return x
 
 
@@ -648,7 +651,7 @@ CHATTER_W = {"oh", "it", "it s", "its", "okay", "ok", "alright", "all", "right",
              "wait", "hmm", "mm", "like", "well", "the", "a", "is", "that", "this", "s", "huh", "what", "now", "hey"}
 
 
-def _handsfree_feats(rec: dict, ws: list[str], s):
+def _handsfree_feats(rec: dict, ws: list[str], s, raw: bool = False):
     fr = rec.get("frame")
     if fr is None:          # a record from before round 6
         return
@@ -687,13 +690,13 @@ def _handsfree_feats(rec: dict, ws: list[str], s):
     s("on_air", bool(rec.get("on_air")))
     s("speaking", bool(rec.get("speaking")))
     s("line_gap", _clip_log(rec.get("line_gap"), 30.0) if rec.get("line_gap") is not None else 1.0)
-    _round7_feats(rec, ws, s)
+    _round7_feats(rec, ws, s, raw)
 
 
 NEG = re.compile(r"^(?:no|nope|stop|not that|no no|wait no|go back|back|cancel|wrong|that s wrong|undo)\b")
 
 
-def _round7_feats(rec: dict, ws: list[str], s):
+def _round7_feats(rec: dict, ws: list[str], s, raw: bool = False):
     fr = rec.get("frame") or {}
     s("scr_video", fr.get("screen") == "video")
     s("scr_prep", fr.get("screen") == "prep")
@@ -729,7 +732,7 @@ def _round7_feats(rec: dict, ws: list[str], s):
                 s("nav_fuzzy", 1)
                 s("nav_fuzzy_offer", R.answers_offer(fz[:2], ctx))
     ls = rec.get("lesson")
-    if ls and ls.get("active") and t and rec["kind"] in ("turn_end", "typed"):
+    if ls and ls.get("active") and t and rec["kind"] in ("turn_end", "typed") and not raw:
         g = lesson_grade_sa(ls, rec.get("text") or "")
         if g:
             s("lesson_pass_sa", 1)
@@ -1152,7 +1155,7 @@ def raw_feats(rec: dict, prev: dict | None) -> np.ndarray:
     r = rec.get("raw") or rec
     p = (prev or {}).get("raw") or prev       # the previous step as the raw set saw it
     x = np.zeros(F_RAW, np.float32)
-    x[:len(RAW_KEEP)] = step_feats(r, p)[_RAW_SEL]
+    x[:len(RAW_KEEP)] = step_feats(r, p, raw=True)[_RAW_SEL]
     pc = r.get("perc")
     if not pc:
         return x
