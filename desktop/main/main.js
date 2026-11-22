@@ -381,7 +381,7 @@ function createMain(origin) {
 // ---- Settings → App version → "Check for updates" (appupdate.js) ----------------------------------------------------
 // Test runs only (unpackaged, like OUTPOST_DIAG_SAVE_PATH): OUTPOST_TEST_APP_VERSION pretends to be another version;
 // OUTPOST_TEST_OPEN_LOG appends the URL "Release page" / "Open the site" would open (and "openPath <file>" for a finished
-// download) to that file instead of opening anything; OUTPOST_TEST_DOWNLOAD_DIR saves the installer there, not Downloads.
+// download, "showItemInFolder <file>" for "Show in folder") to that file instead of opening anything; OUTPOST_TEST_DOWNLOAD_DIR saves the installer there, not Downloads.
 const TESTING = !app.isPackaged;
 const UPDATE_VERSION = (TESTING && process.env.OUTPOST_TEST_APP_VERSION) || APP_VERSION;
 const autoGate = AU.createAutoGate({ file: path.join(USER, "update-check.json") });
@@ -434,11 +434,15 @@ async function downloadAppUpdate() {
   const dir = (TESTING && process.env.OUTPOST_TEST_DOWNLOAD_DIR) || app.getPath("downloads");
   dl = { state: "downloading", got: 0, total: rel.size || null, name: rel.asset, version: rel.latest };
   pushUpdate(rel);
-  log(`app update: downloading ${rel.asset} ${rel.latest} (${rel.size || "?"} bytes, ${rel.sha_url ? "sha256 file" : rel.digest ? "digest" : "size only"})`);
+  // test runs only: OUTPOST_TEST_DOWNLOAD_BREAK=size (the release's size is off by one: refused before any byte is
+  // written) | sha (a wrong sha256: the whole file arrives, then fails the check and its .part is removed)
+  const brk = TESTING && process.env.OUTPOST_TEST_DOWNLOAD_BREAK;
+  const last = brk === "size" ? { ...rel, size: (rel.size || 0) + 1 } : brk === "sha" ? { ...rel, sha_url: null, digest: "0".repeat(64) } : rel;
+  log(`app update: downloading ${rel.asset} ${rel.latest} (${last.size || "?"} bytes, ${last.sha_url ? "sha256 file" : last.digest ? "digest" : "size only"})${brk ? ` [test: broken ${brk}]` : ""}`);
   let lastPush = 0;
   const realFetch = globalThis.fetch.__real || globalThis.fetch;   // getAsset checks the policy hop by hop itself
   try {
-    const r = await AU.downloadInstaller({ last: rel, dir, fetchImpl: realFetch, appVersion: UPDATE_VERSION,
+    const r = await AU.downloadInstaller({ last, dir, fetchImpl: realFetch, appVersion: UPDATE_VERSION,
       hostOk: (h) => NP.hostAllowed(h, netPol),
       onProgress: (got, total) => {
         dl = { ...dl, got, total };
@@ -464,6 +468,7 @@ async function downloadAppUpdate() {
   }
 }
 function showDownloaded() {
+  if (TESTING && process.env.OUTPOST_TEST_OPEN_LOG) { fs.appendFileSync(process.env.OUTPOST_TEST_OPEN_LOG, `showItemInFolder ${dlFile || "downloads"}\n`); return; }
   if (dlFile && fs.existsSync(dlFile)) shell.showItemInFolder(dlFile);
   else shell.openPath(app.getPath("downloads")).then((err) => { if (err) log(`app update: could not open Downloads: ${err}`); });
 }

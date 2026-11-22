@@ -239,9 +239,11 @@ artifacts on every release. See "Follow-ups".
 
 Test hooks (unpackaged runs only, like `OUTPOST_DIAG_SAVE_PATH`): `OUTPOST_TEST_APP_VERSION=0.3.7` pretends to be
 another version; `OUTPOST_TEST_DOWNLOAD_DIR=<dir>` saves the installer there instead of Downloads;
-`OUTPOST_TEST_OPEN_LOG=<file>` appends the URL the release page / site would open, and `openPath <file>` for a finished
-download, to a file instead of opening anything; `OUTPOST_TEST_OPEN_FAIL=1` makes every browser open fail (the
-copy-the-link path).
+`OUTPOST_TEST_OPEN_LOG=<file>` appends the URL the release page / site would open, `openPath <file>` for a finished
+download and `showItemInFolder <file>` for Show in folder, to a file instead of opening anything;
+`OUTPOST_TEST_OPEN_FAIL=1` makes every browser open fail (the copy-the-link path);
+`OUTPOST_TEST_DOWNLOAD_BREAK=size|sha` breaks the installer download (a size off by one is refused before anything is
+written; a wrong sha256 fails after the whole file arrived) for the failure path.
 
 ## The engine boundary (libarc ABI, pinned ONNX Runtime, model checksums)
 
