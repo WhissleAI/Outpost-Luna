@@ -114,3 +114,21 @@ Keep it that way. Add new Arc outputs at the end of `FEATS`, never in the middle
   `SPEAKER_PROFILE=r13` reproduces round-13 renders. `real_ear.py leak --n 60 --profiles r13,laptop` (model server env)
   measures the own-line leak each gives (the real laptop: median 0.75, `docs/ARC_ABI2.md` section 8). Re-decode the
   echo-bed jobs (`NEW_EAR=1` or a fresh cache) after changing the profile: cached decodes keep the old path.
+
+## Round 15: the raw feature set and the shadow file
+
+- `features.raw_feats` (`--feats raw` in `train.py`) is a second feature set: perception and state only (the ear's
+  words, names / link p, decoder agreement, ABI 2 read-outs, dd; Arc Tagger's acts / intents / span types / PII; the
+  embedder's vector of the words; the entity layer; our own audio; screen / lesson / mission state; timing). No regex
+  flag, mission NLU, router outcome or grader result. The legacy set is unchanged and stays the default, so every
+  shipped file still loads. A raw file says `"feat_set": "raw"` in its json.
+- A raw turn end reads the record the Session takes BEFORE routing (`runtime.Shadow.perceive`, one call in
+  `session._turn`), with the tagger read and the embedder vector fetched there on every path. The generator records it
+  too (`rec["raw"]`), so train and serve read the same thing. Generating a raw dataset therefore needs the model
+  server's tagger AND embedder.
+- `train.py --r15` adds the reply-line and entity pointer heads and the option / nav-argument slot heads. They need
+  `r15_labels.py` (candidates + their embeddings + labels) run on the dataset first. `gate_r15.py` gates the raw
+  candidate against what ships and reports the new heads; `export.py --name weights_r15` writes the shadow file.
+- `weights_r15.*` is SHADOW ONLY: the runtime steps it on every event and logs what it would do (turn log
+  `director.r15`, `/api/director/stats` `r15`); no decision reads it. `DIRECTOR_R15=off` unloads it (and stops the
+  pre-routing tagger / embedder read). `director_model/run_r15.sh` is the whole round.
