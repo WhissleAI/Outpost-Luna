@@ -33,6 +33,17 @@ grown-ups' counts can honour their day window, app/brain.py):
                     switch, power moved back)
     confirm_cancel  a confirm we asked for was answered "no"
     confirm_yes     ... answered "yes" (a positive signal)
+    misheard        (adult collection, all logs) "that's not what I said" / "I said ..." within MISHEARD_S: the words
+                    were wrong (an ear error, not a Director error)
+    barge           the speaker talked over our reply to that turn within BARGE_S (the reply was too long / wrong)
+    nav_back        a navigation the turn caused was taken back within NAVBACK_S (the screen went back to where the
+                    turn was said, or "back" / "map" was said): the navigation was wrong
+
+Adult collection (adult_collect.py, Settings -> For grown-ups -> "Help improve Outpost Luna"; docs/ADULT_SESSIONS.md):
+additive fields, only on turns logged while it is on for this profile:
+    collect   true
+    reply     what the app said and did for the turn: {"say": [lines, call signs redacted], "nav": {intent, arg},
+              "place": entity id, "kinds": [decision types]}: the reply-line and navigation labels' candidates
 
 Storage: <dir>/turns.jsonl, rotated to turns.1.jsonl at CAP_BYTES / 2, so the folder never holds more than ~CAP_BYTES.
 Retention (docs/SECURITY.md "Retention"): on top of the size cap, lines older than RETAIN_DAYS (30) are dropped once a
@@ -61,6 +72,9 @@ RETAP_S = 6.0
 UNDO_S = 20.0                  # v2: an order reversed this soon after it ran
 AFTER_TURN_S = 15.0            # a tap / lesson result this soon after a turn is about that turn
 REPEAT_SHARE = 0.6
+MISHEARD_S = 10.0              # "that's not what I said" this soon after a turn
+BARGE_S = 20.0                 # talked over our reply this soon after the turn
+NAVBACK_S = 15.0               # a navigation taken back this soon
 RETAIN_DAYS = 30               # docs/SECURITY.md "Retention": the turn log keeps 30 days, whatever its size
 
 NEG = re.compile(r"^(?:no|nope|no no|stop|stop it|stop that|back|go back|cancel|cancel that|not that|not that one|"
@@ -73,6 +87,10 @@ _NAME = re.compile(r"\b(my name is|my name s|i m called|call me|they call me|my 
 _ADDR = re.compile(r"\b(i live (?:at|on|in|near)|my address is|my house is (?:at|on)|my school is)\b.*$")
 _PHONE = re.compile(r"\b(my (?:phone|phone number|number|mom s number|dad s number) is)\b.*$")
 _LONGNUM = re.compile(r"\b\d{5,}\b|\b(?:\d+\s+){3,}\d+\b")
+MISHEARD = re.compile(r"\b(?:not what i said|i didn t say that|i did not say that|you misheard|you heard wrong|"
+                      r"that s not what i said|no i said|i said)\b")
+BACK_INTENTS = ("back", "panel_back", "map", "decline_offer")
+_ARG = re.compile(r"^[a-z0-9_:.\-]{1,48}$")
 
 
 def _course() -> str:
@@ -95,6 +113,23 @@ def redact(text: str, names: list[str] | tuple = ()) -> str:
             q = re.sub(rf"\b{re.escape(c)}\b", "<callsign>", q)
     q = _LONGNUM.sub("<number>", q)
     return re.sub(r"\s+", " ", q).strip()
+
+
+def redact_line(text: str, names: list[str] | tuple = ()) -> str:
+    """One of OUR lines (the reply), case kept for the labeller: call signs (built-in and the kid's), names after
+    "my name is", and phone-like numbers replaced. At most 300 characters."""
+    q = str(text or "")[:300]
+    for c in sorted({*CALLSIGNS, *(norm(n) for n in names if n)}, key=len, reverse=True):
+        if c:
+            pat = r"[\s-]+".join(map(re.escape, c.split()))
+            q = re.sub(rf"(?i)\b{pat}\b", "<callsign>", q)
+    q = re.sub(r"(?i)\b(my name is|call me|i m called|i'm called)\s+\w+", lambda m: m.group(1) + " <name>", q)
+    return re.sub(r"\s+", " ", _LONGNUM.sub("<number>", q)).strip()
+
+
+def _arg(x):
+    """A navigation's argument when it is an app id (a lesson, a site, a panel); never free words."""
+    return x if isinstance(x, str) and _ARG.match(x) else None
 
 
 _ENUM = re.compile(r"^[a-z_]{1,24}$")
@@ -381,13 +416,26 @@ class SessionLog:
         self.last_tap: tuple | None = None     # (id, ts)
         self.last_gesture: tuple | None = None  # round 8: (gesture name, ts): voice and gesture co-occur
         self.last_cmd: tuple | None = None     # v2: (turn id, Command, ts) of the last order a turn ran (`undo`)
+        self.nav_watch: dict | None = None     # a navigation a turn caused: {id, from, ts, moved} (`nav_back`)
+
+    def _profile(self):
+        return (getattr(self.sess, "prefs", None) or {}).get("profile")
+
+    def collecting(self) -> bool:
+        """An adult's "Help improve Outpost Luna" is on for this session's profile (adult_collect.py)."""
+        try:
+            from . import adult_collect
+            return adult_collect.on_for(self._profile())
+        except Exception:  # noqa: BLE001
+            return False
 
     def on(self) -> bool:
-        """prefs.improve (on by default), or a grown-up's Playtest session (playtest.py) for as long as it runs."""
+        """prefs.improve (on by default), a grown-up's Playtest session (playtest.py) for as long as it runs, or an
+        adult's collection for this profile (adult_collect.py)."""
         if (getattr(self.sess, "prefs", None) or {}).get("improve"):
             return True
         from . import playtest
-        return playtest.active()
+        return playtest.active() or self.collecting()
 
     def _t(self) -> float:
         now = self.sess.clock()
@@ -432,7 +480,34 @@ class SessionLog:
             # v2: the ear's read-out on this turn's final words (numbers and enums only), a heard turn only
             "ear": ear_view(arc.get("ear")) if source in ("listen", "voice", "ptt") else None,
             "room": _room(self.sess),
+            **({"collect": True} if self.collecting() else {}),
         }
+
+    def note_out(self, rec: dict | None, ds: list[dict]):
+        """The decisions the session emitted for the turn being logged (Session.emit): kept on the record until
+        finish() turns them into `reply` (adult collection only). Never written as is."""
+        if rec is None or not rec.get("collect"):
+            return
+        rec.setdefault("_out", []).extend(d for d in ds if isinstance(d, dict))
+
+    def _reply(self, out: list[dict]) -> dict:
+        say, kinds, nav, place = [], [], None, None
+        for d in out:
+            t = d.get("t")
+            if t and t not in kinds:
+                kinds.append(t)
+            if t == "say" and isinstance(d.get("text"), str):
+                say.append(d["text"])
+            elif t == "answer" and isinstance(d.get("r"), dict):
+                if isinstance(d["r"].get("say"), str) and d["r"]["say"]:
+                    say.append(d["r"]["say"])
+                place = place or d["r"].get("place")
+            elif t == "nav":
+                nav = {"intent": _enum(d.get("intent")) or None, "arg": _arg(d.get("arg"))}
+            if d.get("place") and not place:
+                place = d.get("place")
+        return {"say": [redact_line(x, self._names()) for x in say][:4], "nav": nav,
+                "place": place if isinstance(place, str) and len(place) <= 64 else None, "kinds": kinds[:8]}
 
     def finish(self, rec: dict | None, director: dict | None = None, guard: bool = False):
         """Write the turn (after the decision), and score the previous turn against this one (repeat / negate /
@@ -446,11 +521,18 @@ class SessionLog:
         if cmd is not None:
             rec["director"]["cmd"] = cmd_view(cmd)
         pcm = rec.pop("_pcm", None)
+        out = rec.pop("_out", None)
+        if rec.get("collect") and not guard:
+            rec["reply"] = self._reply(out or [])
         if guard:
             rec["text"], rec["guard"] = "<private>", True
         elif pcm:            # a grown-up's Playtest session: the turn's audio next to the log (never a private turn)
             from . import playtest
-            wav = playtest.save_clip(rec["id"], pcm)
+            allow = False
+            if rec.get("collect"):
+                from . import adult_collect
+                allow = adult_collect.audio_for(self._profile())
+            wav = playtest.save_clip(rec["id"], pcm, allow=allow)
             if wav:
                 rec["wav"] = wav
         now = self.sess.clock()
@@ -470,6 +552,13 @@ class SessionLog:
             elif dt <= REPEAT_S and len(ws) >= 1 and _overlap(ws, prev["words"]) >= REPEAT_SHARE and \
                     not NEG.match(q):
                 self._signal(prev, "repeat", dt, by=rec["id"], same_outcome=prev["outcome"] == rec["router"]["outcome"])
+            if dt <= MISHEARD_S and MISHEARD.search(q):
+                self._signal(prev, "misheard", dt, by=rec["id"])
+            nw = self.nav_watch
+            if nw is not None and nw["id"] == prev["id"] and dt <= NAVBACK_S and \
+                    (rec["router"].get("intent") in BACK_INTENTS or NEG.match(q)):
+                self._signal(prev, "nav_back", dt, by=rec["id"], how="said")
+                self.nav_watch = None
         if cmd is not None and (director or {}).get("final") in ("command", "confirm_no"):
             lc = self.last_cmd
             if lc is not None and now - lc[2] <= UNDO_S and reverses(lc[1], cmd):
@@ -478,6 +567,33 @@ class SessionLog:
         self.store.append(rec)
         self.last = {"id": rec["id"], "words": ws, "ts": now, "outcome": rec["router"]["outcome"],
                      "final": (director or {}).get("final"), "confirm": bool((director or {}).get("confirm"))}
+        if (director or {}).get("final") == "navigate" and not guard:
+            self.nav_watch = {"id": rec["id"], "from": (rec.get("frame") or {}).get("screen"), "ts": now, "moved": False}
+
+    def screen(self, name: str | None):
+        """The client's screen changed. After a navigation a turn caused: once it moved away, a return to the screen
+        the turn was said on within NAVBACK_S -> `nav_back` on that turn."""
+        nw = self.nav_watch
+        if nw is None or not self.on() or not name:
+            return
+        dt = self.sess.clock() - nw["ts"]
+        if dt > NAVBACK_S:
+            self.nav_watch = None
+            return
+        if name != nw["from"]:
+            nw["moved"] = True
+        elif nw["moved"]:
+            self._signal({"id": nw["id"]}, "nav_back", dt, how="screen")
+            self.nav_watch = None
+
+    def barge(self):
+        """The speaker talked over us (a barge-in) within BARGE_S of the last turn we acted on -> `barge` on it."""
+        if not self.on() or self.last is None or self.last.get("final") in (None, "ignore"):
+            return
+        dt = self.sess.clock() - self.last["ts"]
+        if dt <= BARGE_S and not self.last.get("barged"):
+            self.last["barged"] = True
+            self._signal(self.last, "barge", dt)
 
     def ui(self, event: str | None, target: str | None):
         """A tap / button. The same target twice within RETAP_S, right after a turn -> `retap` on that turn."""

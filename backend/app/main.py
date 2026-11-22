@@ -190,6 +190,7 @@ from .assets_api import router as assets_router; app.include_router(assets_route
 from .learn.api import router as learn_router; app.include_router(learn_router)  # noqa: E402  (on-device learning, docs/ON_DEVICE_LEARNING.md)
 from .brain import router as brain_router; app.include_router(brain_router)  # noqa: E402  (the Brain: grown-up counts, docs/BRAIN.md)
 from .playtest import router as playtest_router; app.include_router(playtest_router)  # noqa: E402  (a grown-up's Playtest session, docs/DIRECTOR_LOOP.md)
+from .adult_collect import router as collect_router; app.include_router(collect_router)  # noqa: E402  (an adult's "Help improve Outpost Luna", docs/ADULT_SESSIONS.md)
 from .nasa_views import router as views_router; app.include_router(views_router)  # noqa: E402  (0.4 real NASA views, optional asset)
 from .moon_views import router as moon_views_router; app.include_router(moon_views_router)  # noqa: E402  (open Moon data, optional asset)
 from .courses import router as courses_router; app.include_router(courses_router)  # noqa: E402  (read-only course manifests, docs/COURSES.md)

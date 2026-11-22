@@ -66,6 +66,7 @@ import "./class_editor.css";
 import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
+import "./collect_ui.js";       // Settings → For grown-ups → Help improve Outpost Luna: an adult's opt-in (docs/ADULT_SESSIONS.md)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
 import "./link_fallback_ui.js"; // "Your web browser didn't open. Copy the link:" (desktop: a link the system browser could not open)
 import "./network_ui.js";       // Settings → For grown-ups → School network (docs/SCHOOL_IT.md)

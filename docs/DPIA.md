@@ -105,3 +105,15 @@ safeguarding process.
   the school pack.
 - **Review:** repeat this assessment before any feature that sends brain data off the computer (a roll-up that reaches
   Whissle, cloud sync), adds a new safety kind, or identifies speakers.
+
+## Addendum (2026-11-22): adult testers' "Help improve Outpost Luna"
+
+An adult's opt-in, not a child's: Settings → For grown-ups (behind the hold / teacher PIN) → Help improve Outpost Luna
+(`backend/app/adult_collect.py`, `docs/ADULT_SESSIONS.md`). Off by default; turned on only after an "I'm an adult, and
+I agree" consent screen; tied to the profile that turned it on, so a child's profile on the same computer is never
+collected (`backend/tests/test_adult_collect.py`). It keeps the same redacted turn-log text plus what the app said
+(call signs redacted) and, only with its own switch, audio clips. Nothing is sent; the export holds only the adult's
+collected turns, redacted again, and the adult chooses whether to hand it over. Risk to children: a child using the
+adult's profile while it is on; mitigated by the top-bar "Improving" tag, the separate profile the protocol asks for,
+and the gate. To check with a lawyer: the consent wording, and retention of handed-over files.
+

@@ -42,3 +42,19 @@ test("a backend error or a body that is not a zip writes nothing", async () => {
   await assert.rejects(P.saveExport({ backend: ORIGIN, token: "", appVersion: "x", file, fetchFn: async () => ({ ok: true, arrayBuffer: async () => Buffer.from("nope, not a zip at all....") }) }));
   assert.ok(!fs.existsSync(file));
 });
+
+test("Help improve Outpost Luna: its own export URL, file name and backend route; nothing else is fetched", async () => {
+  assert.ok(P.isCollectUrl(`${ORIGIN}/__outpost/collect-export`, ORIGIN));
+  assert.ok(!P.isCollectUrl(`${ORIGIN}/__outpost/playtest-export`, ORIGIN));
+  assert.ok(!P.isExportUrl(`${ORIGIN}/__outpost/collect-export`, ORIGIN), "the playtest handler does not take it");
+  assert.ok(!P.isCollectUrl(`http://evil.example/__outpost/collect-export`, ORIGIN));
+  assert.match(P.defaultName(Date.UTC(2026, 10, 22, 12), "collect"), /^outpost-luna-help-2026-11-2\d\.zip$/);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "luna-col-"));
+  const file = path.join(dir, "help.zip");
+  let seen = null;
+  const fetchFn = async (url, opt) => { seen = { url, opt }; return { ok: true, arrayBuffer: async () => ZIP }; };
+  await P.saveExport({ backend: ORIGIN, token: "t0k", appVersion: "0.5.8", file, fetchFn, api: "/api/collect/export" });
+  assert.strictEqual(seen.url, `${ORIGIN}/api/collect/export`);
+  assert.ok(fs.readFileSync(file).equals(ZIP));
+  await assert.rejects(P.saveExport({ backend: ORIGIN, token: "", appVersion: "x", file, fetchFn, api: "/api/turnlog" }));
+});

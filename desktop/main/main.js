@@ -353,6 +353,8 @@ function createMain(origin) {
     if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin, /[?&]names=1\b/.test(url)); return; }
     // Settings → For grown-ups → "Export playtest": the grown-up picks where; nothing is uploaded
     if (PT.isExportUrl(url, origin)) { e.preventDefault(); exportPlaytest(origin); return; }
+    // Settings → For grown-ups → "Help improve Outpost Luna" → "Export to share": the same, for an adult's turns
+    if (PT.isCollectUrl(url, origin)) { e.preventDefault(); exportPlaytest(origin, "collect"); return; }
     // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and downloads the installer
     const up = AU.parseUpdateUrl(url, origin);
     if (up) {
@@ -506,29 +508,31 @@ async function saveDiagnostics(origin, names = false) {
 
 // ---- Settings → For grown-ups → Playtest session → "Export playtest" (playtest.js) ----------------------------------
 let ptBusy = false;
-function ptState(state) {
-  if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.__lunaPlaytest && window.__lunaPlaytest(${JSON.stringify({ state })})`).catch(() => {});
+function ptState(state, kind = "playtest") {
+  const cb = kind === "collect" ? "__lunaCollect" : "__lunaPlaytest";
+  if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.${cb} && window.${cb}(${JSON.stringify({ state })})`).catch(() => {});
 }
-async function exportPlaytest(origin) {
+async function exportPlaytest(origin, kind = "playtest") {
   if (ptBusy || !win) return;
   ptBusy = true;
   try {
     // OUTPOST_PLAYTEST_SAVE_PATH: test runs only (like OUTPOST_DIAG_SAVE_PATH): no dialog, this file
     let file = (TESTING && process.env.OUTPOST_PLAYTEST_SAVE_PATH) || "";
     if (!file) {
-      const r = await dialog.showSaveDialog(win, { title: "Export playtest",
-        defaultPath: path.join(app.getPath("downloads"), PT.defaultName()), filters: [{ name: "Zip", extensions: ["zip"] }] });
-      if (r.canceled || !r.filePath) { ptState("cancelled"); return; }
+      const r = await dialog.showSaveDialog(win, { title: kind === "collect" ? "Export to share" : "Export playtest",
+        defaultPath: path.join(app.getPath("downloads"), PT.defaultName(Date.now(), kind)), filters: [{ name: "Zip", extensions: ["zip"] }] });
+      if (r.canceled || !r.filePath) { ptState("cancelled", kind); return; }
       file = r.filePath;
     }
-    ptState("saving");
-    const bytes = await PT.saveExport({ backend: origin, token: TOKEN, appVersion: APP_VERSION, file });
-    log(`playtest: exported a ${Math.round(bytes / 1024)} KB file`);
-    jlog.event("playtest_exported", { bytes });
-    ptState("saved");
+    ptState("saving", kind);
+    const bytes = await PT.saveExport({ backend: origin, token: TOKEN, appVersion: APP_VERSION, file,
+      api: kind === "collect" ? "/api/collect/export" : "/api/playtest/export" });
+    log(`${kind}: exported a ${Math.round(bytes / 1024)} KB file`);
+    jlog.event(kind === "collect" ? "collect_exported" : "playtest_exported", { bytes });
+    ptState("saved", kind);
   } catch (e) {
-    log("playtest: not exported:", e.message);
-    ptState("error");
+    log(`${kind}: not exported:`, e.message);
+    ptState("error", kind);
   } finally { ptBusy = false; }
 }
 

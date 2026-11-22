@@ -58,6 +58,18 @@ def active() -> bool:
     return bool(STATE["on"])
 
 
+def recording() -> bool:
+    """The mic relay keeps its ring buffer: a playtest runs, or an adult's "Help improve Outpost Luna" keeps audio
+    (adult_collect.py; whose turn it is still decides whether a clip is written)."""
+    if active():
+        return True
+    try:
+        from . import adult_collect
+        return adult_collect.audio_any()
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def start(consent: bool) -> dict:
     if consent is not True:
         raise ValueError("a grown-up has to confirm permission first")
@@ -98,7 +110,7 @@ class Recorder:
         self.start: int | None = None
 
     def feed(self, b: bytes, on: bool | None = None) -> None:
-        if not (active() if on is None else on):
+        if not (recording() if on is None else on):
             if self.buf:
                 self.buf, self.start = bytearray(), None
             return
@@ -135,11 +147,12 @@ def wav_bytes(pcm: bytes) -> bytes:
     return buf.getvalue()
 
 
-def save_clip(turn_id: str, pcm: bytes | None) -> str | None:
+def save_clip(turn_id: str, pcm: bytes | None, allow: bool = False) -> str | None:
     """Write a turn's clip next to the log -> its name relative to the log folder ("playtest/<id>.wav"), or None (no
-    playtest, no audio, a bad id, or over CAP_BYTES)."""
+    playtest, no audio, a bad id, or over CAP_BYTES). `allow`: an adult's collection with audio on for this turn's
+    profile (adult_collect.audio_for), checked by the caller."""
     from . import turnlog
-    if not pcm or not active() or not _ID.match(turn_id or ""):
+    if not pcm or not (allow or active()) or not _ID.match(turn_id or ""):
         return None
     try:
         if turnlog.STORE.stats()["clip_bytes"] + len(pcm) > CAP_BYTES:

@@ -46,10 +46,29 @@ def shipped_config(d: Path = WEIGHTS) -> dict:
             "routes": pol.get("routes") or {}}
 
 
-def wrong(act: str | None, gold: str) -> bool:
+def wrong(act: str | None, gold: str, nav: str | None = None, gold_nav: str | None = None) -> bool:
+    """A wrong action. A navigation is wrong when the gold is not a navigation, or (a labeller named which one,
+    label_ui) when it went somewhere else."""
     if act == "navigate":
-        return gold != "navigate"
+        return gold != "navigate" or bool(gold_nav and nav and nav != gold_nav)
     return act in EXEC and act != gold
+
+
+def ok(act: str | None, gold: str, nav: str | None = None, gold_nav: str | None = None) -> bool:
+    return act == gold and not (act == "navigate" and gold_nav and nav and nav != gold_nav)
+
+
+def nav_of(t: dict) -> str | None:
+    """Which navigation the app ran for a turn: the reply's nav decision (adult collection), else the router's
+    intent (or the model's, `navigate:<intent>`)."""
+    rep = (t.get("reply") or {}).get("nav") if isinstance(t.get("reply"), dict) else None
+    if isinstance(rep, dict) and rep.get("intent"):
+        return rep["intent"]
+    rt = t.get("router") or {}
+    m = rt.get("model")
+    if isinstance(m, str) and m.startswith("navigate:"):
+        return m.split(":", 1)[1]
+    return rt.get("intent") if rt.get("outcome") == "navigate" else None
 
 
 def rows_of(files: list, min_conf: float = 0.6, reviewed: dict | None = None) -> list[dict]:
@@ -58,7 +77,8 @@ def rows_of(files: list, min_conf: float = 0.6, reviewed: dict | None = None) ->
     by_id = {t["id"]: t for t in turns}
     for t in turns:
         t["_sigs"] = sigs.get(t["id"], [])
-    reviewed = IL.load_reviewed() if reviewed is None else reviewed
+    full = IL.load_reviewed_full() if reviewed is None else {k: {"fix": v} for k, v in reviewed.items()}
+    reviewed = {k: r["fix"] for k, r in full.items()}
     out = []
     for t in turns:
         if t.get("guard") or not t.get("text") or "<" in (t.get("text") or ""):
@@ -67,10 +87,12 @@ def rows_of(files: list, min_conf: float = 0.6, reviewed: dict | None = None) ->
         final = IL.final_act(t)
         if final is None:
             continue
+        gold_nav = None
         if t["id"] in reviewed:
             if reviewed[t["id"]] == "skip":
                 continue
             gold, conf = reviewed[t["id"]], 1.0
+            gold_nav = full[t["id"]].get("nav") if gold == "navigate" else None
         else:
             gold, conf, _ = IL.weak_label(t, t["_sigs"], by_id)
             if gold is None or conf < min_conf:
@@ -86,7 +108,8 @@ def rows_of(files: list, min_conf: float = 0.6, reviewed: dict | None = None) ->
             classes.append("answer")
         out.append({"id": t["id"], "cls": cls, "classes": classes, "gold": gold, "conf": conf, "rules": rules,
                     "final": final, "est": bool(d.get("rules_est")), "mode": d.get("mode"), "weights": d.get("weights"),
-                    "text": t["text"]})
+                    "text": t["text"], "nav": nav_of(t) if final == "navigate" else None, "gold_nav": gold_nav,
+                    "rules_nav": (t.get("router") or {}).get("intent") if rules == "navigate" else None})
     return out
 
 
@@ -94,12 +117,13 @@ def gate(rows: list[dict]) -> dict:
     res: dict = defaultdict(lambda: {"n": 0, "rules_ok": 0, "ship_ok": 0, "rules_wrong": 0, "ship_wrong": 0,
                                      "extra": 0, "est": 0, "ex": []})
     for r in rows:
-        rw, sw = wrong(r["rules"], r["gold"]), wrong(r["final"], r["gold"])
+        gn = r.get("gold_nav")
+        rw, sw = wrong(r["rules"], r["gold"], r.get("rules_nav"), gn), wrong(r["final"], r["gold"], r.get("nav"), gn)
         for c in r["classes"]:
             x = res[c]
             x["n"] += 1
-            x["rules_ok"] += r["rules"] == r["gold"]
-            x["ship_ok"] += r["final"] == r["gold"]
+            x["rules_ok"] += ok(r["rules"], r["gold"], r.get("rules_nav"), gn)
+            x["ship_ok"] += ok(r["final"], r["gold"], r.get("nav"), gn)
             x["rules_wrong"] += rw
             x["ship_wrong"] += sw
             x["est"] += r["est"]

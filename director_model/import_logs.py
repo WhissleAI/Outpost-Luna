@@ -26,6 +26,11 @@ Weak labels come from the outcome signals the app logged after each turn (turnlo
   * a lesson answer that went to hint                                  -> nudge (a wrong answer) unless it was chatter
   * a lesson answer that passed right after (v2 `pass`)                -> answer, confidence 0.9
   * no signal                                                          -> what the app did (weak positive)
+Adult collection (backend/app/adult_collect.py, docs/ADULT_SESSIONS.md): an "outpost-luna-collect" zip reads like a
+playtest zip (turns.jsonl + playtest/<turn id>.wav). Its turns carry `collect` and `reply` (what the app said and did),
+and the signals misheard / barge / nav_back. A labeller's full label (director_model/label_ui: act, nav intent + arg,
+command slots, place link, reply line, held-out split) is a reviewed.jsonl row with those keys; the import puts them in
+the item's gold (`nav`, `nav_arg`, `cmd`, `place`, `reply`) and honours its `split` ("test" = held out).
 Guard turns ("<private>") and anything still carrying a redaction tag are never imported as text to learn (and a
 private turn never has audio).
 """
@@ -51,6 +56,7 @@ REVIEW_MIN = 0.6           # below this confidence a turn goes to review instead
 ACTS = ("ignore", "answer", "command", "navigate", "ask_clarify", "nudge", "confirm_yes", "confirm_no")
 CHATTER = re.compile(r"^(?:oh|okay|ok|alright|yeah|yep|um|uh|hmm|wait|so|it s|its|it|the|a|oh it s|oh it s the|"
                      r"oh okay|okay okay|alright alright|oh wait|oh cool|oh nice|hold on|one sec)(?: \w+)?$")
+SPLITS = ("train", "val", "test")
 ACT_OF_FINAL = {"ignore": "ignore", "navigate": "navigate", "answer": "answer", "command": "command",
                 "confirm_yes": "confirm_yes", "confirm_no": "confirm_no", "ask_clarify": "ask_clarify", "guard": None,
                 "nudge": "nudge", "alert": None, "wait": None}
@@ -140,7 +146,7 @@ def weak_label(t: dict, sigs: list[dict], by_id: dict) -> tuple[str | None, floa
                 return na, 0.75, "ignored, then repeated and acted on"
             return "ignore", 0.4, "ignored and repeated, the repeat was not taken either"
         return "ignore", 0.8 if (dd is not None and dd < 0.5) or chatter else 0.65, "ignored, no complaint"
-    neg = kinds & {"negate", "confirm_cancel", "retap", "undo"}
+    neg = kinds & {"negate", "confirm_cancel", "retap", "undo", "misheard", "nav_back"}
     if act == "answer" and "pass" in kinds and "hint" not in kinds:
         return "answer", 0.9, "a lesson answer that passed"
     if act == "answer" and "hint" in kinds:
@@ -167,18 +173,49 @@ def split_of(text: str) -> str:
     return "test" if x < 15 else "val" if x < 25 else "train"
 
 
-def load_reviewed() -> dict:
+def load_reviewed_full(review_dir: Path = REVIEW) -> dict:
+    """reviewed.jsonl -> {turn id: the last row for it} (a later label replaces an earlier one). A row needs `id` and a
+    `fix` in ACTS or "skip"; the label tool's rows also carry nav / nav_arg / cmd / place / reply / split."""
     out = {}
-    f = REVIEW / "reviewed.jsonl"
+    f = Path(review_dir) / "reviewed.jsonl"
     if f.exists():
-        for line in open(f):
+        for line in open(f, encoding="utf-8"):
             try:
                 r = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if r.get("fix") in (*ACTS, "skip"):
-                out[r["id"]] = r["fix"]
+            if isinstance(r, dict) and r.get("id") and r.get("fix") in (*ACTS, "skip"):
+                out[r["id"]] = r
     return out
+
+
+def load_reviewed(review_dir: Path = REVIEW) -> dict:
+    """{turn id: the reviewed act} (eval_real and the import read this)."""
+    return {k: r["fix"] for k, r in load_reviewed_full(review_dir).items()}
+
+
+def apply_label(it: dict, lab: dict | None) -> dict:
+    """A labeller's full label (label_ui) into an item's gold: which navigation (+ its argument), the order's slots,
+    the place the turn is about, the line the app should have said; and a forced split ("test" = the held-out set)."""
+    if not lab:
+        return it
+    g = it["gold"]
+    act = g.get("act")
+    if act == "navigate" and isinstance(lab.get("nav"), str) and lab["nav"]:
+        g["nav"] = lab["nav"]
+        if isinstance(lab.get("nav_arg"), str) and lab["nav_arg"]:
+            g["nav_arg"] = lab["nav_arg"]
+    if act == "command" and isinstance(lab.get("cmd"), dict) and lab["cmd"].get("type"):
+        g["cmd"] = lab["cmd"]
+    if isinstance(lab.get("place"), str) and lab["place"]:
+        g["place"] = lab["place"]
+    if isinstance(lab.get("reply"), str):
+        g["reply"] = lab["reply"]           # "" = the app should have stayed quiet
+    if lab.get("split") in SPLITS:
+        it["split"] = lab["split"]
+    if lab.get("by"):
+        it["labelled_by"] = str(lab["by"])[:24]
+    return it
 
 
 def to_item(t: dict, act: str, conf: float, why: str) -> dict:
@@ -206,6 +243,14 @@ def to_item(t: dict, act: str, conf: float, why: str) -> dict:
         it["situ_live"] = cls
     if t.get("wav"):
         it["wav"] = t["wav"]
+    if t.get("collect"):
+        it["speaker"] = "adult"                # an adult tester's "Help improve Outpost Luna" turn
+    rep = t.get("reply")
+    if isinstance(rep, dict):
+        it["reply"] = {k: rep.get(k) for k in ("say", "nav", "place") if rep.get(k)}
+    sg = sorted({s["sig"] for s in t.get("_sigs") or []})
+    if sg:
+        it["signals"] = sg
     return it
 
 
@@ -236,12 +281,8 @@ def run(files: list, out: Path = OUT, review_dir: Path = REVIEW, quiet: bool = F
     by_id = {t["id"]: t for t in turns}
     for t in turns:
         t["_sigs"] = sigs.get(t["id"], [])
-    reviewed = load_reviewed() if review_dir == REVIEW else {}
-    if review_dir != REVIEW and (review_dir / "reviewed.jsonl").exists():
-        for line in open(review_dir / "reviewed.jsonl"):
-            r = json.loads(line)
-            if r.get("fix") in (*ACTS, "skip"):
-                reviewed[r["id"]] = r["fix"]
+    full = load_reviewed_full(review_dir)
+    reviewed = {k: r["fix"] for k, r in full.items()}
     items, review, st = [], [], Counter()
     for t in turns:
         text = t.get("text") or ""
@@ -252,7 +293,7 @@ def run(files: list, out: Path = OUT, review_dir: Path = REVIEW, quiet: bool = F
             if reviewed[t["id"]] == "skip":
                 st["reviewed_skip"] += 1
                 continue
-            items.append(to_item(t, reviewed[t["id"]], 1.0, "reviewed"))
+            items.append(apply_label(to_item(t, reviewed[t["id"]], 1.0, "reviewed"), full[t["id"]]))
             st["reviewed"] += 1
             continue
         act, conf, why = weak_label(t, t["_sigs"], by_id)
@@ -273,6 +314,9 @@ def run(files: list, out: Path = OUT, review_dir: Path = REVIEW, quiet: bool = F
     keep = {x["id"]: x for x in prev}
     for x in items:          # a later import (or a review) replaces the earlier label of the same turn
         keep[x["id"]] = x
+    for k, f in reviewed.items():   # a turn a person marked "skip" leaves the set, even from an earlier import
+        if f == "skip":
+            keep.pop(k, None)
     out.write_text(json.dumps({"items": list(keep.values())}, indent=0))
     review_dir.mkdir(parents=True, exist_ok=True)
     rf = review_dir / "review.jsonl"
