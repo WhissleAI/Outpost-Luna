@@ -201,10 +201,32 @@ updates** button (`desktop/main/appupdate.js`, `frontend/src/app_update_ui.js`):
      **Open the release page**;
    - "Couldn't check right now. You can also download from whissleai.github.io/Outpost-Luna" when offline, rate-limited
      (GitHub's unauthenticated limit is 60 requests an hour per IP: a 403 / 429) or anything else went wrong.
-3. **Download** navigates to `/__outpost/update?do=open&what=download`: the page names *what* to open, never a URL. The
-   main process opens the URL from its own last result with `shell.openExternal`, and only an https URL on
-   `github.com/WhissleAI/Outpost-Luna/...` or `whissleai.github.io/Outpost-Luna` (`openAllowed`); anything else is
-   refused and logged.
+3. **Download** navigates to `/__outpost/update?do=open&what=download`: the page names *what* to open, never a URL.
+   **No web browser is involved** (a Mac whose default browser app was deleted only says "The application can't be
+   opened", LaunchServices -10810, and nothing else happens). The main process downloads the installer itself
+   (`downloadInstaller`), from the URL in its own last result:
+   - only `https://github.com/WhissleAI/Outpost-Luna/...` (`openAllowed`), then GitHub's release-asset redirect host
+     (`release-assets.githubusercontent.com` / `objects.githubusercontent.com`, `ASSET_HOSTS`). Each redirect hop is
+     checked before it is requested; anything else is refused. Under School network mode `github.com` must be on the
+     allow list; the asset host is then let through for this download only;
+   - into the **Downloads** folder, never overwriting: `Outpost-Luna-mac-arm64.dmg`, then `… (1).dmg`, `… (2).dmg`.
+     It is written to a hidden `.part` file first and only gets its name once checked; a failed download leaves nothing;
+   - checked: the size against the GitHub asset's `size`, and the sha256 against the release's `.sha256` file
+     (`Outpost-Luna-<ver>-arm64.dmg.sha256`, which also covers the stable-named copy of the same size), else against
+     GitHub's own `digest` for the asset. A mismatch deletes the file;
+   - progress, done and failed go to the page as `dl` on the same `window.__lunaUpdate` result: "Downloading 0.3.9… 42%"
+     with a bar; "Downloaded! It's in your Downloads folder." with **Show in folder**; or "The download stopped. Check
+     the internet and try again." / "The download came out broken. Try again." / "There's no room for it in
+     Downloads." / "Downloads are off on the school network.", with **Try again**;
+   - then on a Mac `shell.openPath` opens the dmg (macOS mounts it and shows the drag-to-Applications window) and
+     `shell.showItemInFolder` shows it in Finder. On Windows the `.exe` is only shown in its folder: the app never runs
+     an installer. Each download is a line in `main.log` and an `app_update_download` event in `main.jsonl`.
+4. **Open the release page** / **Open the site** still use the system browser (`shell.openExternal`, allow-listed as
+   above). Every `shell.openExternal` in the app (these, and the page's web links and NASA-video links) is awaited
+   (`openWithFallback`): when it rejects, the failure is logged (`web browser did not open: …` in `main.log`, an
+   `open_external_failed` event) and the page says **"Your web browser didn't open. Copy the link:"** with the link
+   and a **Copy** button (in the update row, or as a corner notice for any other link: `window.__lunaLink`,
+   `frontend/src/link_fallback_ui.js`).
 
 **Manual by default.** "Check for updates automatically" (`prefs.update_check`, stored with the other settings on this
 device, per cadet profile) is **off** until a grown-up turns it on. When on, the page tells the shell so when it loads;
@@ -216,7 +238,12 @@ No auto-install yet: Windows is not code-signed and macOS auto-update (electron-
 artifacts on every release. See "Follow-ups".
 
 Test hooks (unpackaged runs only, like `OUTPOST_DIAG_SAVE_PATH`): `OUTPOST_TEST_APP_VERSION=0.3.7` pretends to be
-another version; `OUTPOST_TEST_OPEN_LOG=<file>` appends the URL Download would open to a file instead of opening a browser.
+another version; `OUTPOST_TEST_DOWNLOAD_DIR=<dir>` saves the installer there instead of Downloads;
+`OUTPOST_TEST_OPEN_LOG=<file>` appends the URL the release page / site would open, `openPath <file>` for a finished
+download and `showItemInFolder <file>` for Show in folder, to a file instead of opening anything;
+`OUTPOST_TEST_OPEN_FAIL=1` makes every browser open fail (the copy-the-link path);
+`OUTPOST_TEST_DOWNLOAD_BREAK=size|sha` breaks the installer download (a size off by one is refused before anything is
+written; a wrong sha256 fails after the whole file arrived) for the failure path.
 
 ## The engine boundary (libarc ABI, pinned ONNX Runtime, model checksums)
 
@@ -421,7 +448,8 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
   allow list (none by default), in the page, the shell and both servers (`docs/SCHOOL_IT.md`).
 - **App updates:** the app asks GitHub for a newer version only when you press Settings -> App version -> Check for
   updates, or once a day on launch if you turned on "Check for updates automatically" (off by default). One request
-  from the main process, nothing about you in it; nothing is downloaded or installed by the app ("App updates" above).
+  from the main process, nothing about you in it. The installer is downloaded only when you press Download (into
+  Downloads, size and sha256 checked) and never installed or run by the app ("App updates" above).
 - **Mic and camera:** the permission handler grants audio and video capture only to `http://127.0.0.1:<backend port>`;
   everything else (screen capture, location, notifications, other origins) is denied. The camera is only ever
   requested when the kid turns on Settings → Camera & gestures (docs/GESTURES.md); on macOS the first request goes

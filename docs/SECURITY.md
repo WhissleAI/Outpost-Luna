@@ -127,9 +127,12 @@ data today) are for the owner and counsel to fill in.
 The one request the app makes to the internet on its own behalf after setup, and only when asked (Settings → App
 version → Check for updates) or, if a grown-up opted in, once a day on launch: the **main process** (never the page,
 which stays locked to its origin) GETs GitHub's latest-release API with no auth and no user data. The page can only ask
-for a check or name what to open (`download` / `release` / `site`); the URL comes from the main process's own result
-and must be https on `github.com/WhissleAI/Outpost-Luna` or `whissleai.github.io/Outpost-Luna` before
-`shell.openExternal`. Nothing is installed. Details: [`docs/DESKTOP.md`](DESKTOP.md) "App updates".
+for a check or name what to open (`download` / `release` / `site` / `folder`); the URL comes from the main process's own
+result and must be https on `github.com/WhissleAI/Outpost-Luna` or `whissleai.github.io/Outpost-Luna` before
+`shell.openExternal`. **Download** is fetched by the main process itself (no browser): from our repo, then only GitHub's
+release-asset redirect host, every hop checked first; into Downloads under a fresh name; size and sha256 checked against
+the release before it gets its name. A Mac dmg is opened (mounted); a Windows `.exe` is only shown in its folder. Nothing
+is installed or run. Details: [`docs/DESKTOP.md`](DESKTOP.md) "App updates".
 
 ## The desktop shell: hardening in one place (`desktop/main/hardening.js`)
 

@@ -80,3 +80,39 @@ test("the notice: shown for an update, with the same Download; nothing for no up
   assert.doesNotMatch(n.innerHTML, /https?:/);   // the page holds no URL to open
   assert.equal(AU.showNotice({ state: "up_to_date", current: "0.3.8" }, doc), null);
 });
+
+// ---- "Download" without a browser: the shell downloads; the row shows progress, done, failed ----------------------
+const avail = (dl, extra = {}) => ({ state: "available", current: "0.3.8", latest: "0.3.9", download: DL, platform: "Mac", dl, ...extra });
+
+test("download states: progress, done (Mac / Windows), failed with Try again; the Check button is busy meanwhile", () => {
+  const d = AU.view(avail({ state: "downloading", got: 50, total: 200 }));
+  assert.equal(d.line, "Downloading 0.3.9… 25%");
+  assert.equal(d.progress, 25);
+  assert.equal(d.busy, true);
+  assert.equal(d.action, null);
+  assert.equal(AU.view(avail({ state: "downloading", got: 5, total: null })).progress, -1);   // size unknown: a moving bar
+  const done = AU.view(avail({ state: "done", name: "Outpost-Luna-mac-arm64.dmg" }));
+  assert.equal(done.line, "Downloaded! It's in your Downloads folder.");
+  assert.equal(done.notes, "Open it, then drag Outpost Luna into Applications.");
+  assert.deepEqual(done.action, { what: "folder", label: "Show in folder" });
+  assert.equal(AU.view(avail({ state: "done" }, { platform: "Windows" })).notes, "Open it to install the new version.");
+  for (const [reason, line] of [["offline", "The download stopped. Check the internet and try again."], ["check", "The download came out broken. Try again."],
+    ["error", "The download didn't finish. Try again."], ["weird", "The download didn't finish. Try again."]]) {
+    const f = AU.view(avail({ state: "failed", reason }));
+    assert.equal(f.line, line);
+    assert.deepEqual(f.action, { what: "download", label: "Try again" });
+  }
+  assert.equal(AU.view(avail({ state: "failed", reason: "school" })).action, null);
+  assert.equal(AU.view(avail({ state: "failed", reason: "disk" })).line, "There's no room for it in Downloads.");
+  for (const s of Object.values(AU.DL_COPY.failed).concat([AU.DL_COPY.done, AU.DL_COPY.mac, AU.DL_COPY.win])) {
+    assert.ok(words(s) <= 10, s);
+    assert.doesNotMatch(s, /\b(AI|LLM|GPT|Claude|model)\b/i, s);
+  }
+});
+
+test("a browser that didn't open: the row keeps its line and adds the link with a Copy button", () => {
+  const v = AU.view({ state: "error", reason: "offline", link_failed: "https://whissleai.github.io/Outpost-Luna/" });
+  assert.equal(v.link, "https://whissleai.github.io/Outpost-Luna/");
+  assert.equal(v.action.what, "site");
+  assert.equal(AU.view({ state: "error", reason: "offline" }).link, undefined);
+});

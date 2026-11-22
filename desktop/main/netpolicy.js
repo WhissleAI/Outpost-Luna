@@ -16,6 +16,8 @@
 //   the shell  gateFetch wraps globalThis.fetch, which every main-process download uses (first-run assets, optional
 //              assets, asset and app update checks): a blocked host throws {kind: "school", offline: true} before any
 //              request, and every redirect hop is checked too.
+//              The app-update installer download (appupdate.getAsset) checks each hop itself instead: github.com must be
+//              allowed, and only then GitHub's release-asset redirect host is let through, for that download only.
 "use strict";
 const fs = require("fs");
 const path = require("path");
