@@ -60,6 +60,7 @@ every other setting. Settings → For grown-ups → "Voice log and playtest" say
 | `seen` (v2) | What the learned Director saw at the turn end (`features.record`, numbers and flags only): the situation class (`cls`: hot / short / echo / video / quiet), the bare-turn guard (`bare`), and the e13 / link / hot / entity views. |
 | `room` (v2) | The room-state estimate (calm / busy / too loud) and its numbers, when the session has the estimator (`session.room_state`); null until it ships. |
 | `wav` (v2) | Only in a playtest: the file name of this turn's audio clip (`playtest/<turn id>.wav`). |
+| `trace` | The turn graph's per-node trace ([`TURN_GRAPH.md`](TURN_GRAPH.md), `turnlog.trace_view`): node names, milliseconds, the node each decision node chose, and small views (router outcome / reason / intent, the director handler that answered, the model's act and p). Names, numbers and code enums only, never words. The importer ignores it. |
 | `t`, `day` | Seconds since the session's first logged turn, and the calendar day. No clock time. |
 | `s`, `id` | A random per-session tag. It is never the session id. |
 
