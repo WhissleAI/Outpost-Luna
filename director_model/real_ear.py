@@ -303,7 +303,8 @@ def cmd_relist(a):
     n = 0
     with open(JOBS, "w") as f:
         for j in jobs:
-            if not (src / "dec" / f"{j['key']}.json").exists():
+            # round 15 (--all): a fresh job list (no earlier cache to re-key): every job, decoded or not
+            if not a.all and not (src / "dec" / f"{j['key']}.json").exists():
                 continue
             fr = j.get("frame") or {"screen": "cabin"}
             fk = frame_key(fr) + f"|{fr.get('lesson_id')}|{fr.get('step')}"
@@ -754,6 +755,8 @@ if __name__ == "__main__":
     ap.add_argument("--n", type=int, default=60, help="leak: lines per profile")
     ap.add_argument("--profiles", default="r13,laptop", help="leak: render_r8.SPEAKER_PROFILES to compare")
     ap.add_argument("--src", default="", help="relist: the cache whose jobs are re-keyed")
+    ap.add_argument("--all", action="store_true", help="relist: keep every job, decoded or not (round 15: a fresh "
+                    "`jobs` list given today's names lists and no hot list, as round 12's relist did)")
     ap.add_argument("--train", type=int, default=3000)
     ap.add_argument("--val", type=int, default=150)
     ap.add_argument("--test", type=int, default=200)

@@ -796,6 +796,9 @@ class Session:
             await self._note({"outcome": "care", "reason": "safety"}, text, safety=True)
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
             return
+        if self.dm is not None:      # round 15 (shadow only): the learned Director's pre-routing read of this turn
+            with contextlib.suppress(Exception):
+                await self.dm.perceive(self._end_event(text, source))
         rt = router_.route(text, ctx_r, act=k.get("act"))
         if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear"), self.playback_threshold()):
             rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)
