@@ -24,7 +24,9 @@ id.
   GET  /api/collect            {on, audio, profile, until, max_s, turns, clips, clip_bytes}
   POST /api/collect            {"on": bool, "audio": bool, "consent": true, "adult": true, "profile": "p1"}
                                + the page's X-Outpost-Reset header (turning on needs consent + adult; off never does)
-  POST /api/collect/export     the zip, as the response body ({"app_version"} in the body)
+                               {"audio_only": true, "audio": bool, "profile": "p1"}: the audio switch, only while it
+                               is on for that profile (else 409: never re-enables collection without the consent)
+  POST /api/collect/export     the zip, as the response body ({"app_version"} in the body; + the page's header)
   POST /api/collect/delete     deletes the collected lines and their clips (+ the page's header)
 """
 from __future__ import annotations
@@ -50,6 +52,11 @@ BOOT = secrets.token_hex(6)          # this backend process: an opt-in from an e
 _PID = re.compile(r"^p[1-6]$")
 _lock = threading.Lock()
 _cache: dict = {"path": None, "mtime": None, "st": None}
+# audio_any() runs per mic frame (playtest.Recorder.feed): no syscall there. state() and _save() keep this in memory:
+# (the opt-in file's path, BOOT) and until when audio is on (None: off). Only this process writes the file.
+_fast: dict = {"key": None, "audio_until": None}
+# collected(): the turn log scan, memoised on the log files' (name, size, mtime) (every append changes the size)
+_scan: dict = {"key": None, "val": None}
 
 router = APIRouter()
 
@@ -73,6 +80,7 @@ def state() -> dict:
     try:
         mt = p.stat().st_mtime_ns
     except OSError:
+        _fast.update(key=(str(p), BOOT), audio_until=None)
         return dict(_OFF)
     if _cache["path"] == str(p) and _cache["mtime"] == mt and _cache["st"] is not None and _cache.get("boot") == BOOT:
         out = dict(_cache["st"])
@@ -87,6 +95,7 @@ def state() -> dict:
                "profile": st.get("profile") if ok and _PID.match(str(st.get("profile") or "")) else None,
                "day": st.get("day") if ok else None, "until": float(st["until"]) if ok else None}
         _cache.update(path=str(p), mtime=mt, st=out, boot=BOOT)
+    _fast.update(key=(str(p), BOOT), audio_until=out["until"] if out["on"] and out["audio"] else None)
     if out["on"] and _now() >= out["until"]:
         return dict(_OFF)
     return out
@@ -99,6 +108,7 @@ def _save(st: dict) -> None:
     tmp.write_text(json.dumps(st))
     os.replace(tmp, p)
     _cache.update(path=None, mtime=None, st=None)
+    _fast.update(key=None, audio_until=None)
 
 
 def on_for(profile: str | None) -> bool:
@@ -114,15 +124,32 @@ def audio_for(profile: str | None) -> bool:
 
 def audio_any() -> bool:
     """The mic relay keeps its ring buffer (playtest.Recorder) while some profile collects audio. Whose turn it is
-    decides whether a clip is ever written (turnlog.SessionLog.finish -> audio_for)."""
-    st = state()
-    return st["on"] and st["audio"]
+    decides whether a clip is ever written (turnlog.SessionLog.finish -> audio_for). Called per mic frame: answered
+    from memory (state() / set_state keep it; the 4-hour expiry is a clock check), the file is read only once."""
+    if _fast["key"] != (str(_path()), BOOT):
+        state()
+    u = _fast["audio_until"]
+    return u is not None and _now() < u
+
+
+class NotOn(ValueError):
+    """An audio-only change while collection is off for that profile (expired, quit, another profile)."""
 
 
 def set_state(on: bool, audio: bool = False, consent: bool = False, adult: bool = False,
-              profile: str | None = None) -> dict:
-    """Turn it on (needs consent + adult + a profile id) or off. Audio only rides along with on."""
+              profile: str | None = None, audio_only: bool = False) -> dict:
+    """Turn it on (needs consent + adult + a profile id) or off. Audio only rides along with on.
+    `audio_only`: the audio switch of a collection that is ON for this profile: it never turns collection on (after
+    the 4 hours, or a restart, the adult has to read the consent again) and keeps the clock."""
     with _lock:
+        if audio_only:
+            cur = state()
+            if not (cur["on"] and cur["profile"] is not None and cur["profile"] == profile):
+                raise NotOn("it is off now: turn it on again first")
+            _save({"on": True, "audio": bool(audio), "profile": profile, "consent_v": CONSENT_V,
+                   "day": cur.get("day") or _dt.date.today().isoformat(), "until": round(cur["until"], 1),
+                   "boot": BOOT})
+            return status()
         if not on:
             cur = state()
             _save({"on": False, "audio": False, "profile": cur.get("profile"), "consent_v": CONSENT_V})
@@ -145,10 +172,22 @@ def _is_collected(r: dict) -> bool:
 
 
 def collected(files: list[Path] | None = None) -> tuple[list[dict], list[dict]]:
-    """-> (collected turn lines, their signal lines), from the turn log files."""
+    """-> (collected turn lines, their signal lines), from the turn log files (the live one and the rotated one).
+    Memoised on the files' sizes and mtimes; callers never mutate the lists."""
     from . import turnlog
+    fs = files if files is not None else turnlog.STORE.files()
+    key = []
+    for f in fs:
+        try:
+            st = f.stat()
+            key.append((str(f), st.st_size, st.st_mtime_ns))
+        except OSError:
+            key.append((str(f), None, None))
+    key = tuple(key)
+    if _scan["key"] == key and _scan["val"] is not None:
+        return _scan["val"]
     turns, sigs = [], []
-    for f in (files if files is not None else turnlog.STORE.files()):
+    for f in fs:
         try:
             fh = open(f, encoding="utf-8")
         except OSError:
@@ -166,7 +205,30 @@ def collected(files: list[Path] | None = None) -> tuple[list[dict], list[dict]]:
                 elif isinstance(r, dict) and r.get("k") == "signal":
                     sigs.append(r)
     ids = {t["id"] for t in turns}
-    return turns, [s for s in sigs if s.get("ref") in ids]
+    val = (turns, [s for s in sigs if s.get("ref") in ids])
+    _scan.update(key=key, val=val)
+    return val
+
+
+_CLIP = re.compile(r"^playtest/[0-9a-f]{8}-\d{1,6}\.wav$")
+
+
+def clips_of(turns: list[dict]) -> list[str]:
+    """The clip names ("playtest/<turn id>.wav") the collected lines point at."""
+    return [w for w in (t.get("wav") for t in turns) if isinstance(w, str) and _CLIP.match(w)]
+
+
+def clip_bytes() -> int:
+    """The bytes of the collected turns' clips (kept out of the Playtest's own CAP_BYTES, playtest.save_clip)."""
+    from . import turnlog
+    d = turnlog.STORE.path.parent
+    n = 0
+    for c in clips_of(collected()[0]):
+        try:
+            n += (d / c).stat().st_size
+        except OSError:
+            pass
+    return n
 
 
 def status() -> dict:
@@ -227,11 +289,7 @@ def export_zip(app_version: str | None = None) -> tuple[bytes, dict]:
     from . import playtest, turnlog
     turns, sigs = collected()
     d = turnlog.STORE.path.parent
-    clips = []
-    for t in turns:
-        w = t.get("wav")
-        if isinstance(w, str) and re.match(r"^playtest/[0-9a-f]{8}-\d{1,6}\.wav$", w) and (d / w).exists():
-            clips.append(w)
+    clips = [w for w in clips_of(turns) if (d / w).exists()]
     man = {"format": FORMAT, "format_version": FORMAT_VERSION, "app_version": app_version or playtest._app_version(),
            "turnlog_version": turnlog.VERSION, "day": _dt.date.today().isoformat(), "turns": len(turns),
            "signals": len(sigs), "clips": len(clips), "sessions": len({t.get("s") for t in turns} - {None}),
@@ -248,23 +306,18 @@ def export_zip(app_version: str | None = None) -> tuple[bytes, dict]:
 
 
 def delete_all() -> dict:
-    """"Delete everything": the collected lines, their signals and clips. The rest of the turn log stays."""
+    """"Delete everything": the collected lines, their signals and clips. The rest of the turn log stays. All of it
+    under the turn log's lock (a turn appended or a file rotated meanwhile can't slip between the read and the
+    rewrite), over both files (the live one and the rotated turns.1.jsonl)."""
     from . import turnlog
-    turns, _ = collected()
-    ids = {t["id"] for t in turns}
     d = turnlog.STORE.path.parent
-    n_clips = 0
-    for t in turns:
-        w = t.get("wav")
-        if isinstance(w, str) and w.startswith("playtest/") and ".." not in w:
-            try:
-                (d / w).unlink()
-                n_clips += 1
-            except OSError:
-                pass
-    n = 0
+    n = n_clips = 0
     with turnlog.STORE.lock:
-        for f in turnlog.STORE.files():
+        files = turnlog.STORE.files()
+        turns, _ = collected(files)
+        ids = {t["id"] for t in turns}
+        wavs = clips_of(turns)
+        for f in files:
             keep = []
             with open(f, encoding="utf-8") as fh:
                 for line in fh:
@@ -283,6 +336,13 @@ def delete_all() -> dict:
                 os.replace(tmp, f)
             else:
                 f.unlink(missing_ok=True)
+        for w in wavs:
+            try:
+                (d / w).unlink()
+                n_clips += 1
+            except OSError:
+                pass
+    _scan.update(key=None, val=None)
     return {"deleted_lines": n, "deleted_clips": n_clips, **status()}
 
 
@@ -319,7 +379,9 @@ async def collect_set(request: Request):
     b = await _body(request)
     try:
         return set_state(b.get("on") is True, audio=b.get("audio") is True, consent=b.get("consent") is True,
-                         adult=b.get("adult") is True, profile=b.get("profile"))
+                         adult=b.get("adult") is True, profile=b.get("profile"), audio_only=b.get("audio_only") is True)
+    except NotOn as e:
+        raise HTTPException(409, str(e)) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 
@@ -327,6 +389,7 @@ async def collect_set(request: Request):
 @router.post("/api/collect/export")
 async def collect_export(request: Request):
     _check(request)
+    _page(request)
     b = await _body(request)
     v = b.get("app_version")
     body, man = export_zip(str(v)[:32] if v else None)

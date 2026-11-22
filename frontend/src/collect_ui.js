@@ -168,8 +168,15 @@ const section = {
         set({ on: true, audio: false, consent: true, adult: true, profile: pid() }, "[data-col-stop]");
       };
       if (q("[data-col-stop]")) q("[data-col-stop]").onclick = () => set({ on: false }, "[data-col-start]");
-      if (q("[data-col-audio]")) q("[data-col-audio]").onchange = e =>
-        set({ on: true, audio: e.target.checked, consent: true, adult: true, profile: pid() }, "[data-col-audio]");
+      // the audio switch never turns collection on: the backend refuses it once it is off (4 hours, a restart), and
+      // then the adult reads the consent again
+      if (q("[data-col-audio]")) q("[data-col-audio]").onchange = async e => {
+        const r = await post("/api/collect", { audio_only: true, audio: e.target.checked, profile: pid() }, fetchFn).catch(() => null);
+        if (r && r.ok) { view = "main"; await load("[data-col-audio]"); return; }
+        st = await get(fetchFn); setTag(onHere(st, pid())); recheck(st);
+        if (st && !onHere(st, pid())) { view = "consent"; draw("[data-col-agree]"); return; }
+        view = "main"; draw(); say(COPY.error);
+      };
       if (q("[data-col-export]")) q("[data-col-export]").onclick = e => {
         const b = e.currentTarget; b.disabled = true;
         exportZip({ fetchFn, onState: s => { say(COPY.state[s] ?? ""); if (s !== "saving") b.disabled = false; } });

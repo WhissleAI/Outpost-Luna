@@ -644,7 +644,9 @@ HANDLERS = [("privacy", h_privacy), ("mission", h_mission), ("correction", h_cor
             ("misconception", h_misconception), ("glossary", h_glossary), ("earthrise", h_earthrise),
             ("sounds", h_sounds), ("tour", h_tour), ("link", h_link), ("sides", h_sides), ("artifact", h_artifact),
             ("place", h_place), ("brain", h_brain)]
-COMMIT_HANDLERS = ("mission",)   # applies orders to the sim: a barge-in no longer cancels the turn once it starts
+# The mission handler changes the world (sim orders, standing orders, pending confirmations) only once its nlu found
+# orders: _mission_turn marks the graph run committed right there (_commit), so a barge-in still cancels a mission-mode
+# turn that falls through to the explorer or is still being parsed. No handler is a commit node by itself.
 _GRAPH: list = []
 
 
@@ -669,7 +671,7 @@ def direct_graph():
 
     g = Graph("direct")
     for name, fn in HANDLERS:
-        g.node(name, node(name, fn), commit=name in COMMIT_HANDLERS,
+        g.node(name, node(name, fn),
                view=lambda d, _n=name: {"handler": d.handler} if d.handler == _n else None)
     g.chain(*[n for n, _ in HANDLERS])
     g.node("steering", steer, view=lambda d: {"action": (d.result or {}).get("action")})
@@ -710,6 +712,13 @@ NOT_STARTED = "No mission yet. Pick a landing site first."
 CHATTER_DD = 0.5          # Arc device_directed under this, and no command: the kid is talking to the team, not to us
 RULES: dict[str, list[dict]] = {}       # mid -> standing orders [{"rule": Command, "armed": bool}]
 PENDING: dict[str, dict] = {}           # mid -> {"commands": [...], "role": needed role} waiting for another officer
+
+
+def _commit() -> None:
+    """The graph run this turn is part of (RUN) is past the point of no return: RunHandle.cancel lets it finish."""
+    run = RUN.get()
+    if run is not None:
+        run.committed = True
 
 
 def _sim():
@@ -841,6 +850,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     if nl["needs_clarify"]:
         q = nl["needs_clarify"]
         return {**base, "action": "ask", "say": q, "ask": {"question": q, "options": []}}
+    _commit()     # orders from here on change the sim: a barge-in no longer cancels this turn
 
     lines: list[str] = []
     # Standing orders whose moment has come go first.

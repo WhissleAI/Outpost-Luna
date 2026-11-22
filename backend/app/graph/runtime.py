@@ -17,12 +17,15 @@ The run (`Run`, the node's second argument) gives a node:
     run.emit(x)          the streaming channel: partial outputs go out while the run continues (awaits `stream`)
     run.interrupt(v)     pause the run here (a confirmation): the result carries a Checkpoint; `resume` re-enters
                          the same node and interrupt() then returns the resume value instead of pausing
-    run.subgraph(g, s)   run another graph inline (its nodes are traced as "parent/child"), bounded by MAX_DEPTH
+    run.subgraph(g, s)   run another graph inline (its nodes are traced as "parent/child"), bounded by MAX_DEPTH; an
+                         interrupt inside it pauses the parent too (the parent's Checkpoint.sub), and resuming the
+                         parent re-enters the paused child node
 
 Cancellation: `start()` runs the graph in its own asyncio task; `RunHandle.cancel()` cancels it unless a commit node
 (commit=True: one that changes the world, a sim command, a sent decision the client must see) has started, so the
 state is never left half-applied. The graph's `on_cancel(state, run)` cleanup runs before the run reports
-"cancelled". A cancellation from outside the handle (the server shutting down) is cleaned up and re-raised.
+"cancelled" (also when the cancel comes before the run's task started). A cancellation from outside the handle (the
+server shutting down) is cleaned up and re-raised.
 
 Every node is traced: {"n": name, "ms": wall time, "go": a decided next node, "w": state fields rebound, "a": arg
 names, "o": the node's own small view (numbers / enums: the turn log keeps it, turnlog.trace_view)}.
@@ -53,9 +56,10 @@ class StepLimit(GraphError):
 class Interrupt(Exception):
     """Raised by run.interrupt(): the run pauses at the current node (caught by the runtime, never by a node)."""
 
-    def __init__(self, value: Any = None):
+    def __init__(self, value: Any = None, sub: "Checkpoint | None" = None):
         super().__init__("interrupt")
         self.value = value
+        self.sub = sub          # a subgraph paused: its own checkpoint (resumed at its node when the parent resumes)
 
 
 @dataclass
@@ -77,6 +81,7 @@ class Checkpoint:
     state: Any
     value: Any
     steps: int
+    sub: "Checkpoint | None" = None   # the node paused inside a subgraph: where that subgraph resumes
 
 
 @dataclass
@@ -113,6 +118,9 @@ class Run:
         self.by_handle = False
         self.node: str | None = None
         self._resume: Any = _NOTHING
+        self._sub: Checkpoint | None = None   # resuming: the paused subgraph's checkpoint (run.subgraph takes it)
+        self._entered = False                 # the run's task has reached its loop (RunHandle.cancel before that)
+        self._cancel_pending = False
 
     @property
     def committed(self) -> bool:
@@ -141,8 +149,16 @@ class Run:
             raise GraphError(f"subgraph depth over {MAX_DEPTH}: {g.name}")
         sub = Run(g, self.stream, self.trace, f"{self.prefix}{g.name}/", self.depth + 1, self.ctx)
         sub.root = self.root
-        res = await g._loop(state, sub, start or g.entry_node, args, 0)
+        steps = 0
+        cp, self._sub = self._sub, None
+        if cp is not None and cp.graph == g.name:   # the parent resumed: re-enter the paused node (with the caller's
+            start, args, steps = cp.node, dict(cp.args), cp.steps     # state), its interrupt() returns the value
+            sub._sub = cp.sub
+            sub._resume, self._resume = self._resume, _NOTHING
+        res = await g._loop(state, sub, start or g.entry_node, args, steps)
         self.outputs += sub.outputs
+        if res.status == "interrupted":   # pause the parent too (its checkpoint carries this one), never lose it
+            raise Interrupt(res.checkpoint.value if res.checkpoint else None, res.checkpoint)
         return res
 
 
@@ -156,6 +172,10 @@ class RunHandle:
         """Cancel the run unless it has passed a commit node (then it finishes: the world already changed)."""
         if self.task.done():
             return False
+        if not self.run._entered:      # the task has not started yet: a task.cancel() now would escape before the
+            self.run.by_handle = True  # loop (no on_cancel, no Result); the loop sees this flag on its first step
+            self.run._cancel_pending = True
+            return True
         if self.run.committed:
             self.run.cancel_requested = True
             return False
@@ -248,6 +268,7 @@ class Graph:
                 raise GraphError(f"checkpoint of {resume.graph}, not {self.name}")
             state, start, args, steps = resume.state, resume.node, dict(resume.args), resume.steps
             run._resume = value
+            run._sub = resume.sub
         return await self._loop(state, run, start, args, steps)
 
     def start(self, state: Any, **kw) -> RunHandle:
@@ -259,7 +280,10 @@ class Graph:
     async def _loop(self, state: Any, run: Run, cur: str | None, args: dict, steps: int) -> Result:
         last = None
         try:
+            run._entered = True
             while cur is not None and cur != END:
+                if run.root._cancel_pending and not run.committed:
+                    raise asyncio.CancelledError()
                 steps += 1
                 if steps > self.max_steps:
                     raise StepLimit(f"{self.name}: over {self.max_steps} steps (at {cur})")
@@ -273,7 +297,7 @@ class Graph:
                 last = cur
                 cur = nxt
         except Interrupt as i:
-            cp = Checkpoint(self.name, run.node or "", args, state, i.value, steps - 1)
+            cp = Checkpoint(self.name, run.node or "", args, state, i.value, steps - 1, i.sub)
             run.trace.append({"n": run.prefix + (run.node or ""), "interrupt": True})
             return Result("interrupted", state, run.trace, run.outputs, cp, run.node)
         except asyncio.CancelledError:

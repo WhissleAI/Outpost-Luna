@@ -461,7 +461,8 @@ def fallback(s: TurnState, run):
                       source=r.get("source"), _cmd=fc,
                       confirm=bool(r.get("needs_confirm")) or any(d.get("t") == "ask_confirm"
                                                                    for d in r.get("decisions") or []))
-        sess._tl["_guard"] = s.guard or r.get("action") == "guard"
+        # or-ed: the safety step may already have marked it private (Arc's PII / mask tags)
+        sess._tl["_guard"] = bool(sess._tl.get("_guard")) or s.guard or r.get("action") == "guard"
     s.r = r
     return "quiet" if r.get("action") == "none" else "story"
 

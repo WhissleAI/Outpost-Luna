@@ -158,7 +158,8 @@ def test_routes_need_the_page_header_and_consent(logdir):
     r = c.post("/api/collect", json=body, headers={"X-Outpost-Reset": "1"})
     assert r.status_code == 200 and r.json()["on"] is True and r.json()["profile"] == "p1"
     assert c.post("/api/collect/delete").status_code == 400                            # not the page
-    z = c.post("/api/collect/export", json={"app_version": "0.5.8"})
+    assert c.post("/api/collect/export", json={"app_version": "0.5.8"}).status_code == 400   # not the page
+    z = c.post("/api/collect/export", json={"app_version": "0.5.8"}, headers={"X-Outpost-Reset": "1"})
     assert z.status_code == 200 and z.content[:4] == b"PK\x03\x04"
     assert json.loads(zipfile.ZipFile(io.BytesIO(z.content)).read("manifest.json"))["format"] == AC.FORMAT
     assert c.post("/api/collect", json={"on": False}, headers={"X-Outpost-Reset": "1"}).json()["on"] is False
@@ -309,6 +310,125 @@ def test_delete_everything_keeps_the_rest_of_the_log(logdir):
     left = lines(logdir)
     assert len([x for x in left if x["k"] == "turn"]) == 1 and not any(x.get("collect") for x in left)
     assert turnlog.STORE.clips() == []
+
+
+# ------------------------------------------------------------------------------------- review fixes before 0.5.8
+@pytest.mark.parametrize("engine", ["graph", "legacy"])
+def test_a_pii_flagged_turn_keeps_no_words_reply_or_clip(logdir, monkeypatch, engine):
+    """Arc's PII tag marks the turn private at the safety step; the Director's own guard (no name given here) must not
+    clear that flag again."""
+    monkeypatch.setenv("TURN_ENGINE", engine)
+    AC.set_state(True, audio=True, consent=True, adult=True, profile="p2")
+    clock = Clock()
+    s = sess(clock, sid=f"pii{engine}")
+    clock.t += 4
+    asyncio.run(s.handle({"t": "turn", "state": "start", "text": ""}))
+    pii = [{"tag": "safety.pii.leak", "p": 0.99, "thr": 0.5, "on": True}]
+    asyncio.run(s.handle({"t": "arc", "device_directed": 0.9, "safety": pii}))
+    asyncio.run(s.handle({"t": "words", "text": "tell me about tycho", "final": True, "uconf": 0.9, "eot": 0.3}))
+    clock.t += 0.8
+    asyncio.run(s.handle({"t": "turn", "state": "end", "text": "tell me about tycho", "_pcm": PCM}))
+    (t,) = turns(logdir)
+    assert t["collect"] is True and t["guard"] is True and t["text"] == "<private>"
+    assert "reply" not in t and "wav" not in t and turnlog.STORE.clips() == []
+    assert "tell me about" not in json.dumps(lines(logdir))           # the words (entity ids stay, as on every turn)
+
+
+def test_the_audio_switch_never_turns_collection_back_on(logdir, monkeypatch):
+    from app.main import app
+    t0 = 1_800_000_000.0
+    monkeypatch.setattr(AC, "_now", lambda: t0)
+    with pytest.raises(AC.NotOn):                                     # never turned on
+        AC.set_state(True, audio=True, profile="p2", audio_only=True)
+    AC.set_state(True, consent=True, adult=True, profile="p2")
+    monkeypatch.setattr(AC, "_now", lambda: t0 + 60)
+    st = AC.set_state(True, audio=True, profile="p2", audio_only=True)   # on: no consent needed, the clock kept
+    assert st["on"] and st["audio"] and st["until"] == t0 + AC.MAX_S
+    with pytest.raises(AC.NotOn):                                     # another profile's switch
+        AC.set_state(True, audio=False, profile="p3", audio_only=True)
+    monkeypatch.setattr(AC, "_now", lambda: t0 + AC.MAX_S + 1)       # it switched itself off
+    c = TestClient(app)
+    h = {"X-Outpost-Reset": "1"}
+    r = c.post("/api/collect", json={"on": True, "audio": True, "consent": True, "adult": True, "profile": "p2",
+                                     "audio_only": True}, headers=h)
+    assert r.status_code == 409 and c.get("/api/collect").json()["on"] is False
+    assert AC.on_for("p2") is False and AC.audio_any() is False
+
+
+def test_the_recorder_asks_memory_not_the_disk_per_mic_frame(logdir, monkeypatch):
+    t0 = 1_800_000_000.0
+    monkeypatch.setattr(AC, "_now", lambda: t0)
+    AC.set_state(True, audio=True, consent=True, adult=True, profile="p2")
+    assert AC.audio_any() is True
+    calls = []
+    real = AC.state
+    monkeypatch.setattr(AC, "state", lambda: calls.append(1) or real())
+    rec = playtest.Recorder()
+    for _ in range(200):
+        rec.feed(b"\x00\x01" * 160)
+    assert calls == [] and len(rec.buf) == 200 * 320                 # no file read per frame
+    monkeypatch.setattr(AC, "_now", lambda: t0 + AC.MAX_S)          # the 4 hours are up: a clock check, no syscall
+    assert AC.audio_any() is False and playtest.recording() is False and calls == []
+    AC.set_state(False)
+    monkeypatch.setattr(AC, "_now", lambda: t0)
+    assert AC.audio_any() is False
+
+
+def test_misheard_needs_i_said_at_the_start_of_the_turn():
+    M = turnlog.MISHEARD
+    for t in ("i said tycho", "no i said shields", "no that s not what i said", "you misheard", "wait i said tycho"):
+        assert M.search(t), t
+    for t in ("remember what i said about tycho", "tell me what i said", "did you hear what i said earlier"):
+        assert not M.search(t), t
+
+
+def test_playtest_export_leaves_out_the_adults_collected_turns_and_clips(logdir):
+    playtest.start(True)
+    kid = sess(Clock(), profile="p1", improve=True, sid="kidp")
+    ear_turn(kid, kid.clock, "what is a crater", pcm=PCM)            # a Playtest clip
+    _session_with_mixed_log(logdir)
+    adult_ids = {t["id"] for t in turns(logdir) if t.get("collect")}
+    assert len(turnlog.STORE.clips()) == 5                            # 2 kid playtest clips + 3 adult clips
+    body, man = playtest.export_zip("0.5.8-test")
+    z = zipfile.ZipFile(io.BytesIO(body))
+    rows = [json.loads(x) for n in z.namelist() if n.endswith(".jsonl") for x in z.read(n).decode().splitlines()]
+    assert rows and not any(r.get("collect") for r in rows)
+    assert not any(r.get("ref") in adult_ids for r in rows if r["k"] == "signal")
+    assert man["turns"] == len([r for r in rows if r["k"] == "turn"]) == 2
+    wavs = sorted(n for n in z.namelist() if n.endswith(".wav"))
+    assert len(wavs) == man["clips"] == 2 and not any(i in w for w in wavs for i in adult_ids)
+    playtest.stop()
+
+
+def test_adult_clips_do_not_use_up_the_playtest_cap(logdir, monkeypatch):
+    _session_with_mixed_log(logdir)
+    used = turnlog.STORE.stats()["clip_bytes"]
+    assert used > 0 and AC.clip_bytes() == used
+    monkeypatch.setattr(playtest, "CAP_BYTES", used + 10)
+    playtest.start(True)
+    assert playtest.save_clip("abcdef01-1", PCM) == "playtest/abcdef01-1.wav"   # the adult's clips don't count
+    playtest.stop()
+
+
+def test_delete_everything_runs_under_the_log_lock_and_reaches_the_rotated_file(logdir, monkeypatch):
+    _session_with_mixed_log(logdir)
+    size = turnlog.STORE.path.stat().st_size
+    monkeypatch.setattr(turnlog.STORE, "cap", 2 * size + 20)          # the next line rotates the live file once
+    turnlog.STORE.append({"k": "turn", "v": 2, "s": "feedf00d", "id": "feedf00d-0", "text": "x" * 60,
+                          "router": {"outcome": "ignore"}, "director": None})
+    in_rotated = [json.loads(x) for x in (logdir / "turns.1.jsonl").read_text().splitlines()]
+    assert sum(1 for r in in_rotated if r.get("collect")) == 3          # every collected line is in the rotated file
+    before = AC.status()["turns"]
+    done = []
+    with turnlog.STORE.lock:
+        th = threading.Thread(target=lambda: done.append(AC.delete_all()))
+        th.start()
+        th.join(0.2)
+        assert th.is_alive() and not done                              # it waits for the lock: nothing read early
+    th.join(5)
+    res = done[0]
+    assert res["deleted_clips"] == 3 and res["turns"] == 0 and res["clips"] == 0 and before == 3
+    assert not any(x.get("collect") for x in lines(logdir)) and turnlog.STORE.clips() == []
 
 
 # --------------------------------------------------------------------------- import, eval and the label tool

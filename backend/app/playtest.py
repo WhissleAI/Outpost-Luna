@@ -155,7 +155,11 @@ def save_clip(turn_id: str, pcm: bytes | None, allow: bool = False) -> str | Non
     if not pcm or not (allow or active()) or not _ID.match(turn_id or ""):
         return None
     try:
-        if turnlog.STORE.stats()["clip_bytes"] + len(pcm) > CAP_BYTES:
+        used = turnlog.STORE.stats()["clip_bytes"]
+        if not allow:      # a Playtest clip: an adult's collected clips (their own export) don't use up its CAP_BYTES
+            from . import adult_collect
+            used -= adult_collect.clip_bytes()
+        if used + len(pcm) > CAP_BYTES:
             return None
         d = audio_dir()
         d.mkdir(parents=True, exist_ok=True)
@@ -180,29 +184,46 @@ Developers: make director-import LOG=<this zip>
 
 
 def export_zip(app_version: str | None = None) -> tuple[bytes, dict]:
-    """The export: turn log files, the clips, a manifest and a README, as zip bytes. -> (bytes, manifest)."""
-    from . import turnlog
-    st = turnlog.STORE.stats()
+    """The export: turn log files, the clips, a manifest and a README, as zip bytes. -> (bytes, manifest).
+    An adult's "Help improve Outpost Luna" turns (`"collect": true`, adult_collect.py), their signals and clips never
+    go in: they leave only through that switch's own, re-redacted export."""
+    from . import adult_collect, turnlog
     files = turnlog.STORE.files()
-    clips = turnlog.STORE.clips()
+    adult, _ = adult_collect.collected(files)
+    ids = {t["id"] for t in adult}
+    skip = {Path(w).name for w in adult_collect.clips_of(adult)}
+    clips = [c for c in turnlog.STORE.clips() if c.name not in skip]
     sessions: set = set()
+    texts: dict[str, str] = {}
+    n_turns = 0
     for f in files:
-        for line in open(f, encoding="utf-8"):
-            if '"k":"turn"' in line:
-                try:
-                    sessions.add(json.loads(line).get("s"))
-                except ValueError:
-                    pass
+        keep = []
+        with open(f, encoding="utf-8") as fh:
+            for line in fh:
+                r = None
+                if '"k":"turn"' in line or '"k":"signal"' in line:
+                    try:
+                        r = json.loads(line)
+                    except ValueError:
+                        r = None
+                if isinstance(r, dict) and (r.get("collect") is True or
+                                            (r.get("k") == "signal" and r.get("ref") in ids)):
+                    continue
+                if isinstance(r, dict) and r.get("k") == "turn":
+                    sessions.add(r.get("s"))
+                    n_turns += 1
+                keep.append(line)
+        texts[f.name] = "".join(keep)
     man = {"format": FORMAT, "format_version": FORMAT_VERSION, "app_version": app_version or _app_version(),
-           "turnlog_version": turnlog.VERSION, "day": _dt.date.today().isoformat(), "turns": st["turns"],
+           "turnlog_version": turnlog.VERSION, "day": _dt.date.today().isoformat(), "turns": n_turns,
            "clips": len(clips), "sessions": len(sessions - {None}), "sample_rate": SR,
            "consent": "a grown-up confirmed permission in Settings before audio was kept"}
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("manifest.json", json.dumps(man, indent=1) + "\n")
         z.writestr("README.txt", README)
-        for f in files:
-            z.write(f, f.name)
+        for name, text in texts.items():
+            z.writestr(name, text)
         for c in clips:
             z.write(c, f"playtest/{c.name}", compress_type=zipfile.ZIP_STORED)
     return buf.getvalue(), man

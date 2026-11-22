@@ -22,7 +22,8 @@ const defaultName = (t = Date.now(), kind = "playtest") => `outpost-luna-${kind 
 async function saveExport({ backend, token, appVersion, file, fetchFn = fetch, api = "/api/playtest/export" }) {
   if (api !== "/api/playtest/export" && api !== "/api/collect/export") throw new Error("not an export");
   const r = await fetchFn(`${backend}${api}`, { method: "POST",
-    headers: { "Content-Type": "application/json", "X-Luna-Token": token }, body: JSON.stringify({ app_version: appVersion }) });
+    // X-Outpost-Reset: the page's own header, which the backend's export routes require (a cross-site page can't send it)
+    headers: { "Content-Type": "application/json", "X-Luna-Token": token, "X-Outpost-Reset": "1" }, body: JSON.stringify({ app_version: appVersion }) });
   if (!r.ok) throw new Error(`the backend answered ${r.status}`);
   const buf = Buffer.from(await r.arrayBuffer());
   if (buf.length < 22 || buf.readUInt32LE(0) !== 0x04034b50) throw new Error("the backend did not send a zip");
